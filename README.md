@@ -158,28 +158,32 @@ Many regional internet service providers (ISPs) actively censor news media domai
 - **The VPS Archive Lens Solution**:
   - The server includes an asynchronous streaming image proxy at `/api/proxy/image?url=...`.
   - In the **AI Reader View**, all images are automatically rewritten to point to this proxy.
-  - In **Raw Snapshots**, a lightweight inline error listener catches any `<img>` load failures and dynamically reroutes them through the proxy:
+  - In **Raw Snapshots**, a lightweight inline error listener catches any `<img>` load failures and dynamically reroutes them through the proxy using `window.location.origin` (preventing `<base href>` hijacking):
     ```javascript
     window.addEventListener('error', function(e) {
-      if (e.target && e.target.tagName === 'IMG' && !e.target.dataset.vpsProxied && e.target.src.startsWith('http')) {
+      if (e.target && e.target.tagName === 'IMG' && !e.target.dataset.vpsProxied && e.target.src && e.target.src.startsWith('http')) {
         e.target.dataset.vpsProxied = '1';
-        e.target.src = '/api/proxy/image?url=' + encodeURIComponent(e.target.src);
+        e.target.src = window.location.origin + '/api/proxy/image?url=' + encodeURIComponent(e.target.src);
       }
     }, true);
     ```
   - Proxied images are stored in `STORAGE_DIR/image_cache/` and served with HTTP 304 / 30-day cache headers, saving bandwidth and delivering instant playback.
+  - **`<base href>` Relative Link Defense**: Raw snapshots inject `<base href="...">` to preserve remote CSS/fonts. Under RFC 3986, browsers resolve relative links against `<base href>`. The archiver dynamically binds the floating navigation pill to the VPS origin with `onclick="window.location.href = window.location.origin + '/reader/{id}'; return false;"` so clicking the Reader View always stays on your VPS.
 
 ### 3. The AI Reader View Pipeline
 The Reader View (`/reader/{snapshot_id}`) is engineered to never fail:
 1. **Deterministic Parsing**: `trafilatura` extracts clean semantic Markdown directly from the unpaywalled HTML snapshot. It isolates the true article body while stripping ads, newsletter signups, and navigation cruft.
 2. **Multi-Tier AI Provider Hierarchy**:
-   - **Tier 1 (Zero Config)**: Auto-detects local Hermes Agent credentials in `~/.hermes/auth.json` to access the free **Nous Solar Pro** model (`upstage/solar-pro4:free`).
+   - **Tier 1 (Nous Solar Pro Free)**: Auto-detects local Hermes credentials in `~/.hermes/auth.json` to access `upstage/solar-pro4:free`. Includes **autonomous OAuth token auto-refresh**, rotated token persistence, and automatic 401 retries. Easily link new accounts with `python3 server/scripts/auth_nous.py`.
    - **Tier 2 (OpenCode Go)**: If `OPENCODE_GO_API_KEY` is configured, queries OpenCode Zen (`glm-5`).
    - **Tier 3 (NeuralWatt)**: If `NEURALWATT_API_KEY` or `~/.hermes/config.yaml` is detected, queries NeuralWatt (`glm-5.2`).
    - **Tier 4 (OpenRouter Free)**: If `OPENROUTER_API_KEY` is set, queries `nvidia/nemotron-3.5-lightning:free`.
    - **Tier 5 (Generic OpenAI-Compatible)**: If `AI_BASE_URL` is set, connects to Ollama, vLLM, DeepSeek, LocalAI, or any standard endpoint.
-   - **Tier 6 (Resilient Fallback)**: If no LLM is configured or an API call times out, it uses deterministic lead-paragraph extraction. The reader view **always renders successfully**.
-3. **Caption Deduplication & Figure Formatting**:
+   - **Tier 6 (Resilient Fallback)**: If no LLM is configured or an API call fails, the reader view displays the clean reconstructed article body without any broken or repetitive paragraphs.
+3. **Smart Forum Index vs. Article Heuristic**:
+   - Articles with common words like `"community"` or `"thread"` in their headline slug are accurately preserved and summarized.
+   - True index/directory listings (e.g. `forumdisplay.php` with `< 120 words`) display an informative navigation card with a 1-click button to the Full Faithful Snapshot.
+4. **Caption Deduplication & Figure Formatting**:
    - Trafilatura frequently extracts image captions twice (once in the Markdown image tag `![Caption](url)` and once in the following paragraph `<p>`).
    - The parser detects adjacent redundant text paragraphs and merges them cleanly into `<figure>` and `<figcaption>` elements with responsive shadow styling.
 

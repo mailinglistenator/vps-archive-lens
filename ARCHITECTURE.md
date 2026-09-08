@@ -117,7 +117,9 @@ Once Playwright has completed page rendering:
    }
    ```
 3. **Modal Overlay Removal**: Known paywall containers (Piano, Tinypass, Evolok, and common overlay class selectors like `.paywall-overlay`, `[id*="regwall"]`) are stripped from the DOM.
-4. **Header Navigation Pill**: Injects a responsive, non-intrusive floating glassmorphism banner containing the original source link, archive timestamp, and a direct toggle to the AI Reader View.
+4. **Header Navigation Pill & `<base href>` Hijacking Defense**:
+   - Injects a responsive, non-intrusive floating glassmorphism banner containing the original source link, archive timestamp, and a direct toggle to the AI Reader View.
+   - **RFC 3986 Relative Link Immunization**: Raw snapshots inject `<base href="{resolved_url}">` into `<head>` so original remote stylesheets and fonts load correctly. Under the HTML specification, browsers resolve all relative paths (including root-relative `/reader/...`) against the `<base href>` target. The archiver neutralizes this by dynamically binding all pill navigation links to the VPS server origin (`request.base_url`) and attaching an inline `onclick="window.location.href = window.location.origin + '/reader/{id}'; return false;"` handler.
 
 ---
 
@@ -133,9 +135,9 @@ Many regional ISPs utilize Deep Packet Inspection (DPI) to block access to inter
    Raw snapshots include an active client-side listener that intercepts any `<img>` load error and seamlessly rewires the `src` attribute through the VPS proxy without requiring user interaction:
    ```javascript
    window.addEventListener('error', function(e) {
-     if (e.target && e.target.tagName === 'IMG' && !e.target.dataset.vpsProxied && e.target.src.startsWith('http')) {
+     if (e.target && e.target.tagName === 'IMG' && !e.target.dataset.vpsProxied && e.target.src && e.target.src.startsWith('http')) {
        e.target.dataset.vpsProxied = '1';
-       e.target.src = '/api/proxy/image?url=' + encodeURIComponent(e.target.src);
+       e.target.src = window.location.origin + '/api/proxy/image?url=' + encodeURIComponent(e.target.src);
      }
    }, true);
    ```
@@ -159,12 +161,20 @@ The AI Reader View (`/reader/{snapshot_id}`) provides a distraction-free, Apple 
        │
        ▼
 [AI Provider Hierarchy]
-       ├─ 1. Local Hermes (~/.hermes/auth.json -> Nous Solar Pro Free)
+       ├─ 1. Nous Research (~/.hermes/auth.json -> upstage/solar-pro4:free)
+       │    ├─ Autonomous OAuth refresh via portal.nousresearch.com
+       │    ├─ Automatic HTTP 401 retry & token rotation handler
+       │    └─ Standalone CLI device-code authenticator (scripts/auth_nous.py)
        ├─ 2. OpenCode Go / Zen (glm-5)
        ├─ 3. NeuralWatt (glm-5.2)
        ├─ 4. OpenRouter Free (nemotron-3.5-lightning:free)
        ├─ 5. Generic OpenAI-Compatible (Ollama, vLLM, DeepSeek, LocalAI)
-       └─ 6. Heuristic Fallback (First 3 core paragraphs)
+       └─ 6. Clean Reconstructed Text (no duplicate lead paragraphs)
+       │
+       ├─ Smart Forum Directory vs. Article Detection
+       │    ├─ High prose count (>= 120 words) always renders Reader View
+       │    ├─ Low prose (< 120 words) directory pages offer Faithful Snapshot button
+       │    └─ Automatic invalidation for stale false-forum caches
        │
        ▼
 [Apple Books-Grade HTML Template]
