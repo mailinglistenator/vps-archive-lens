@@ -713,7 +713,7 @@ def get_hermes_ai_provider():
     3. NeuralWatt GLM-5.2 (from ~/.hermes/config.yaml or env)
     4. OpenRouter Free (if OPENROUTER_API_KEY set)
     """
-    # 1. Nous Free
+    # 1. Nous Free (check expiration)
     auth_file = Path.home() / ".hermes/auth.json"
     if auth_file.is_file():
         try:
@@ -721,7 +721,16 @@ def get_hermes_ai_provider():
                 d = json.load(f)
                 nous = d.get("providers", {}).get("nous", {})
                 token = nous.get("access_token") or nous.get("agent_key")
-                if token:
+                expires_at_str = nous.get("expires_at")
+                is_expired = False
+                if expires_at_str:
+                    try:
+                        exp_dt = datetime.fromisoformat(expires_at_str.replace("Z", "+00:00"))
+                        if datetime.now(timezone.utc) > exp_dt:
+                            is_expired = True
+                    except Exception:
+                        pass
+                if token and not is_expired:
                     return {
                         "provider": "nous",
                         "model": "upstage/solar-pro4:free",
@@ -780,16 +789,29 @@ def get_hermes_ai_provider():
             "display_name": f"NeuralWatt ({nw_model})"
         }
 
-    # 4. OpenRouter
+    # 4. OpenRouter Free (with auto-extraction from config.yaml fallback_model)
     or_key = os.getenv("OPENROUTER_API_KEY")
+    if not or_key and config_yaml.is_file():
+        try:
+            with open(config_yaml, "r", encoding="utf-8") as f:
+                content = f.read()
+                m_or = re.search(r'fallback_model:\s*(?:[^\n]+\n)*?\s*api_key:\s*([^\s\n]+)', content)
+                if m_or:
+                    or_key = m_or.group(1).strip()
+        except Exception as e:
+            logger.warning(f"Failed to extract OpenRouter key: {e}")
+
     if or_key:
         return {
             "provider": "openrouter",
             "model": "nvidia/nemotron-3.5-lightning:free",
             "base_url": "https://openrouter.ai/api/v1",
             "auth_header": f"Bearer {or_key}",
-            "extra_headers": {},
-            "display_name": "OpenRouter Free"
+            "extra_headers": {
+                "HTTP-Referer": "https://vps-archive-lens.local",
+                "X-Title": "VPS Archive Lens"
+            },
+            "display_name": "OpenRouter (Free Nemotron 3.5)"
         }
 
     # 5. Generic OpenAI-Compatible Endpoint (Ollama, LocalAI, vLLM, DeepSeek, Groq, OpenAI)
@@ -1348,19 +1370,35 @@ Article:
                 content_str = re.sub(r"^```json\s*", "", content_str.strip())
                 content_str = re.sub(r"\s*```$", "", content_str.strip())
                 parsed = json.loads(content_str)
-                summary_bullets = parsed.get("summary", [])
+                raw_bullets = parsed.get("summary", [])
+                # Clean any markdown syntax from AI bullets
+                summary_bullets = []
+                for b in raw_bullets:
+                    b_clean = re.sub(r'\[([^\]]+)\]\([^\)]+\)', r'\1', str(b))
+                    b_clean = re.sub(r'[*_`#]', '', b_clean).strip()
+                    if b_clean and len(b_clean) > 10:
+                        summary_bullets.append(b_clean)
         except Exception as e:
             logger.warning(f"AI summary request failed ({provider_name}): {e}")
+            summary_bullets = []
 
-    # Fallback bullets if AI unavailable
-    if not summary_bullets:
-        summary_bullets = [
-            line.strip() for line in clean_md.split("\n\n")
-            if len(line.strip()) > 60 and not any(line.strip().startswith(c) for c in (">", "[", "!", "#", "*", "-"))
-        ][:3]
-
-    # Convert clean markdown to HTML body
-    body_html = markdown.markdown(clean_md, extensions=["extra", "nl2br", "sane_lists"])
+    # Never duplicate raw paragraphs if AI failed — leave empty so no fake box appears
+    is_forum = any(kw in orig_url.lower() for kw in ["forum", "thread", "viewtopic", "forumdisplay", "showthread", "boards", "community"])
+    if is_forum:
+        body_html = f"""
+        <div style="text-align: center; padding: 40px 20px; background: var(--card-bg); border-radius: 12px; border: 1px solid var(--card-border); margin: 20px 0;">
+            <div style="font-size: 2.5rem; margin-bottom: 12px;">💬</div>
+            <h2 style="color: var(--text); font-size: 1.25rem; margin: 0 0 10px 0;">Discussion Forum / Directory Page</h2>
+            <p style="color: var(--text-muted); font-size: 0.95rem; max-width: 520px; margin: 0 auto 24px auto; line-height: 1.6;">
+                This page is an interactive forum discussion board or directory index, not a single article. The full layout, user posts, and discussion threads are preserved faithfully in your raw snapshot.
+            </p>
+            <a href="/view/{safe_id}" style="display: inline-block; padding: 12px 24px; background: var(--accent); color: #042f2e; font-weight: 600; text-decoration: none; border-radius: 8px; font-size: 0.95rem;">View Full Faithful Snapshot →</a>
+        </div>
+        """
+        summary_bullets = []
+    else:
+        # Convert clean markdown to HTML body
+        body_html = markdown.markdown(clean_md, extensions=["extra", "nl2br", "sane_lists"])
 
     # Clean, proxy, and format images to bypass ISP blocks and prevent broken stubs
     body_soup = BeautifulSoup(body_html, "html.parser")
