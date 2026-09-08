@@ -5,7 +5,7 @@ import hashlib
 import asyncio
 import logging
 import re
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from pathlib import Path
 from urllib.parse import urlparse, quote
 import urllib.parse
@@ -29,7 +29,7 @@ logger = logging.getLogger("archiver")
 
 PORT = int(os.getenv("PORT", "8888"))
 API_TOKEN = os.getenv("API_TOKEN", "")
-STORAGE_DIR = Path(os.getenv("STORAGE_DIR", "./snapshots"))
+STORAGE_DIR = Path(os.getenv("STORAGE_DIR", "/home/hermes/personal-archiver/snapshots"))
 IMAGE_CACHE_DIR = STORAGE_DIR / "image_cache"
 BASE_URL = os.getenv("BASE_URL", "http://localhost:8888").rstrip("/")
 
@@ -704,6 +704,73 @@ def view_snapshot(snapshot_id: str):
 
     return HTMLResponse(content=html, media_type="text/html")
 
+def refresh_nous_token() -> Optional[str]:
+    """
+    Attempt to refresh the Nous OAuth access token using stored refresh_token.
+    Updates ~/.hermes/auth.json and returns the new token, or None on failure.
+    """
+    auth_file = Path.home() / ".hermes/auth.json"
+    if not auth_file.is_file():
+        return None
+    try:
+        with open(auth_file, "r", encoding="utf-8") as f:
+            d = json.load(f)
+        nous = d.get("providers", {}).get("nous", {})
+        refresh_tok = nous.get("refresh_token")
+        if not refresh_tok:
+            return None
+        client_id = nous.get("client_id", "hermes-cli")
+        portal_url = (nous.get("portal_base_url") or "https://portal.nousresearch.com").rstrip("/")
+
+        req = urllib.request.Request(
+            f"{portal_url}/api/oauth/token",
+            headers={
+                "x-nous-refresh-token": refresh_tok,
+                "Content-Type": "application/x-www-form-urlencoded",
+                "Accept": "application/json"
+            },
+            data=urllib.parse.urlencode({
+                "grant_type": "refresh_token",
+                "client_id": client_id
+            }).encode("utf-8")
+        )
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            data = json.loads(resp.read().decode("utf-8"))
+            new_access_token = data.get("access_token")
+            if not new_access_token:
+                return None
+            now = datetime.now(timezone.utc)
+            ttl = int(data.get("expires_in", 3600))
+            exp_dt = now.timestamp() + ttl
+            nous["access_token"] = new_access_token
+            if data.get("refresh_token"):
+                nous["refresh_token"] = data["refresh_token"]
+            nous["expires_at"] = datetime.fromtimestamp(exp_dt, tz=timezone.utc).isoformat()
+            if data.get("inference_base_url"):
+                nous["inference_base_url"] = data["inference_base_url"]
+            d["providers"]["nous"] = nous
+            with open(auth_file, "w", encoding="utf-8") as f_out:
+                json.dump(d, f_out, indent=2)
+
+            shared_file = Path.home() / ".hermes/shared/nous_auth.json"
+            if shared_file.is_file():
+                try:
+                    with open(shared_file, "r", encoding="utf-8") as sf:
+                        sd = json.load(sf)
+                    sd["access_token"] = new_access_token
+                    if data.get("refresh_token"):
+                        sd["refresh_token"] = data["refresh_token"]
+                    sd["expires_at"] = nous["expires_at"]
+                    with open(shared_file, "w", encoding="utf-8") as sf_out:
+                        json.dump(sd, sf_out, indent=2)
+                except Exception:
+                    pass
+            logger.info("Successfully auto-refreshed Nous OAuth token")
+            return new_access_token
+    except Exception as e:
+        logger.warning(f"Failed to auto-refresh Nous token: {e}")
+        return None
+
 def get_hermes_ai_provider():
     """
     Resolves available free/configured AI provider from Hermes configuration or environment.
@@ -713,7 +780,7 @@ def get_hermes_ai_provider():
     3. NeuralWatt GLM-5.2 (from ~/.hermes/config.yaml or env)
     4. OpenRouter Free (if OPENROUTER_API_KEY set)
     """
-    # 1. Nous Free (check expiration)
+    # 1. Nous Free (check expiration, auto-refresh if needed)
     auth_file = Path.home() / ".hermes/auth.json"
     if auth_file.is_file():
         try:
@@ -722,15 +789,20 @@ def get_hermes_ai_provider():
                 nous = d.get("providers", {}).get("nous", {})
                 token = nous.get("access_token") or nous.get("agent_key")
                 expires_at_str = nous.get("expires_at")
-                is_expired = False
+                is_expiring = False
                 if expires_at_str:
                     try:
                         exp_dt = datetime.fromisoformat(expires_at_str.replace("Z", "+00:00"))
-                        if datetime.now(timezone.utc) > exp_dt:
-                            is_expired = True
+                        if datetime.now(timezone.utc) >= exp_dt - timedelta(minutes=2):
+                            is_expiring = True
                     except Exception:
                         pass
-                if token and not is_expired:
+                if is_expiring or not token:
+                    refreshed = refresh_nous_token()
+                    if refreshed:
+                        token = refreshed
+                        is_expiring = False
+                if token and not is_expiring:
                     return {
                         "provider": "nous",
                         "model": "upstage/solar-pro4:free",
@@ -1364,20 +1436,35 @@ Article:
             if ai_provider.get("auth_header"):
                 headers["Authorization"] = ai_provider["auth_header"]
             req = urllib.request.Request(f"{ai_provider['base_url']}/chat/completions", data=req_data, headers=headers)
-            with urllib.request.urlopen(req, timeout=10) as resp:
-                data = json.loads(resp.read().decode())
-                content_str = data["choices"][0]["message"]["content"]
-                content_str = re.sub(r"^```json\s*", "", content_str.strip())
-                content_str = re.sub(r"\s*```$", "", content_str.strip())
-                parsed = json.loads(content_str)
-                raw_bullets = parsed.get("summary", [])
-                # Clean any markdown syntax from AI bullets
-                summary_bullets = []
-                for b in raw_bullets:
-                    b_clean = re.sub(r'\[([^\]]+)\]\([^\)]+\)', r'\1', str(b))
-                    b_clean = re.sub(r'[*_`#]', '', b_clean).strip()
-                    if b_clean and len(b_clean) > 10:
-                        summary_bullets.append(b_clean)
+            try:
+                with urllib.request.urlopen(req, timeout=10) as resp:
+                    resp_bytes = resp.read()
+            except urllib.error.HTTPError as he:
+                if he.code == 401 and ai_provider.get("provider") == "nous":
+                    logger.info("Nous token returned 401. Attempting auto-refresh...")
+                    new_token = refresh_nous_token()
+                    if new_token:
+                        headers["Authorization"] = f"Bearer {new_token}"
+                        req = urllib.request.Request(f"{ai_provider['base_url']}/chat/completions", data=req_data, headers=headers)
+                        with urllib.request.urlopen(req, timeout=10) as resp:
+                            resp_bytes = resp.read()
+                    else:
+                        raise
+                else:
+                    raise
+            data = json.loads(resp_bytes.decode())
+            content_str = data["choices"][0]["message"]["content"]
+            content_str = re.sub(r"^```json\s*", "", content_str.strip())
+            content_str = re.sub(r"\s*```$", "", content_str.strip())
+            parsed = json.loads(content_str)
+            raw_bullets = parsed.get("summary", [])
+            # Clean any markdown syntax from AI bullets
+            summary_bullets = []
+            for b in raw_bullets:
+                b_clean = re.sub(r'\[([^\]]+)\]\([^\)]+\)', r'\1', str(b))
+                b_clean = re.sub(r'[*_`#]', '', b_clean).strip()
+                if b_clean and len(b_clean) > 10:
+                    summary_bullets.append(b_clean)
         except Exception as e:
             logger.warning(f"AI summary request failed ({provider_name}): {e}")
             summary_bullets = []
