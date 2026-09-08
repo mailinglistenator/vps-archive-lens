@@ -551,6 +551,16 @@ def view_snapshot(snapshot_id: str):
     file_path = STORAGE_DIR / f"{safe_id}.html"
     if not file_path.is_file():
         raise HTTPException(status_code=404, detail="Snapshot not found or expired (>90 days).")
+    
+    with open(file_path, "r", encoding="utf-8") as f:
+        html = f.read()
+
+    # Dynamically inject AI Reader button into floating pill if not already present
+    if 'id="vps-lens-pill"' in html and f'/reader/{safe_id}' not in html:
+        reader_btn = f'''<span style="color: #475569;">•</span><a href="/reader/{safe_id}" style="display: inline-flex; align-items: center; gap: 4px; background: #0284c7; color: #ffffff; padding: 3px 10px; border-radius: 9999px; text-decoration: none; font-size: 11.5px; font-weight: 600;">📖 AI Reader View</a>'''
+        html = re.sub(r'(Original Source ↗</a>)', r'\1 ' + reader_btn, html)
+        return HTMLResponse(content=html, media_type="text/html")
+
     return FileResponse(file_path, media_type="text/html")
 
 def get_hermes_ai_provider():
