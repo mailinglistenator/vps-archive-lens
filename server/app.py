@@ -36,6 +36,7 @@ API_TOKEN = os.getenv("API_TOKEN", "")
 STORAGE_DIR = Path(os.getenv("STORAGE_DIR", "/home/hermes/personal-archiver/snapshots"))
 IMAGE_CACHE_DIR = STORAGE_DIR / "image_cache"
 MEDIA_STORAGE_DIR = Path(os.getenv("MEDIA_STORAGE_DIR", "/home/hermes/personal-archiver/videos"))
+COOKIES_FILE = Path(os.getenv("YOUTUBE_COOKIES_PATH", "/home/hermes/personal-archiver/cookies.txt"))
 BASE_URL = os.getenv("BASE_URL", "http://localhost:8888").rstrip("/")
 MAX_IMAGE_SIZE = int(os.getenv("MAX_IMAGE_SIZE_BYTES", str(20 * 1024 * 1024)))  # 20MB limit
 MAX_CONCURRENT_ARCHIVES = int(os.getenv("MAX_CONCURRENT_ARCHIVES", "2"))
@@ -1749,7 +1750,11 @@ async def api_media_download(req: Request, payload: MediaDownloadRequest, token:
     
     media_id = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S") + "_" + hashlib.sha256(url.encode()).hexdigest()[:8]
     
-    info_cmd = ["yt-dlp", "--dump-single-json", "--no-playlist", url]
+    info_cmd = ["yt-dlp", "--dump-single-json", "--no-playlist"]
+    if COOKIES_FILE.exists() and COOKIES_FILE.stat().st_size > 0:
+        info_cmd.extend(["--cookies", str(COOKIES_FILE)])
+    info_cmd.append(url)
+
     try:
         proc = await asyncio.to_thread(
             subprocess.run, info_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, timeout=35
@@ -1772,6 +1777,11 @@ async def api_media_download(req: Request, payload: MediaDownloadRequest, token:
             thumbnail = info.get("thumbnail") or ""
         except Exception:
             pass
+    elif "Sign in to confirm" in proc.stderr or "bot" in proc.stderr.lower():
+        raise HTTPException(
+            status_code=502,
+            detail="YouTube bot check triggered for this video. Please upload your YouTube cookies.txt in the 'YouTube Cookies Bypass' drawer below to download it."
+        )
 
     out_template = str(MEDIA_STORAGE_DIR / f"{media_id}.%(ext)s")
     if fmt == "audio":
@@ -1779,8 +1789,11 @@ async def api_media_download(req: Request, payload: MediaDownloadRequest, token:
             "yt-dlp", "--no-playlist",
             "-x", "--audio-format", "mp3", "--audio-quality", "0",
             "--embed-thumbnail", "--embed-metadata",
-            "-o", out_template, url
+            "-o", out_template
         ]
+        if COOKIES_FILE.exists() and COOKIES_FILE.stat().st_size > 0:
+            dl_cmd.extend(["--cookies", str(COOKIES_FILE)])
+        dl_cmd.append(url)
         target_ext = "mp3"
         media_type = "audio/mpeg"
     else:
@@ -1788,8 +1801,11 @@ async def api_media_download(req: Request, payload: MediaDownloadRequest, token:
             "yt-dlp", "--no-playlist",
             "-f", "bv*[ext=mp4]+ba[ext=m4a]/b[ext=mp4]/bestvideo+bestaudio/best",
             "--merge-output-format", "mp4",
-            "-o", out_template, url
+            "-o", out_template
         ]
+        if COOKIES_FILE.exists() and COOKIES_FILE.stat().st_size > 0:
+            dl_cmd.extend(["--cookies", str(COOKIES_FILE)])
+        dl_cmd.append(url)
         target_ext = "mp4"
         media_type = "video/mp4"
 
@@ -1804,8 +1820,10 @@ async def api_media_download(req: Request, payload: MediaDownloadRequest, token:
 
     if dl_proc.returncode != 0:
         err_msg = dl_proc.stderr.strip().split("\n")[-1] or "Download failed"
+        if "Sign in to confirm" in dl_proc.stderr or "bot" in dl_proc.stderr.lower():
+            err_msg = "YouTube bot check triggered for this video. Please upload your YouTube cookies.txt in the 'YouTube Cookies Bypass' drawer below to download it."
         logger.error(f"yt-dlp download failed: {err_msg}")
-        raise HTTPException(status_code=502, detail=f"Download failed: {err_msg}")
+        raise HTTPException(status_code=502, detail=err_msg)
 
     expected_file = MEDIA_STORAGE_DIR / f"{media_id}.{target_ext}"
     if not expected_file.exists():
@@ -1931,6 +1949,31 @@ async def api_media_delete(media_id: str, request: Request, token: str = Query(N
         except Exception:
             pass
     return {"status": "deleted", "id": media_id}
+
+@app.get("/api/media/cookies")
+async def api_media_cookies_status(request: Request, token: str = Query(None)):
+    verify_token(request, token)
+    exists = COOKIES_FILE.exists() and COOKIES_FILE.stat().st_size > 0
+    mtime = datetime.fromtimestamp(COOKIES_FILE.stat().st_mtime, tz=timezone.utc).strftime("%Y-%m-%d %H:%M") if exists else None
+    return {"exists": exists, "mtime": mtime, "size_bytes": COOKIES_FILE.stat().st_size if exists else 0}
+
+@app.post("/api/media/cookies")
+async def api_media_cookies_upload(request: Request, token: str = Query(None)):
+    verify_token(request, token)
+    body = await request.body()
+    if not body:
+        raise HTTPException(status_code=400, detail="Empty cookies data")
+    with open(COOKIES_FILE, "wb") as f:
+        f.write(body)
+    os.chmod(COOKIES_FILE, 0o600)
+    return {"status": "saved", "size_bytes": len(body)}
+
+@app.delete("/api/media/cookies")
+async def api_media_cookies_delete(request: Request, token: str = Query(None)):
+    verify_token(request, token)
+    if COOKIES_FILE.exists():
+        COOKIES_FILE.unlink()
+    return {"status": "deleted"}
 
 @app.get("/", response_class=HTMLResponse)
 @app.get("/list", response_class=HTMLResponse)
@@ -2283,6 +2326,35 @@ def dashboard(token: str = Query(None)):
               </label>
             </div>
 
+            <!-- YouTube Cookies Bypass Drawer -->
+            <div style="margin-top: 14px; border-top: 1px solid var(--border); padding-top: 12px;">
+              <div style="display: flex; justify-content: space-between; align-items: center; cursor: pointer;" onclick="toggleCookiesSection()">
+                <span style="font-size: 0.88rem; color: #cbd5e1; font-weight: 600; display: flex; align-items: center; gap: 8px;">
+                  🍪 YouTube Bot Bypass (Cookies) 
+                  <span id="cookiesStatusPill" style="font-size: 0.72rem; padding: 2px 8px; border-radius: 4px; background: #334155; color: #94a3b8; font-weight: 500;">Checking...</span>
+                </span>
+                <span id="cookiesChevron" style="font-size: 0.8rem; color: var(--text-muted);">▼</span>
+              </div>
+              
+              <div id="cookiesDrawer" style="display: none; margin-top: 12px; background: #0f172a; padding: 14px; border-radius: 8px; border: 1px solid var(--border);">
+                <p style="margin: 0 0 10px 0; font-size: 0.83rem; color: var(--text-muted); line-height: 1.4;">
+                  Some official Vevo music videos or age-gated YouTube videos block datacenter IPs unless authenticated.
+                  Drop your <code>cookies.txt</code> here once to bypass this permanently:
+                </p>
+                <ol style="margin: 0 0 12px 18px; font-size: 0.82rem; color: #94a3b8; padding: 0; line-height: 1.4;">
+                  <li>Install the free extension <b>Get cookies.txt LOCALLY</b> (in Chrome, Brave, or Firefox).</li>
+                  <li>Open <a href="https://youtube.com" target="_blank" style="color: #38bdf8;">youtube.com</a>, click the extension icon ➔ <b>Export</b>.</li>
+                  <li>Select or drop the exported <code>cookies.txt</code> file below:</li>
+                </ol>
+                <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+                  <input type="file" id="cookiesFileInput" accept=".txt" style="font-size: 0.85rem; color: #cbd5e1;">
+                  <button class="btn-primary" onclick="uploadCookiesFile()" style="padding: 6px 14px; font-size: 0.85rem;">Save Cookies</button>
+                  <button class="action-btn action-delete" id="deleteCookiesBtn" onclick="deleteCookies()" style="display: none;">Remove Cookies</button>
+                </div>
+                <div id="cookiesUploadResult" style="margin-top: 8px; font-size: 0.82rem;"></div>
+              </div>
+            </div>
+
             <div class="status-box" id="mediaStatusBox">
               <div class="spinner" id="mediaSpinner"></div>
               <span id="mediaStatusText">Grabbing media at 1Gbps...</span>
@@ -2551,6 +2623,89 @@ def dashboard(token: str = Query(None)):
           if (!str) return '';
           return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
         }}
+
+        // Cookies management
+        function toggleCookiesSection() {{
+          const drawer = document.getElementById('cookiesDrawer');
+          const chevron = document.getElementById('cookiesChevron');
+          if (drawer.style.display === 'none') {{
+            drawer.style.display = 'block';
+            chevron.textContent = '▲';
+            checkCookiesStatus();
+          }} else {{
+            drawer.style.display = 'none';
+            chevron.textContent = '▼';
+          }}
+        }}
+
+        async function checkCookiesStatus() {{
+          const pill = document.getElementById('cookiesStatusPill');
+          const delBtn = document.getElementById('deleteCookiesBtn');
+          const tokenQuery = API_TOKEN ? `?token=${{encodeURIComponent(API_TOKEN)}}` : '';
+          try {{
+            const res = await fetch(`/api/media/cookies${{tokenQuery}}`);
+            const data = await res.json();
+            if (data.exists) {{
+              pill.textContent = `🟢 Active (${{(data.size_bytes / 1024).toFixed(1)}} KB)`;
+              pill.style.background = '#064e3b';
+              pill.style.color = '#6ee7b7';
+              delBtn.style.display = 'inline-flex';
+            }} else {{
+              pill.textContent = '⚪ Not Loaded';
+              pill.style.background = '#334155';
+              pill.style.color = '#94a3b8';
+              delBtn.style.display = 'none';
+            }}
+          }} catch (e) {{
+            pill.textContent = '⚪ Status Unknown';
+          }}
+        }}
+
+        async function uploadCookiesFile() {{
+          const fileInput = document.getElementById('cookiesFileInput');
+          const resultDiv = document.getElementById('cookiesUploadResult');
+          if (!fileInput.files || fileInput.files.length === 0) {{
+            alert('Please select a cookies.txt file first.');
+            return;
+          }}
+
+          const file = fileInput.files[0];
+          const tokenQuery = API_TOKEN ? `?token=${{encodeURIComponent(API_TOKEN)}}` : '';
+          resultDiv.innerHTML = '<span style="color: #38bdf8;">Uploading cookies to VPS...</span>';
+
+          try {{
+            const content = await file.arrayBuffer();
+            const res = await fetch(`/api/media/cookies${{tokenQuery}}`, {{
+              method: 'POST',
+              headers: {{ 'Content-Type': 'application/octet-stream' }},
+              body: content
+            }});
+
+            const data = await res.json();
+            if (res.ok) {{
+              resultDiv.innerHTML = '<span style="color: #10b981; font-weight: 600;">✅ YouTube cookies saved successfully! All YouTube videos are now unlocked.</span>';
+              checkCookiesStatus();
+              fileInput.value = '';
+            }} else {{
+              resultDiv.innerHTML = '<span style="color: #ef4444;">❌ Failed: ' + (data.detail || 'Upload error') + '</span>';
+            }}
+          }} catch (e) {{
+            resultDiv.innerHTML = '<span style="color: #ef4444;">❌ Error: ' + e.message + '</span>';
+          }}
+        }}
+
+        async function deleteCookies() {{
+          if (!confirm('Remove YouTube cookies from VPS?')) return;
+          const tokenQuery = API_TOKEN ? `?token=${{encodeURIComponent(API_TOKEN)}}` : '';
+          try {{
+            await fetch(`/api/media/cookies${{tokenQuery}}`, {{ method: 'DELETE' }});
+            checkCookiesStatus();
+            document.getElementById('cookiesUploadResult').innerHTML = '<span style="color: #94a3b8;">Cookies removed.</span>';
+          }} catch (e) {{}}
+        }}
+
+        // Check cookies status on initial load
+        checkCookiesStatus();
       </script>
     </body>
     </html>
