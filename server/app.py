@@ -291,7 +291,7 @@ def sanitize_and_save_snapshot(raw_html: str, resolved_url: str, target_url: str
         <span style="color: #475569;">•</span>
         <a href="{resolved_url}" target="_blank" rel="noopener noreferrer" style="color: #38bdf8; text-decoration: none; font-size: 12px; font-weight: 500;">Original Source ↗</a>
         <span style="color: #475569;">•</span>
-        <a href="/reader/{snapshot_id}" style="
+        <a href="/reader/{snapshot_id}" onclick="window.location.href = window.location.origin + '/reader/{snapshot_id}'; return false;" style="
             display: inline-flex;
             align-items: center;
             gap: 4px;
@@ -673,7 +673,7 @@ async def proxy_image(url: str = Query(...)):
 
 @app.get("/view/{snapshot_id}", response_class=HTMLResponse)
 @app.head("/view/{snapshot_id}", response_class=HTMLResponse)
-def view_snapshot(snapshot_id: str):
+def view_snapshot(snapshot_id: str, request: Request):
     safe_id = "".join(c for c in snapshot_id if c.isalnum() or c in ("_", "-"))
     file_path = STORAGE_DIR / f"{safe_id}.html"
     if not file_path.is_file():
@@ -682,10 +682,21 @@ def view_snapshot(snapshot_id: str):
     with open(file_path, "r", encoding="utf-8") as f:
         html = f.read()
 
+    # Determine current server origin (e.g. http://localhost:8888)
+    origin = str(request.base_url).rstrip("/")
+    reader_url = f"{origin}/reader/{safe_id}"
+
     # Dynamically inject AI Reader button into floating pill if not already present
     if 'id="vps-lens-pill"' in html and f'/reader/{safe_id}' not in html:
-        reader_btn = f'''<span style="color: #475569;">•</span><a href="/reader/{safe_id}" style="display: inline-flex; align-items: center; gap: 4px; background: #0284c7; color: #ffffff; padding: 3px 10px; border-radius: 9999px; text-decoration: none; font-size: 11.5px; font-weight: 600;">📖 AI Reader View</a>'''
+        reader_btn = f'''<span style="color: #475569;">•</span><a href="{reader_url}" onclick="window.location.href = window.location.origin + '/reader/{safe_id}'; return false;" style="display: inline-flex; align-items: center; gap: 4px; background: #0284c7; color: #ffffff; padding: 3px 10px; border-radius: 9999px; text-decoration: none; font-size: 11.5px; font-weight: 600;">📖 AI Reader View</a>'''
         html = re.sub(r'(Original Source ↗</a>)', r'\1 ' + reader_btn, html)
+
+    # Immunize ALL reader links against <base href> hijacking (works across all snapshots on disk)
+    html = re.sub(
+        r'href="/reader/([a-zA-Z0-9_-]+)"',
+        rf'''href="{origin}/reader/\1" onclick="window.location.href = window.location.origin + '/reader/\1'; return false;"''',
+        html
+    )
 
     # In raw snapshots, automatically heal any broken/blocked images using the VPS proxy
     if '<script id="vps-img-proxy">' not in html:
@@ -693,7 +704,7 @@ def view_snapshot(snapshot_id: str):
         window.addEventListener('error', function(e) {
           if (e.target && e.target.tagName === 'IMG' && !e.target.dataset.vpsProxied && e.target.src && e.target.src.startsWith('http')) {
             e.target.dataset.vpsProxied = '1';
-            e.target.src = '/api/proxy/image?url=' + encodeURIComponent(e.target.src);
+            e.target.src = window.location.origin + '/api/proxy/image?url=' + encodeURIComponent(e.target.src);
           }
         }, true);
         </script>'''
@@ -1348,7 +1359,15 @@ def generate_ai_reader(snapshot_id: str, force_refresh: bool = False) -> Path:
         raise HTTPException(status_code=404, detail="Snapshot not found.")
 
     if reader_path.is_file() and not force_refresh:
-        return reader_path
+        try:
+            with open(reader_path, "r", encoding="utf-8") as f_cached:
+                cached_str = f_cached.read()
+            if "Discussion Forum / Directory Page" in cached_str:
+                logger.info(f"Invalidating stale false-forum reader cache for {safe_id}")
+            else:
+                return reader_path
+        except Exception:
+            return reader_path
 
     with open(raw_path, "r", encoding="utf-8") as f:
         raw_html = f.read()
@@ -1469,9 +1488,12 @@ Article:
             logger.warning(f"AI summary request failed ({provider_name}): {e}")
             summary_bullets = []
 
-    # Never duplicate raw paragraphs if AI failed — leave empty so no fake box appears
-    is_forum = any(kw in orig_url.lower() for kw in ["forum", "thread", "viewtopic", "forumdisplay", "showthread", "boards", "community"])
-    if is_forum:
+    # 4. Smart forum/index directory check: ONLY trigger if it's strictly a forum directory/index without real prose
+    is_forum_directory = (
+        word_count < 120
+        and any(kw in orig_url.lower() for kw in ["forumdisplay", "viewforum", "/forum/index", "/forums/index", "/boards/index"])
+    )
+    if is_forum_directory:
         body_html = f"""
         <div style="text-align: center; padding: 40px 20px; background: var(--card-bg); border-radius: 12px; border: 1px solid var(--card-border); margin: 20px 0;">
             <div style="font-size: 2.5rem; margin-bottom: 12px;">💬</div>
