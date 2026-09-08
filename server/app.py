@@ -383,7 +383,7 @@ def sanitize_and_save_snapshot(raw_html: str, resolved_url: str, target_url: str
         <span style="color: #475569;">•</span>
         <a href="{resolved_url}" target="_blank" rel="noopener noreferrer" style="color: #38bdf8; text-decoration: none; font-size: 12px; font-weight: 500;">Original Source ↗</a>
         <span style="color: #475569;">•</span>
-        <a href="/reader/{snapshot_id}" onclick="window.location.href = window.location.origin + '/reader/{snapshot_id}'; return false;" style="
+        <a href="{BASE_URL}/reader/{snapshot_id}" onclick="window.location.href = window.location.origin + '/reader/{snapshot_id}'; return false;" style="
             display: inline-flex;
             align-items: center;
             gap: 4px;
@@ -845,7 +845,11 @@ def view_snapshot(snapshot_id: str, request: Request):
         elif '</body>' in html:
             html = html.replace('</body>', proxy_script + '</body>')
 
-    return HTMLResponse(content=html, media_type="text/html")
+    return HTMLResponse(
+        content=html,
+        media_type="text/html",
+        headers={"Cache-Control": "no-cache, no-store, must-revalidate"}
+    )
 
 def refresh_nous_token() -> Optional[str]:
     """
