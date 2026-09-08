@@ -79,8 +79,13 @@ Reading news, long-form essays, and technical journalism on the modern web has b
   - **Customizable Typography**: Switch between Serif (`Charter`, `Merriweather`, `Georgia`) and Sans-serif (`Inter`, system UI), with dynamic font scaling (`A-` / `A+`) saved to `localStorage`.
   - **Reading Progress Bar**: Visual top-edge scroll percentage tracker (0–100%).
   - **Print & PDF Optimized**: Dedicated print stylesheet that strips headers and renders a clean, single-document printout.
+- 📱 **Hermes Agent & Telegram Mobile Integration**:
+  - Native Hermes Agent skill (`archive-lens`) and CLI tool.
+  - Forward or paste any article link to your private Hermes Telegram bot on your phone.
+  - Automatically captures, unpaywalls, and replies directly in Telegram with the headline, 3-bullet AI key takeaways, and direct links to the Reader View and Raw Snapshot.
 - 🛡️ **Zero Data Leakage & Strict Authentication**:
   - API protected by private `API_TOKEN`.
+  - Seamless `lens_token` session cookie auto-upgrade prevents token leakage in browser history or access logs.
   - Extension never exposes your private server secrets to destination sites.
   - Snapshot viewer injects `<meta name="referrer" content="no-referrer">` to protect your privacy.
 
