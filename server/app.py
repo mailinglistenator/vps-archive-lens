@@ -7,9 +7,11 @@ import logging
 import re
 from datetime import datetime, timezone
 from pathlib import Path
-from urllib.parse import urlparse
+from urllib.parse import urlparse, quote
+import urllib.parse
+import urllib.request
 
-from fastapi import FastAPI, Request, HTTPException, Query, Depends
+from fastapi import FastAPI, Request, HTTPException, Query, Depends, Response
 from fastapi.responses import HTMLResponse, JSONResponse, FileResponse, RedirectResponse
 from fastapi.middleware.cors import CORSMiddleware
 from playwright.async_api import async_playwright
@@ -26,9 +28,11 @@ logger = logging.getLogger("archiver")
 PORT = int(os.getenv("PORT", "8888"))
 API_TOKEN = os.getenv("API_TOKEN", "")
 STORAGE_DIR = Path(os.getenv("STORAGE_DIR", "./snapshots"))
+IMAGE_CACHE_DIR = STORAGE_DIR / "image_cache"
 BASE_URL = os.getenv("BASE_URL", "http://localhost:8888").rstrip("/")
 
 STORAGE_DIR.mkdir(parents=True, exist_ok=True)
+IMAGE_CACHE_DIR.mkdir(parents=True, exist_ok=True)
 
 app = FastAPI(title="Personal Web Archiver", version="1.0.0")
 
@@ -545,7 +549,57 @@ async def api_archive(request: Request, url: str = Query(None), token: str = Que
         logger.error(f"Failed to capture {target_url}: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Archiving failed: {str(e)}")
 
+@app.get("/api/proxy/image")
+@app.head("/api/proxy/image")
+async def proxy_image(url: str = Query(...)):
+    """Proxies and caches images via VPS to bypass ISP/regional blocking and hotlink limits."""
+    if not url or not url.startswith(("http://", "https://")):
+        raise HTTPException(status_code=400, detail="Invalid image URL")
+
+    url_hash = hashlib.sha256(url.encode()).hexdigest()
+    ext = ".jpg"
+    clean_url = url.split("?")[0].lower()
+    for e in [".png", ".webp", ".gif", ".jpeg", ".svg"]:
+        if clean_url.endswith(e):
+            ext = e
+            break
+    cached_path = IMAGE_CACHE_DIR / f"{url_hash}{ext}"
+
+    if cached_path.is_file():
+        media_type = "image/jpeg"
+        if ext == ".png": media_type = "image/png"
+        elif ext == ".webp": media_type = "image/webp"
+        elif ext == ".gif": media_type = "image/gif"
+        elif ext == ".svg": media_type = "image/svg+xml"
+        return FileResponse(cached_path, media_type=media_type, headers={"Cache-Control": "public, max-age=2592000"})
+
+    try:
+        req = urllib.request.Request(
+            url,
+            headers={
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+                "Accept": "image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8",
+                "Referer": "https://www.google.com/"
+            }
+        )
+        loop = asyncio.get_event_loop()
+        def fetch():
+            with urllib.request.urlopen(req, timeout=12) as resp:
+                data = resp.read()
+                ct = resp.headers.get("Content-Type", "image/jpeg")
+                return data, ct
+        data, content_type = await loop.run_in_executor(None, fetch)
+
+        with open(cached_path, "wb") as f:
+            f.write(data)
+
+        return Response(content=data, media_type=content_type, headers={"Cache-Control": "public, max-age=2592000"})
+    except Exception as e:
+        logger.warning(f"Failed to proxy image {url}: {e}")
+        raise HTTPException(status_code=404, detail="Image could not be retrieved")
+
 @app.get("/view/{snapshot_id}", response_class=HTMLResponse)
+@app.head("/view/{snapshot_id}", response_class=HTMLResponse)
 def view_snapshot(snapshot_id: str):
     safe_id = "".join(c for c in snapshot_id if c.isalnum() or c in ("_", "-"))
     file_path = STORAGE_DIR / f"{safe_id}.html"
@@ -559,9 +613,23 @@ def view_snapshot(snapshot_id: str):
     if 'id="vps-lens-pill"' in html and f'/reader/{safe_id}' not in html:
         reader_btn = f'''<span style="color: #475569;">•</span><a href="/reader/{safe_id}" style="display: inline-flex; align-items: center; gap: 4px; background: #0284c7; color: #ffffff; padding: 3px 10px; border-radius: 9999px; text-decoration: none; font-size: 11.5px; font-weight: 600;">📖 AI Reader View</a>'''
         html = re.sub(r'(Original Source ↗</a>)', r'\1 ' + reader_btn, html)
-        return HTMLResponse(content=html, media_type="text/html")
 
-    return FileResponse(file_path, media_type="text/html")
+    # In raw snapshots, automatically heal any broken/blocked images using the VPS proxy
+    if '<script id="vps-img-proxy">' not in html:
+        proxy_script = '''<script id="vps-img-proxy">
+        window.addEventListener('error', function(e) {
+          if (e.target && e.target.tagName === 'IMG' && !e.target.dataset.vpsProxied && e.target.src && e.target.src.startsWith('http')) {
+            e.target.dataset.vpsProxied = '1';
+            e.target.src = '/api/proxy/image?url=' + encodeURIComponent(e.target.src);
+          }
+        }, true);
+        </script>'''
+        if '</head>' in html:
+            html = html.replace('</head>', proxy_script + '</head>')
+        elif '</body>' in html:
+            html = html.replace('</body>', proxy_script + '</body>')
+
+    return HTMLResponse(content=html, media_type="text/html")
 
 def get_hermes_ai_provider():
     """
@@ -679,11 +747,12 @@ def render_reader_template(
     </div>
     """ if summary_bullets else ""
 
+    hero_proxied = f"/api/proxy/image?url={quote(image, safe='')}" if image else ""
     hero_section = f"""
     <figure class="hero-figure">
-      <img src="{image}" alt="{title}" class="hero-image" onerror="this.parentElement.style.display='none'">
+      <img src="{hero_proxied}" alt="{title}" class="hero-image" onerror="this.parentElement.style.display='none'">
     </figure>
-    """ if image else ""
+    """ if hero_proxied else ""
 
     byline_parts = []
     if author:
@@ -700,6 +769,7 @@ def render_reader_template(
 <html lang="en">
 <head>
   <meta charset="UTF-8">
+  <meta name="referrer" content="no-referrer">
   <title>{title} — Reader View</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <style>
@@ -931,6 +1001,28 @@ def render_reader_template(
       color: var(--text-muted);
       background: var(--card-bg);
       border-radius: 0 8px 8px 0;
+    }}
+    .article-figure {{
+      margin: 36px 0;
+      width: 100%;
+      text-align: center;
+    }}
+    .article-img {{
+      width: 100%;
+      max-width: 100%;
+      height: auto;
+      border-radius: 8px;
+      display: block;
+      margin: 0 auto;
+      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.12);
+    }}
+    .article-caption {{
+      margin-top: 10px;
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      line-height: 1.5;
+      text-align: center;
+      font-style: italic;
     }}
     .article-body img {{
       max-width: 100%;
@@ -1182,6 +1274,57 @@ Article:
     # Convert clean markdown to HTML body
     body_html = markdown.markdown(clean_md, extensions=["extra", "nl2br", "sane_lists"])
 
+    # Clean, proxy, and format images to bypass ISP blocks and prevent broken stubs
+    body_soup = BeautifulSoup(body_html, "html.parser")
+    for img in body_soup.find_all("img"):
+        src = img.get("src", "").strip()
+        if not src:
+            img.decompose()
+            continue
+
+        low_src = src.lower()
+        # Filter out tracking pixels, ad spacers, and newsletter promo banners
+        if any(noise in low_src for noise in ["sign_up", "pixel", "tracker", "spacer", "badge", "icon", "advert", "avatar", "module_image"]):
+            parent = img.parent
+            img.decompose()
+            if parent and parent.name == "p" and not parent.get_text(strip=True) and not parent.find_all("img"):
+                parent.decompose()
+            continue
+
+        if not src.startswith(("http://", "https://", "data:")):
+            if orig_url and orig_url != "#":
+                src = urllib.parse.urljoin(orig_url, src)
+
+        # Route through VPS image proxy to bypass ISP firewalls
+        proxied_src = f"/api/proxy/image?url={quote(src, safe='')}"
+        img["src"] = proxied_src
+        img["loading"] = "lazy"
+        img["onerror"] = "this.closest('figure')?.remove() || this.remove();"
+
+        alt_text = img.get("alt", "").strip()
+        figure = body_soup.new_tag("figure", **{"class": "article-figure"})
+        img["class"] = ["article-img"]
+
+        target_to_replace = img.parent if img.parent and img.parent.name == "p" and not img.parent.get_text(strip=True) else img
+        figure.append(img.extract())
+
+        # If alt text is descriptive (not a raw filename or stub), show as clean caption
+        if alt_text and len(alt_text) > 8 and not alt_text.lower().endswith((".jpg", ".png", ".webp", ".jpeg", ".gif")):
+            caption = body_soup.new_tag("figcaption", **{"class": "article-caption"})
+            caption.string = alt_text
+            figure.append(caption)
+
+        target_to_replace.replace_with(figure)
+
+        # Deduplicate: if the subsequent sibling is an identical or redundant caption paragraph, remove it
+        next_sibling = figure.find_next_sibling()
+        if next_sibling and next_sibling.name == "p":
+            next_text = next_sibling.get_text(strip=True)
+            if next_text and (next_text == alt_text or (len(next_text) > 30 and next_text[:40] in alt_text)):
+                next_sibling.decompose()
+
+    body_html = str(body_soup)
+
     reader_html = render_reader_template(
         snapshot_id=safe_id,
         title=title,
@@ -1203,6 +1346,7 @@ Article:
     return reader_path
 
 @app.get("/reader/{snapshot_id}", response_class=HTMLResponse)
+@app.head("/reader/{snapshot_id}", response_class=HTMLResponse)
 def reader_view(snapshot_id: str, refresh: str = Query(None)):
     """Serves a clean, AI-reconstructed reader view."""
     force_refresh = (refresh == "1" or refresh == "true")
