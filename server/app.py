@@ -23,8 +23,8 @@ logger = logging.getLogger("archiver")
 
 PORT = int(os.getenv("PORT", "8888"))
 API_TOKEN = os.getenv("API_TOKEN", "")
-STORAGE_DIR = Path(os.getenv("STORAGE_DIR", "/home/hermes/personal-archiver/snapshots"))
-BASE_URL = os.getenv("BASE_URL", "http://204.168.160.204:8888").rstrip("/")
+STORAGE_DIR = Path(os.getenv("STORAGE_DIR", "./snapshots"))
+BASE_URL = os.getenv("BASE_URL", "http://localhost:8888").rstrip("/")
 
 STORAGE_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -293,50 +293,86 @@ async def capture_page(target_url: str) -> dict:
             if any(phrase in text for phrase in annoyance_phrases):
                 elem.decompose()
 
-    # 5. Inject a clean, non-intrusive metadata banner at the top of <body>
-    date_display = now.strftime('%Y-%m-%d %H:%M:%S UTC')
-    banner_html = f"""
-    <div id="vps-lens-banner" style="
-        position: sticky;
-        top: 0;
-        left: 0;
-        right: 0;
-        z-index: 9999999;
-        background: #0f172a;
+    # 5. Remove empty advertisement placeholders and broken billboard boxes (safe check)
+    ad_selectors = [
+        'div[class*="billboard-container"]', '.billboard-container',
+        'div[class*="adHolder"]', 'div[class*="ad-holder"]', 'div[class*="ad_holder"]',
+        'div[id*="billBoard"]', 'div[id*="billboard"]',
+        '#sky-left-container', '#sky-right-container', '#sky-left', '#sky-right',
+        '.mol-ads-label-container',
+        'div[class*="advert"]', 'div[id*="advert"]',
+        'ins.adsbygoogle', 'div[class*="ad-container"]', 'div[id*="ad-container"]',
+        'div[class*="ad-slot"]', 'div[id*="ad-slot"]', 'div[class*="ad-wrapper"]',
+        'div[id*="ad-wrapper"]', '.commercial-unit', '.ad-unit',
+        '[class*="outbrain"]', '[class*="taboola"]'
+    ]
+    for sel in ad_selectors:
+        for elem in soup.select(sel):
+            if elem.name in ["html", "body", "head"]:
+                continue
+            elem.decompose()
+
+    # Clean out molads_ ad classes from html and body so they don't break styles
+    for root_tag in [soup.find("html"), soup.find("body")]:
+        if root_tag:
+            clean_classes = [c for c in root_tag.get("class", []) if not c.startswith("molads_")]
+            if "allow-scroll" not in clean_classes:
+                clean_classes.append("allow-scroll")
+            root_tag["class"] = clean_classes
+
+    # 6. Inject a sleek, modern floating glassmorphism pill banner at the top of <body>
+    date_display = now.strftime('%Y-%m-%d %H:%M UTC')
+    pill_html = f"""
+    <div id="vps-lens-pill" style="
+        position: fixed;
+        top: 14px;
+        left: 50%;
+        transform: translateX(-50%);
+        z-index: 2147483647;
+        background: rgba(15, 23, 42, 0.92);
+        backdrop-filter: blur(14px);
+        -webkit-backdrop-filter: blur(14px);
         color: #f8fafc;
-        border-bottom: 2px solid #38bdf8;
+        border: 1px solid rgba(56, 189, 248, 0.35);
+        border-radius: 9999px;
+        box-shadow: 0 10px 25px -3px rgba(0, 0, 0, 0.4), 0 4px 6px -2px rgba(0, 0, 0, 0.2);
         font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
         font-size: 13px;
-        padding: 8px 16px;
+        padding: 7px 18px;
         display: flex;
         align-items: center;
-        justify-content: space-between;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.25);
+        gap: 12px;
+        user-select: none;
     ">
-        <div style="display: flex; align-items: center; gap: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
-            <span style="font-weight: 700; color: #38bdf8;">⚡ VPS Archive Lens</span>
-            <span style="color: #94a3b8;">|</span>
-            <span style="color: #cbd5e1;">Archived: {date_display}</span>
-            <span style="color: #94a3b8;">|</span>
-            <a href="{target_url}" target="_blank" rel="noopener noreferrer" style="color: #38bdf8; text-decoration: underline; overflow: hidden; text-overflow: ellipsis;">Original Source</a>
+        <div style="display: flex; align-items: center; gap: 6px; font-weight: 600; color: #38bdf8;">
+            <span>🔍</span>
+            <span>Archive Lens</span>
         </div>
-        <button onclick="document.getElementById('vps-lens-banner').style.display='none'" style="
-            background: #334155;
-            color: #f8fafc;
+        <span style="color: #475569;">•</span>
+        <span style="color: #cbd5e1; font-size: 12px;">{date_display}</span>
+        <span style="color: #475569;">•</span>
+        <a href="{resolved_url}" target="_blank" rel="noopener noreferrer" style="color: #38bdf8; text-decoration: none; font-size: 12px; font-weight: 500;">Original Source ↗</a>
+        <button onclick="document.getElementById('vps-lens-pill').style.display='none'" style="
+            background: rgba(255,255,255,0.1);
             border: none;
-            border-radius: 4px;
-            padding: 3px 8px;
+            color: #94a3b8;
+            border-radius: 9999px;
+            width: 20px;
+            height: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
             cursor: pointer;
-            font-size: 12px;
-            margin-left: 12px;
-        ">✕ Close Banner</button>
+            font-size: 11px;
+            margin-left: 4px;
+        " title="Dismiss">✕</button>
     </div>
     """
-    banner_soup = BeautifulSoup(banner_html, "html.parser")
+    pill_soup = BeautifulSoup(pill_html, "html.parser")
     if soup.body:
-        soup.body.insert(0, banner_soup)
+        soup.body.insert(0, pill_soup)
     else:
-        soup.append(banner_soup)
+        soup.append(pill_soup)
 
     # Save to disk
     final_html = str(soup)
