@@ -13,6 +13,15 @@ services:
       - BASE_URL=${BASE_URL:-http://localhost:8888}
       - STORAGE_DIR=/app/snapshots
       - RETENTION_DAYS=${RETENTION_DAYS:-90}
+      - OPENCODE_GO_API_KEY=${OPENCODE_GO_API_KEY:-}
+      - OPENCODE_GO_BASE_URL=${OPENCODE_GO_BASE_URL:-}
+      - NEURALWATT_API_KEY=${NEURALWATT_API_KEY:-}
+      - NEURALWATT_BASE_URL=${NEURALWATT_BASE_URL:-}
+      - NEURALWATT_MODEL=${NEURALWATT_MODEL:-}
+      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY:-}
+      - AI_API_KEY=${AI_API_KEY:-}
+      - AI_BASE_URL=${AI_BASE_URL:-}
+      - AI_MODEL=${AI_MODEL:-}
     volumes:
       - ./snapshots:/app/snapshots
     shm_size: "1gb"

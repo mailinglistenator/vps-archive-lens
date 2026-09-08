@@ -1,101 +1,253 @@
 # ⚡ VPS Archive Lens
 
-> **Self-hosted, lightweight web archiver and paywall/region bypass service with a companion right-click browser extension.**
+> **Self-hosted, lightweight web archiver and paywall/region bypass service with an Apple Books-style AI Reader View, reverse image proxy, and a 1-click companion browser extension.**
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Docker](https://img.shields.io/badge/Docker-Ready-2496ED?logo=docker&logoColor=white)](docker-compose.yml)
+[![Docker Ready](https://img.shields.io/badge/Docker-Ready-2496ED?logo=docker&logoColor=white)](docker-compose.yml)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.110+-009688?logo=fastapi&logoColor=white)](server/)
+[![Playwright](https://img.shields.io/badge/Playwright-Chromium-2EAD33?logo=playwright&logoColor=white)](https://playwright.dev/)
 [![Manifest V3](https://img.shields.io/badge/Extension-Manifest%20V3-orange)](extension/)
 
-**VPS Archive Lens** is an open-source alternative to public archiving services like `archive.ph` designed specifically for **personal use**. Instead of permanently storing petabytes of data, it focuses on **immediate, clean readability**:
-
-1. **Evades Paywalls & Region Blocks**: Bypasses ISP/country blocks by routing through your VPS IP. Uses isolated incognito browser contexts to reset metered article counts.
-2. **Strips Tracking & Paywall Modals**: Renders the complete DOM via headless Chromium, then strips `<script>` tags, paywall overlays (Piano, Tinypass, Evolok), and scroll-locks so paywalls cannot execute on playback.
-3. **Auto-Pruning (Default: 90 Days)**: Automatically deletes snapshots older than 90 days in the background. Zero maintenance, zero runaway disk usage.
-4. **AI Reader View & Key Takeaways**: Reconstructs noisy or ad-bloated articles into an elegant, distraction-free reading experience (with Dark, OLED, Sepia, and Light themes, Serif/Sans typography, and AI-generated 3-bullet executive takeaways powered by free LLMs like Nous Portal, OpenCode, or NeuralWatt).
-5. **Right-Click Browser Extension**: Integrates directly into Chrome, Brave, Edge, and Firefox. Right-click any link or article and click *"Archive & Unpaywall with VPS"*.
+> 💡 **Looking for deep technical specifications, data flow sequence diagrams, and threat models?** Check out [ARCHITECTURE.md](ARCHITECTURE.md).
 
 ---
 
-## 🏗️ Architecture
+## 📖 Table of Contents
+
+- [The Problem VPS Archive Lens Solves](#-the-problem-vps-archive-lens-solves)
+- [Key Features](#-key-features)
+- [High-Level Architecture & Request Flow](#-high-level-architecture--request-flow)
+- [Deep Dive: How the Core Engines Work](#-deep-dive-how-the-core-engines-work)
+  - [1. The Headless Chromium Archiving Engine](#1-the-headless-chromium-archiving-engine)
+  - [2. The Reverse Image Proxy & ISP Bypass](#2-the-reverse-image-proxy--isp-bypass)
+  - [3. The AI Reader View Pipeline](#3-the-ai-reader-view-pipeline)
+  - [4. Automated Retention Pruning](#4-automated-retention-pruning)
+- [Quickstart: Deployment](#-quickstart-deployment)
+  - [Option A: Docker Compose (Recommended)](#option-a-docker-compose-recommended)
+  - [Option B: Bare-Metal Ubuntu / Debian Systemd](#option-b-bare-metal-ubuntu--debian-systemd)
+  - [Option C: Co-Locating with Hermes Agent](#option-c-co-locating-with-hermes-agent)
+- [Browser Extension Installation](#-browser-extension-installation)
+- [Configuration Reference (.env)](#-configuration-reference-env)
+- [REST API Reference](#-rest-api-reference)
+- [Production Hardening & HTTPS](#-production-hardening--https)
+- [Troubleshooting & FAQ](#-troubleshooting--faq)
+- [License](#-license)
+
+---
+
+## 🎯 The Problem VPS Archive Lens Solves
+
+Reading news, long-form essays, and technical journalism on the modern web has become increasingly frustrating:
+- **Metered & Script-Enforced Paywalls**: Sites deploy aggressive client-side paywall walls (Piano, Tinypass, Evolok) and intrusive cookie walls that trap your browser.
+- **Regional ISP Censorship & DPI Filtering**: Regional ISPs actively throttle or reset TLS connections (`curl: (35) Recv failure: Connection reset by peer`) when connecting to foreign news media and image CDNs (e.g., `i.dailymail.com`).
+- **Cloudflare Captchas on Public Archivers**: Public archiving services (`archive.ph`, `archive.is`) are frequently blocked by Cloudflare turnstiles, rate limits, or slow queuing.
+- **Disk Bloat of Traditional Archivers**: You usually only want to read an article once or reference it over the next couple of months—you don't need petabytes of permanent historical records.
+
+**VPS Archive Lens** turns your cheap Linux VPS (Hetzner, DigitalOcean, Linode, Oracle Free Tier, etc.) into an unblockable personal archiving station:
+1. **Fetches from your VPS IP**: Bypasses regional ISP blocks and resets metered paywalls using isolated incognito browser contexts.
+2. **Strips Scripts & Modals**: Freezes the rendered DOM and strips `<script>` execution tags so paywalls cannot re-arm during reading.
+3. **Proxies & Caches Images**: Bypasses local censorship of media CDNs by proxying image streams through your VPS with 30-day on-disk caching.
+4. **AI Reader View with 3-Bullet Executive Summaries**: Transforms bloated news pages into an Apple Books-grade distraction-free reading experience with AI key takeaways powered by free LLMs.
+5. **Zero-Maintenance Retention**: Automatically deletes snapshots older than 90 days in the background.
+
+---
+
+## ✨ Key Features
+
+- 🖱️ **1-Click Browser Extension (Manifest V3)**:
+  - Right-click any hyperlink or article -> *"Archive & Unpaywall with VPS"*.
+  - Toolbar popup to archive the active tab or paste a custom URL.
+  - Quick launcher to browse all archived snapshots.
+- 🎭 **Stealth Playwright Chromium Engine**:
+  - Injects realistic desktop Chrome user agents, viewport sizes, and Google Referer headers.
+  - Aborts analytics, telemetry, and tracking endpoints to accelerate page capture.
+  - Auto-scrolls the page to trigger lazy-loaded images and dynamic content hydration.
+- 🖼️ **Intelligent Reverse Image Proxy**:
+  - Automatically routes image requests through the VPS (`/api/proxy/image?url=...`).
+  - Caches binary image streams locally for 30 days (`Cache-Control: public, max-age=2592000`).
+  - Injects dynamic self-healing listeners into raw snapshots to rescue any failing third-party images on the fly.
+  - Gracefully hides broken images via `onerror`—no ugly broken image icons or stubs.
+- 📖 **Apple Books-Grade AI Reader View (`/reader/{id}`)**:
+  - **Deterministic Article Extraction**: Uses `trafilatura` to extract clean headlines, author bylines, publish dates, reading time, and clean markdown.
+  - **Free AI Key Takeaways**: Auto-detects local Hermes setup or OpenAI-compatible endpoints to generate 3 punchy executive bullet points summarizing the core facts.
+  - **Resilient Fallback**: Zero external dependencies needed—if the AI provider is offline or unconfigured, the reader view gracefully renders immediately.
+  - **4 Color Themes**: Slate Dark (`#0f172a`), Pure OLED Black (`#000000`), Warm Sepia Parchment (`#f4ecd8`), and Crisp Paper Light (`#ffffff`).
+  - **Customizable Typography**: Switch between Serif (`Charter`, `Merriweather`, `Georgia`) and Sans-serif (`Inter`, system UI), with dynamic font scaling (`A-` / `A+`) saved to `localStorage`.
+  - **Reading Progress Bar**: Visual top-edge scroll percentage tracker (0–100%).
+  - **Print & PDF Optimized**: Dedicated print stylesheet that strips headers and renders a clean, single-document printout.
+- 🛡️ **Zero Data Leakage & Strict Authentication**:
+  - API protected by private `API_TOKEN`.
+  - Extension never exposes your private server secrets to destination sites.
+  - Snapshot viewer injects `<meta name="referrer" content="no-referrer">` to protect your privacy.
+
+---
+
+## 🏗️ High-Level Architecture & Request Flow
 
 ```
-[Browser (You)] ──(Right-Click Link/Tab)──> [VPS Archive Lens Extension]
-                                                    │
-                                                    ▼
-                                    [VPS Archiver Service (Port 8888)]
-                                                    │
-                                         ┌──────────┴──────────┐
-                                         │  Headless Chromium  │
-                                         │  - Google Referer   │
-                                         │  - Block Trackers   │
-                                         │  - Strip <script>   │
-                                         └──────────┬──────────┘
-                                                    │
-                                                    ▼
-                                          [Clean HTML Snapshot]
-                                                    │
-                                         (Auto-pruned after 90 days)
++-----------------------------------------------------------------------------------------+
+|                                    USER WORKSTATION                                     |
+|                                                                                         |
+|  [ Chrome / Brave / Edge / Firefox ]                                                    |
+|           │                                                                             |
+|           ├──> Right-Click Context Menu ("Archive & Unpaywall with VPS")                |
+|           └──> Extension Popup ("Archive Active Tab" / "Custom URL")                    |
+|                        │                                                                |
++────────────────────────┼────────────────────────────────────────────────────────────────+
+                         │  HTTPS/HTTP Request: GET /archive?url=...&token=...
+                         ▼
++-----------------------------------------------------------------------------------------+
+|                                  VPS ARCHIVER SERVER                                    |
+|                                                                                         |
+|  [ FastAPI Daemon (Port 8888) ]                                                         |
+|    │                                                                                    |
+|    ├──> 1. Authentication Check (API_TOKEN verification)                                |
+|    │                                                                                    |
+|    ├──> 2. Stealth Headless Chromium (Playwright)                                       |
+|    │      ├─ Isolated Incognito Context (Metered Paywall Reset)                         |
+|    │      ├─ Spoofs Google Referer ("https://www.google.com/")                          |
+|    │      ├─ Blocks Ad / Analytics / Telemetry Requests                                 |
+|    │      ├─ Auto-Scrolls to Force Lazy Image Hydration                                 |
+|    │      └─ Injects Anti-Paywall CSS (Clears Modals & Scroll-Locks)                    |
+|    │                                                                                    |
+|    ├──> 3. DOM Sanitizer & Snapshot Generator                                           |
+|    │      ├─ Strips <script> Tags (Prevents Paywalls from Re-Arming)                    |
+|    │      ├─ Injects Self-Healing Image Observer Script                                 |
+|    │      ├─ Injects Glassmorphism Top Navigation Pill                                  |
+|    │      └─ Writes {snapshot_id}.html to STORAGE_DIR                                   |
+|    │                                                                                    |
+|    ├──> 4. Reverse Image Proxy Engine (/api/proxy/image)                                |
+|    │      ├─ Fetches Images from Origin CDNs (Bypasses Local ISP Censorship)            |
+|    │      └─ Caches to /snapshots/image_cache/ (30-Day TTL)                             |
+|    │                                                                                    |
+|    ├──> 5. AI Reader View Pipeline (/reader/{id})                                       |
+|    │      ├─ Trafilatura: Extracts Headline, Byline, Date, Hero Image, Clean Body       |
+|    │      ├─ LLM Layer: Generates 3-Bullet Executive Summary                            |
+|    │      │    (Nous Portal Free / OpenCode / NeuralWatt / OpenAI-Compatible)           |
+|    │      ├─ Deduplicates Extracted Image Captions & Formats <figure> Tags              |
+|    │      └─ Caches {snapshot_id}_reader.html (Sub-10ms subsequent hits)                |
+|    │                                                                                    |
+|    └──> 6. Background Retention Pruner                                                  |
+|           └─ Purges snapshots and cached images older than RETENTION_DAYS (90 days)     |
++-----------------------------------------------------------------------------------------+
 ```
 
 ---
 
-## 🚀 Quickstart (Docker Compose - Recommended)
+## 🔬 Deep Dive: How the Core Engines Work
 
-### 1. Clone the repository on your VPS
+### 1. The Headless Chromium Archiving Engine
+When you request an archive, VPS Archive Lens spawns an isolated browser context inside Playwright Chromium:
+1. **Referer Spoofing**: Injects `Referer: https://www.google.com/` and realistic navigation headers. Many paywalls allow users originating from Google Search to view articles for free.
+2. **Ad & Tracker Interception**: Aborts network requests matching known telemetry and tracking domains (`googletagmanager`, `doubleclick`, `criteo`, `scorecardresearch`, `taboola`, etc.). This cuts load times by 60–80%.
+3. **Scroll Hydration**: Automatically scrolls down the document to trigger `IntersectionObserver` elements and lazy-loaded image sources (`srcset`, `data-src`).
+4. **DOM Freezing**: Extracts the fully rendered DOM, removes all executable `<script>` tags, and strips overlay blockers (Piano, Tinypass, Evolok, and generic modal backdrops) so that paywall scripts cannot execute during replay.
+
+### 2. The Reverse Image Proxy & ISP Bypass
+Many regional internet service providers (ISPs) actively censor news media domains or DPI-throttle image CDNs (e.g., `i.dailymail.com`). When a user visits a snapshot from their local network:
+- The user's browser attempts to fetch the image from `i.dailymail.com`.
+- The ISP middlebox injects a TCP RST packet or terminates the TLS handshake (`Connection reset by peer`), causing the browser to render a broken image icon.
+- **The VPS Archive Lens Solution**:
+  - The server includes an asynchronous streaming image proxy at `/api/proxy/image?url=...`.
+  - In the **AI Reader View**, all images are automatically rewritten to point to this proxy.
+  - In **Raw Snapshots**, a lightweight inline error listener catches any `<img>` load failures and dynamically reroutes them through the proxy:
+    ```javascript
+    window.addEventListener('error', function(e) {
+      if (e.target && e.target.tagName === 'IMG' && !e.target.dataset.vpsProxied && e.target.src.startsWith('http')) {
+        e.target.dataset.vpsProxied = '1';
+        e.target.src = '/api/proxy/image?url=' + encodeURIComponent(e.target.src);
+      }
+    }, true);
+    ```
+  - Proxied images are stored in `STORAGE_DIR/image_cache/` and served with HTTP 304 / 30-day cache headers, saving bandwidth and delivering instant playback.
+
+### 3. The AI Reader View Pipeline
+The Reader View (`/reader/{snapshot_id}`) is engineered to never fail:
+1. **Deterministic Parsing**: `trafilatura` extracts clean semantic Markdown directly from the unpaywalled HTML snapshot. It isolates the true article body while stripping ads, newsletter signups, and navigation cruft.
+2. **Multi-Tier AI Provider Hierarchy**:
+   - **Tier 1 (Zero Config)**: Auto-detects local Hermes Agent credentials in `~/.hermes/auth.json` to access the free **Nous Solar Pro** model (`upstage/solar-pro4:free`).
+   - **Tier 2 (OpenCode Go)**: If `OPENCODE_GO_API_KEY` is configured, queries OpenCode Zen (`glm-5`).
+   - **Tier 3 (NeuralWatt)**: If `NEURALWATT_API_KEY` or `~/.hermes/config.yaml` is detected, queries NeuralWatt (`glm-5.2`).
+   - **Tier 4 (OpenRouter Free)**: If `OPENROUTER_API_KEY` is set, queries `nvidia/nemotron-3.5-lightning:free`.
+   - **Tier 5 (Generic OpenAI-Compatible)**: If `AI_BASE_URL` is set, connects to Ollama, vLLM, DeepSeek, LocalAI, or any standard endpoint.
+   - **Tier 6 (Resilient Fallback)**: If no LLM is configured or an API call times out, it uses deterministic lead-paragraph extraction. The reader view **always renders successfully**.
+3. **Caption Deduplication & Figure Formatting**:
+   - Trafilatura frequently extracts image captions twice (once in the Markdown image tag `![Caption](url)` and once in the following paragraph `<p>`).
+   - The parser detects adjacent redundant text paragraphs and merges them cleanly into `<figure>` and `<figcaption>` elements with responsive shadow styling.
+
+### 4. Automated Retention Pruning
+Public archivers hoard data forever. VPS Archive Lens is designed for personal utility:
+- On every archive request, an asynchronous background task checks `STORAGE_DIR`.
+- Any HTML snapshot or cached image older than `RETENTION_DAYS` (default: **90 days**) is automatically deleted.
+- Keeps your VPS disk consumption predictable and maintenance-free.
+
+---
+
+## 🚀 Quickstart: Deployment
+
+### Option A: Docker Compose (Recommended)
+
+Docker Compose provides an isolated environment pre-packaged with Playwright, Chromium, and all system libraries.
+
 ```bash
+# 1. Clone the repository on your VPS
 git clone https://github.com/mailinglistenator/vps-archive-lens.git
 cd vps-archive-lens
-```
 
-### 2. Configure Environment
-```bash
+# 2. Configure environment
 cp .env.example .env
+nano .env
 ```
 
-Edit `.env`:
+Set your secret token and public address in `.env`:
 ```ini
 PORT=8888
-# Generate a secret token with: openssl rand -hex 20
-API_TOKEN=your_secure_random_token_here
+API_TOKEN=generate_a_secure_token_with_openssl
 BASE_URL=http://YOUR_VPS_IP:8888
 RETENTION_DAYS=90
 ```
 
-### 3. Start the Container
+Start the container in the background:
 ```bash
 docker compose up -d
 ```
 
-Your service is now running at `http://YOUR_VPS_IP:8888`. Verify by visiting `http://YOUR_VPS_IP:8888/health`.
+Verify your server is live:
+```bash
+curl http://localhost:8888/health
+# {"status":"ok","snapshots_count":0,"version":"1.0.0"}
+```
 
 ---
 
-## 🛠️ Native Installation (Without Docker)
+### Option B: Bare-Metal Ubuntu / Debian Systemd
 
-If you prefer running directly on Ubuntu/Debian:
+If you prefer running directly on the host system without Docker:
 
 ```bash
-# 1. Install dependencies
+# 1. Install system prerequisites
 sudo apt update && sudo apt install -y python3 python3-pip python3-venv
 
-# 2. Setup directory and virtual environment
-cd server
+# 2. Clone repository
+git clone https://github.com/mailinglistenator/vps-archive-lens.git /opt/vps-archive-lens
+cd /opt/vps-archive-lens
+
+# 3. Create virtual environment & install requirements
 python3 -m venv venv
-./venv/bin/pip install -r requirements.txt
+./venv/bin/pip install -r server/requirements.txt
+
+# 4. Install Playwright browser & system dependencies
 ./venv/bin/playwright install chromium
 sudo ./venv/bin/playwright install-deps chromium
 
-# 3. Create .env
-cp ../.env.example .env
+# 5. Setup configuration
+cp .env.example .env
 nano .env
-
-# 4. Run the server
-./venv/bin/uvicorn app:app --host 0.0.0.0 --port 8888
 ```
 
-### (Optional) Setup Systemd Service
+#### Setup Systemd Service
+Create `/etc/systemd/system/vps-archive-lens.service`:
 ```ini
-# /etc/systemd/system/vps-archive-lens.service
 [Unit]
 Description=VPS Archive Lens Daemon
 After=network.target
@@ -103,14 +255,17 @@ After=network.target
 [Service]
 Type=simple
 User=www-data
-WorkingDirectory=/opt/vps-archive-lens/server
-ExecStart=/opt/vps-archive-lens/server/venv/bin/uvicorn app:app --host 0.0.0.0 --port 8888
-Restart=always
+WorkingDirectory=/opt/vps-archive-lens
 EnvironmentFile=/opt/vps-archive-lens/.env
+ExecStart=/opt/vps-archive-lens/venv/bin/uvicorn server.app:app --host 0.0.0.0 --port 8888
+Restart=always
+RestartSec=3
 
 [Install]
 WantedBy=multi-user.target
 ```
+
+Enable and start the service:
 ```bash
 sudo systemctl daemon-reload
 sudo systemctl enable --now vps-archive-lens
@@ -118,49 +273,166 @@ sudo systemctl enable --now vps-archive-lens
 
 ---
 
-## 🧩 Browser Extension Setup
+### Option C: Co-Locating with Hermes Agent
 
-The browser extension works on any Chromium-based browser (Chrome, Brave, Edge, Arc) and Firefox.
-
-### Chrome / Brave / Edge
-1. Download or clone this repository to your computer.
-2. Open your browser and navigate to:
-   - **Chrome**: `chrome://extensions`
-   - **Brave**: `brave://extensions`
-   - **Edge**: `edge://extensions`
-3. Toggle **Developer mode** on (top-right corner).
-4. Click **Load unpacked** (top-left corner).
-5. Select the `extension/` directory inside this repository.
-6. The Settings page will automatically open. Enter:
-   - **VPS Archiver Endpoint URL**: `http://YOUR_VPS_IP:8888` (or your domain/tunnel)
-   - **Secret API Token**: The `API_TOKEN` configured in your `.env`
-7. Click **Save Settings**.
-
-### Firefox
-1. Go to `about:debugging#/runtime/this-firefox`.
-2. Click **Load Temporary Add-on...** and choose `extension/manifest.json`.
-3. Configure settings via the extension options.
+If you are already running [Hermes Agent](https://github.com/NousResearch/Hermes-Agent) on your VPS:
+1. Run VPS Archive Lens under the same user account (e.g., `/home/hermes/`).
+2. VPS Archive Lens will **automatically detect** your existing Nous credentials in `~/.hermes/auth.json` or `~/.hermes/config.yaml`.
+3. You immediately get **free, instant AI Key Takeaways** powered by Nous Solar Pro (`upstage/solar-pro4:free`) without entering any API keys!
 
 ---
 
-## 🔒 Security & Reverse Proxy
+## 🧩 Browser Extension Installation
 
-To keep your VPS secure and use HTTPS:
+The extension works on any Chromium-based browser (**Chrome, Brave, Edge, Arc**) and **Mozilla Firefox**.
 
-### Option A: Cloudflare Tunnel (Zero Port Forwarding)
+### Chrome / Brave / Edge / Arc
+1. Download or clone this repository to your local computer.
+2. Open your browser extension management page:
+   - **Chrome**: `chrome://extensions`
+   - **Brave**: `brave://extensions`
+   - **Edge**: `edge://extensions`
+3. Toggle on **Developer mode** (top-right corner).
+4. Click **Load unpacked** (top-left corner).
+5. Select the `extension/` folder inside this repository.
+6. The Settings page will automatically open. Enter:
+   - **VPS Archiver Endpoint URL**: `http://YOUR_VPS_IP:8888` (or your domain/tunnel URL)
+   - **Secret API Token**: The `API_TOKEN` you configured in `.env`
+7. Click **Test Connection** to verify, then click **Save Settings**.
+
+### Firefox
+1. Navigate to `about:debugging#/runtime/this-firefox`.
+2. Click **Load Temporary Add-on...**.
+3. Select `extension/manifest.json`.
+4. Click the extension icon and configure your VPS URL and API Token.
+
+---
+
+## ⚙️ Configuration Reference (.env)
+
+| Variable | Default | Description |
+| :--- | :--- | :--- |
+| `PORT` | `8888` | Port the FastAPI application listens on. |
+| `API_TOKEN` | *(empty)* | Secret key required to access `/archive` and `/list`. Highly recommended. |
+| `BASE_URL` | `http://localhost:8888` | The public base URL used to construct links returned to the browser extension. |
+| `STORAGE_DIR` | `./snapshots` | Path where HTML snapshots and the image cache are stored. |
+| `RETENTION_DAYS` | `90` | Number of days before snapshots and image caches are pruned. |
+| `OPENCODE_GO_API_KEY` | *(empty)* | Optional API key for OpenCode Go (`zen/go/v1`). |
+| `NEURALWATT_API_KEY` | *(empty)* | Optional API key for NeuralWatt (`glm-5.2`). |
+| `OPENROUTER_API_KEY` | *(empty)* | Optional API key for OpenRouter free tier models. |
+| `AI_BASE_URL` | *(empty)* | Optional base URL for any OpenAI-compatible server (e.g. `http://localhost:11434/v1`). |
+| `AI_API_KEY` | *(empty)* | Optional API key for OpenAI-compatible endpoint. |
+| `AI_MODEL` | `default` | Model identifier for OpenAI-compatible endpoint. |
+
+---
+
+## 📡 REST API Reference
+
+### 1. Create Archive Snapshot
+Captures, strips, and unpaywalls a target web page.
+
+- **Endpoint**: `GET /archive`
+- **Authentication**: `X-API-Token` header, `Authorization: Bearer <token>`, or `?token=<token>` query param.
+- **Parameters**:
+  - `url` (required): Target web page URL to archive.
+- **Example**:
+  ```bash
+  curl "http://YOUR_VPS_IP:8888/archive?url=https://example.com/article&token=YOUR_API_TOKEN"
+  ```
+- **Response**:
+  ```json
+  {
+    "status": "success",
+    "snapshot_id": "20260908_090725_94bc8eb9b8cad5d6",
+    "view_url": "http://YOUR_VPS_IP:8888/view/20260908_090725_94bc8eb9b8cad5d6",
+    "reader_url": "http://YOUR_VPS_IP:8888/reader/20260908_090725_94bc8eb9b8cad5d6",
+    "original_url": "https://example.com/article",
+    "title": "Article Title",
+    "timestamp": "2026-09-08 09:07:25 UTC"
+  }
+  ```
+  *(Note: Browsers requesting `/archive` directly receive an animated loading screen that auto-redirects to `/view/{id}`).*
+
+---
+
+### 2. View Raw Sanitized Snapshot
+Renders the complete captured DOM with scripts stripped and paywall modals cleared.
+
+- **Endpoint**: `GET /view/{snapshot_id}`
+- **Authentication**: Public (no token needed, allows easy bookmarking and sharing).
+- **Features**: Injects top floating navigation pill with links to original source and AI Reader View. Auto-heals broken CDN images via image proxy fallback.
+
+---
+
+### 3. AI Reader View
+Renders an Apple Books-grade clean reading view with AI executive takeaways.
+
+- **Endpoint**: `GET /reader/{snapshot_id}`
+- **Parameters**:
+  - `refresh` (optional): Set `?refresh=1` to force re-extraction and AI re-summarization.
+- **Authentication**: Public.
+- **Features**: Dynamic reading progress, 4 color themes, Serif/Sans typography controls, responsive figure captions, and clean Print-to-PDF styles.
+
+---
+
+### 4. Reverse Image Proxy
+Fetches and caches images through the VPS network to bypass local ISP blocks.
+
+- **Endpoint**: `GET /api/proxy/image`
+- **Parameters**:
+  - `url` (required): URL-encoded source image URL.
+- **Example**:
+  ```bash
+  curl -I "http://YOUR_VPS_IP:8888/api/proxy/image?url=https%3A%2F%2Fi.dailymail.com%2F...%2Fimage.jpg"
+  ```
+- **Response**: Binary image stream with `Cache-Control: public, max-age=2592000` (30 days).
+
+---
+
+### 5. Snapshot Dashboard
+Interactive web dashboard listing all recent snapshots and storage metrics.
+
+- **Endpoint**: `GET /list`
+- **Authentication**: Required (`API_TOKEN`).
+
+---
+
+### 6. Health Check
+System health status and snapshot count.
+
+- **Endpoint**: `GET /health`
+- **Authentication**: None.
+
+---
+
+## 🔒 Production Hardening & HTTPS
+
+To protect your credentials and secure communications between your browser extension and VPS, put the archiver behind an HTTPS reverse proxy:
+
+### Option 1: Cloudflare Tunnel (Zero Port Forwarding - Recommended)
+With Cloudflare Tunnel, you do not need to open any firewall ports or expose your VPS IP address:
 ```bash
+# Install cloudflared
+curl -L --output cloudflared.deb https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64.deb
+sudo dpkg -i cloudflared.deb
+
+# Run quick tunnel
 cloudflared tunnel --url http://localhost:8888
 ```
 Set `BASE_URL=https://your-tunnel-name.trycloudflare.com` in `.env`.
 
-### Option B: Caddy (Automatic HTTPS)
+---
+
+### Option 2: Caddy (Automatic Let's Encrypt SSL)
 ```caddy
 archive.yourdomain.com {
     reverse_proxy localhost:8888
 }
 ```
 
-### Option C: Nginx
+---
+
+### Option 3: Nginx + Certbot
 ```nginx
 server {
     listen 80;
@@ -178,17 +450,33 @@ server {
 
 ---
 
-## ⚙️ Configuration Reference
+## ❓ Troubleshooting & FAQ
 
-| Variable | Default | Description |
-| :--- | :--- | :--- |
-| `PORT` | `8888` | Port the FastAPI daemon listens on |
-| `API_TOKEN` | *(empty)* | Secret key required in headers or query params (`?token=`) |
-| `BASE_URL` | `http://localhost:8888` | Base URL used to generate snapshot view links |
-| `STORAGE_DIR` | `./snapshots` | Path where HTML snapshots are stored |
-| `RETENTION_DAYS` | `90` | Number of days to keep snapshots before auto-deletion |
+### 1. Why do images fail on my local computer but load on the VPS?
+Many regional internet service providers enforce country-level censorship or deep packet inspection (DPI) on foreign media CDNs (like `i.dailymail.com`). Your local ISP resets the connection during the TLS handshake (`curl: (35) Recv failure: Connection reset by peer`). 
+VPS Archive Lens solves this automatically: all images in the **AI Reader View** are routed through the VPS reverse image proxy (`/api/proxy/image`), which bypasses your local ISP blocks and caches the images for fast local loading.
+
+### 2. The extension says "Connection failed" during testing.
+- Ensure the port (`8888`) is allowed in your VPS firewall:
+  ```bash
+  sudo ufw allow 8888/tcp
+  ```
+- Check that the daemon is running:
+  ```bash
+  sudo systemctl status vps-archive-lens
+  # or
+  docker compose ps
+  ```
+- Verify that `API_TOKEN` matches between your server `.env` and the extension options page.
+
+### 3. Missing dependencies when running without Docker?
+Playwright requires system graphical and font libraries. If Chromium fails to start, run:
+```bash
+sudo ./venv/bin/playwright install-deps chromium
+```
 
 ---
 
 ## 📄 License
-Released under the [MIT License](LICENSE).
+
+VPS Archive Lens is open-source software licensed under the [MIT License](LICENSE).

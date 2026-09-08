@@ -719,6 +719,20 @@ def get_hermes_ai_provider():
             "display_name": "OpenRouter Free"
         }
 
+    # 5. Generic OpenAI-Compatible Endpoint (Ollama, LocalAI, vLLM, DeepSeek, Groq, OpenAI)
+    generic_key = os.getenv("AI_API_KEY") or os.getenv("OPENAI_API_KEY")
+    generic_base = os.getenv("AI_BASE_URL") or os.getenv("OPENAI_BASE_URL")
+    generic_model = os.getenv("AI_MODEL") or os.getenv("OPENAI_MODEL")
+    if generic_base:
+        return {
+            "provider": "openai_compatible",
+            "model": generic_model or "default",
+            "base_url": generic_base.rstrip("/"),
+            "auth_header": f"Bearer {generic_key}" if generic_key else "",
+            "extra_headers": {},
+            "display_name": f"AI ({generic_model or 'OpenAI-Compatible'})"
+        }
+
     return None
 
 def render_reader_template(
@@ -1249,10 +1263,11 @@ Article:
             }).encode()
 
             headers = {
-                "Authorization": ai_provider["auth_header"],
                 "Content-Type": "application/json",
                 **ai_provider.get("extra_headers", {})
             }
+            if ai_provider.get("auth_header"):
+                headers["Authorization"] = ai_provider["auth_header"]
             req = urllib.request.Request(f"{ai_provider['base_url']}/chat/completions", data=req_data, headers=headers)
             with urllib.request.urlopen(req, timeout=10) as resp:
                 data = json.loads(resp.read().decode())
