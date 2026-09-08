@@ -7,6 +7,8 @@ import logging
 import re
 import socket
 import ipaddress
+import shutil
+import subprocess
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
 from urllib.parse import urlparse, quote
@@ -33,6 +35,7 @@ PORT = int(os.getenv("PORT", "8888"))
 API_TOKEN = os.getenv("API_TOKEN", "")
 STORAGE_DIR = Path(os.getenv("STORAGE_DIR", "/home/hermes/personal-archiver/snapshots"))
 IMAGE_CACHE_DIR = STORAGE_DIR / "image_cache"
+MEDIA_STORAGE_DIR = Path(os.getenv("MEDIA_STORAGE_DIR", "/home/hermes/personal-archiver/videos"))
 BASE_URL = os.getenv("BASE_URL", "http://localhost:8888").rstrip("/")
 MAX_IMAGE_SIZE = int(os.getenv("MAX_IMAGE_SIZE_BYTES", str(20 * 1024 * 1024)))  # 20MB limit
 MAX_CONCURRENT_ARCHIVES = int(os.getenv("MAX_CONCURRENT_ARCHIVES", "2"))
@@ -48,6 +51,7 @@ def get_archive_semaphore() -> asyncio.Semaphore:
 
 STORAGE_DIR.mkdir(parents=True, exist_ok=True)
 IMAGE_CACHE_DIR.mkdir(parents=True, exist_ok=True)
+MEDIA_STORAGE_DIR.mkdir(parents=True, exist_ok=True)
 
 app = FastAPI(title="Personal Web Archiver", version="1.0.0")
 
@@ -1724,12 +1728,217 @@ def reader_view(snapshot_id: str, refresh: str = Query(None)):
     reader_file = generate_ai_reader(snapshot_id, force_refresh=force_refresh)
     return FileResponse(reader_file, media_type="text/html")
 
+class MediaDownloadRequest(BaseModel):
+    url: str
+    format: str = "video"  # "video" or "audio"
+
+def sanitize_filename(name: str) -> str:
+    cleaned = re.sub(r'[\\/*?:"<>|]', "", name).strip()
+    return cleaned[:100] if cleaned else "media"
+
+@app.post("/api/media/download")
+async def api_media_download(req: Request, payload: MediaDownloadRequest, token: str = Query(None)):
+    verify_token(req, token)
+    url = payload.url.strip()
+    if not url:
+        raise HTTPException(status_code=400, detail="Missing URL")
+    
+    fmt = payload.format.lower()
+    if fmt not in ("video", "audio"):
+        fmt = "video"
+    
+    media_id = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S") + "_" + hashlib.sha256(url.encode()).hexdigest()[:8]
+    
+    info_cmd = ["yt-dlp", "--dump-single-json", "--no-playlist", url]
+    try:
+        proc = await asyncio.to_thread(
+            subprocess.run, info_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, timeout=35
+        )
+    except subprocess.TimeoutExpired:
+        raise HTTPException(status_code=504, detail="Timeout extracting video metadata")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error executing yt-dlp: {str(e)}")
+
+    title = "Media Download"
+    duration = 0
+    uploader = ""
+    thumbnail = ""
+    if proc.returncode == 0:
+        try:
+            info = json.loads(proc.stdout)
+            title = info.get("title", title)
+            duration = int(info.get("duration") or 0)
+            uploader = info.get("uploader") or info.get("channel") or ""
+            thumbnail = info.get("thumbnail") or ""
+        except Exception:
+            pass
+
+    out_template = str(MEDIA_STORAGE_DIR / f"{media_id}.%(ext)s")
+    if fmt == "audio":
+        dl_cmd = [
+            "yt-dlp", "--no-playlist",
+            "-x", "--audio-format", "mp3", "--audio-quality", "0",
+            "--embed-thumbnail", "--embed-metadata",
+            "-o", out_template, url
+        ]
+        target_ext = "mp3"
+        media_type = "audio/mpeg"
+    else:
+        dl_cmd = [
+            "yt-dlp", "--no-playlist",
+            "-f", "bv*[ext=mp4]+ba[ext=m4a]/b[ext=mp4]/bestvideo+bestaudio/best",
+            "--merge-output-format", "mp4",
+            "-o", out_template, url
+        ]
+        target_ext = "mp4"
+        media_type = "video/mp4"
+
+    try:
+        dl_proc = await asyncio.to_thread(
+            subprocess.run, dl_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, timeout=300
+        )
+    except subprocess.TimeoutExpired:
+        raise HTTPException(status_code=504, detail="Download timed out (exceeded 5 minutes)")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Download execution failed: {str(e)}")
+
+    if dl_proc.returncode != 0:
+        err_msg = dl_proc.stderr.strip().split("\n")[-1] or "Download failed"
+        logger.error(f"yt-dlp download failed: {err_msg}")
+        raise HTTPException(status_code=502, detail=f"Download failed: {err_msg}")
+
+    expected_file = MEDIA_STORAGE_DIR / f"{media_id}.{target_ext}"
+    if not expected_file.exists():
+        candidates = list(MEDIA_STORAGE_DIR.glob(f"{media_id}.*"))
+        non_json = [c for c in candidates if c.suffix != ".json"]
+        if non_json:
+            expected_file = non_json[0]
+            target_ext = expected_file.suffix.lstrip(".")
+            if target_ext in ("mp4", "mkv", "webm"):
+                media_type = "video/mp4"
+            elif target_ext in ("mp3", "m4a", "aac"):
+                media_type = "audio/mpeg"
+        else:
+            raise HTTPException(status_code=500, detail="Downloaded media file not found on server")
+
+    file_size = expected_file.stat().st_size
+    size_mb = round(file_size / (1024 * 1024), 2)
+    duration_str = f"{duration // 60}:{duration % 60:02d}" if duration else "--:--"
+
+    metadata = {
+        "id": media_id,
+        "title": title,
+        "url": url,
+        "uploader": uploader,
+        "duration": duration,
+        "duration_str": duration_str,
+        "format": fmt,
+        "filename": expected_file.name,
+        "size_mb": size_mb,
+        "media_type": media_type,
+        "thumbnail": thumbnail,
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+
+    meta_file = MEDIA_STORAGE_DIR / f"{media_id}.json"
+    with open(meta_file, "w", encoding="utf-8") as f:
+        json.dump(metadata, f, indent=2)
+
+    return {
+        "status": "success",
+        "media": metadata,
+        "stream_url": f"/api/media/stream/{media_id}",
+        "download_url": f"/api/media/download/{media_id}"
+    }
+
+@app.get("/api/media/stream/{media_id}")
+@app.head("/api/media/stream/{media_id}")
+async def api_media_stream(media_id: str, request: Request, token: str = Query(None)):
+    verify_token(request, token)
+    meta_file = MEDIA_STORAGE_DIR / f"{media_id}.json"
+    if not meta_file.exists():
+        raise HTTPException(status_code=404, detail="Media not found")
+    with open(meta_file, "r", encoding="utf-8") as f:
+        meta = json.load(f)
+    media_file = MEDIA_STORAGE_DIR / meta["filename"]
+    if not media_file.exists():
+        raise HTTPException(status_code=404, detail="Media file missing from storage")
+    return FileResponse(media_file, media_type=meta.get("media_type", "video/mp4"))
+
+@app.get("/api/media/download/{media_id}")
+@app.head("/api/media/download/{media_id}")
+async def api_media_file_download(media_id: str, request: Request, token: str = Query(None)):
+    verify_token(request, token)
+    meta_file = MEDIA_STORAGE_DIR / f"{media_id}.json"
+    if not meta_file.exists():
+        raise HTTPException(status_code=404, detail="Media not found")
+    with open(meta_file, "r", encoding="utf-8") as f:
+        meta = json.load(f)
+    media_file = MEDIA_STORAGE_DIR / meta["filename"]
+    if not media_file.exists():
+        raise HTTPException(status_code=404, detail="Media file missing from storage")
+    safe_name = sanitize_filename(meta.get("title", media_id))
+    ext = media_file.suffix
+    download_filename = f"{safe_name}{ext}"
+    return FileResponse(
+        media_file,
+        media_type="application/octet-stream",
+        headers={"Content-Disposition": f'attachment; filename="{download_filename}"'}
+    )
+
+@app.get("/api/media/list")
+async def api_media_list(request: Request, token: str = Query(None)):
+    verify_token(request, token)
+    items = []
+    for meta_file in sorted(MEDIA_STORAGE_DIR.glob("*.json"), key=lambda p: p.stat().st_mtime, reverse=True):
+        try:
+            with open(meta_file, "r", encoding="utf-8") as f:
+                data = json.load(f)
+            if (MEDIA_STORAGE_DIR / data["filename"]).exists():
+                items.append(data)
+        except Exception:
+            continue
+
+    try:
+        total, used, free = shutil.disk_usage(MEDIA_STORAGE_DIR)
+        disk_info = {
+            "total_gb": round(total / (1024**3), 1),
+            "free_gb": round(free / (1024**3), 1),
+            "used_gb": round(used / (1024**3), 1),
+        }
+    except Exception:
+        disk_info = {"total_gb": 0, "free_gb": 0, "used_gb": 0}
+
+    return {"items": items, "disk": disk_info}
+
+@app.delete("/api/media/{media_id}")
+async def api_media_delete(media_id: str, request: Request, token: str = Query(None)):
+    verify_token(request, token)
+    meta_file = MEDIA_STORAGE_DIR / f"{media_id}.json"
+    if meta_file.exists():
+        try:
+            with open(meta_file, "r", encoding="utf-8") as f:
+                meta = json.load(f)
+            media_file = MEDIA_STORAGE_DIR / meta.get("filename", "")
+            if media_file.exists():
+                media_file.unlink()
+        except Exception:
+            pass
+        meta_file.unlink()
+    for c in MEDIA_STORAGE_DIR.glob(f"{media_id}.*"):
+        try:
+            c.unlink()
+        except Exception:
+            pass
+    return {"status": "deleted", "id": media_id}
+
 @app.get("/", response_class=HTMLResponse)
 @app.get("/list", response_class=HTMLResponse)
 def dashboard(token: str = Query(None)):
     files = sorted([f for f in STORAGE_DIR.glob("*.html") if not f.stem.endswith("_reader")], key=lambda f: f.stat().st_mtime, reverse=True)[:40]
     token_str = token or API_TOKEN
     token_param = f"?token={token_str}" if token_str else ""
+    token_js = json.dumps(token_str)
     
     rows = []
     for f in files:
@@ -1738,84 +1947,610 @@ def dashboard(token: str = Query(None)):
         name = f.stem
         rows.append(f"""
         <tr style="border-bottom: 1px solid #334155;">
-          <td style="padding: 10px 12px;"><a href="/reader/{name}" target="_blank" style="color: #38bdf8; text-decoration: none; font-weight: 500;">{name}</a></td>
-          <td style="padding: 10px 12px; color: #94a3b8;">{mtime} UTC</td>
-          <td style="padding: 10px 12px; color: #cbd5e1;">{size_kb} KB</td>
-          <td style="padding: 10px 12px; display: flex; gap: 8px;">
-            <a href="/reader/{name}" target="_blank" style="background: #0284c7; color: #ffffff; padding: 4px 10px; border-radius: 6px; text-decoration: none; font-size: 0.8rem; font-weight: 600; display: inline-flex; align-items: center; gap: 4px;">📖 Reader</a>
-            <a href="/view/{name}" target="_blank" style="color: #94a3b8; text-decoration: underline; font-size: 0.85rem; display: inline-flex; align-items: center; padding: 4px;">Raw</a>
+          <td style="padding: 12px 14px;"><a href="/reader/{name}{token_param}" target="_blank" style="color: #38bdf8; text-decoration: none; font-weight: 500;">{name}</a></td>
+          <td style="padding: 12px 14px; color: #94a3b8;">{mtime} UTC</td>
+          <td style="padding: 12px 14px; color: #cbd5e1;">{size_kb} KB</td>
+          <td style="padding: 12px 14px; display: flex; gap: 8px;">
+            <a href="/reader/{name}{token_param}" target="_blank" style="background: #0284c7; color: #ffffff; padding: 4px 12px; border-radius: 6px; text-decoration: none; font-size: 0.8rem; font-weight: 600; display: inline-flex; align-items: center; gap: 4px;">📖 Reader</a>
+            <a href="/view/{name}{token_param}" target="_blank" style="color: #94a3b8; text-decoration: underline; font-size: 0.85rem; display: inline-flex; align-items: center; padding: 4px 8px;">Raw</a>
           </td>
         </tr>
         """)
     
-    table_content = "".join(rows) if rows else '<tr><td colspan="4" style="padding: 20px; text-align: center; color: #94a3b8;">No snapshots yet.</td></tr>'
+    table_content = "".join(rows) if rows else '<tr><td colspan="4" style="padding: 24px; text-align: center; color: #94a3b8;">No article snapshots yet.</td></tr>'
 
     return f"""<!DOCTYPE html>
     <html lang="en">
     <head>
       <meta charset="UTF-8">
-      <title>VPS Archive Lens - Dashboard</title>
+      <title>⚡ VPS Power Hub - Archive & Media</title>
       <meta name="viewport" content="width=device-width, initial-scale=1">
       <style>
-        body {{ background: #0f172a; color: #f8fafc; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; margin: 0; padding: 30px 20px; display: flex; justify-content: center; }}
-        .container {{ width: 100%; max-width: 860px; }}
-        .header {{ display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; border-bottom: 1px solid #334155; padding-bottom: 16px; }}
-        h1 {{ margin: 0; font-size: 1.5rem; color: #38bdf8; display: flex; align-items: center; gap: 8px; }}
-        .badge {{ background: #0369a1; color: #e0f2fe; padding: 4px 10px; border-radius: 9999px; font-size: 0.8rem; font-weight: 600; }}
-        .archive-card {{ background: #1e293b; border: 1px solid #334155; border-radius: 10px; padding: 20px; margin-bottom: 24px; }}
+        :root {{
+          --bg: #0b1120;
+          --card: #1e293b;
+          --border: #334155;
+          --primary: #38bdf8;
+          --primary-hover: #0284c7;
+          --accent: #10b981;
+          --text: #f8fafc;
+          --text-muted: #94a3b8;
+        }}
+        body {{
+          background: var(--bg);
+          color: var(--text);
+          font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+          margin: 0;
+          padding: 30px 20px;
+          display: flex;
+          justify-content: center;
+        }}
+        .container {{ width: 100%; max-width: 920px; }}
+        .header {{
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin-bottom: 20px;
+          border-bottom: 1px solid var(--border);
+          padding-bottom: 16px;
+        }}
+        h1 {{
+          margin: 0;
+          font-size: 1.5rem;
+          color: var(--primary);
+          display: flex;
+          align-items: center;
+          gap: 10px;
+        }}
+        .badge {{
+          background: #0369a1;
+          color: #e0f2fe;
+          padding: 4px 12px;
+          border-radius: 9999px;
+          font-size: 0.8rem;
+          font-weight: 600;
+        }}
+
+        /* Navigation Tabs */
+        .tabs {{
+          display: flex;
+          gap: 10px;
+          margin-bottom: 24px;
+          border-bottom: 1px solid var(--border);
+          padding-bottom: 12px;
+        }}
+        .tab-btn {{
+          background: #1e293b;
+          color: var(--text-muted);
+          border: 1px solid var(--border);
+          border-radius: 8px;
+          padding: 10px 18px;
+          font-size: 0.95rem;
+          font-weight: 600;
+          cursor: pointer;
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          transition: all 0.15s ease;
+        }}
+        .tab-btn:hover {{
+          color: var(--text);
+          border-color: var(--primary);
+        }}
+        .tab-btn.active {{
+          background: #0284c7;
+          color: #ffffff;
+          border-color: #38bdf8;
+          box-shadow: 0 4px 12px rgba(2, 132, 199, 0.3);
+        }}
+
+        .tab-content {{ display: none; }}
+        .tab-content.active {{ display: block; }}
+
+        /* Cards & Inputs */
+        .hub-card {{
+          background: var(--card);
+          border: 1px solid var(--border);
+          border-radius: 12px;
+          padding: 22px;
+          margin-bottom: 24px;
+          box-shadow: 0 4px 16px rgba(0,0,0,0.3);
+        }}
         .form-row {{ display: flex; gap: 10px; }}
-        input[type="text"] {{ flex: 1; padding: 10px 14px; background: #0b1120; border: 1px solid #334155; border-radius: 6px; color: #f8fafc; font-size: 0.95rem; outline: none; }}
-        input:focus {{ border-color: #38bdf8; }}
-        button {{ padding: 10px 20px; background: #38bdf8; color: #042f2e; border: none; border-radius: 6px; font-size: 0.95rem; font-weight: 600; cursor: pointer; }}
-        button:hover {{ background: #0284c7; color: white; }}
-        table {{ width: 100%; border-collapse: collapse; background: #1e293b; border-radius: 10px; overflow: hidden; border: 1px solid #334155; font-size: 0.9rem; }}
-        th {{ background: #0b1120; color: #94a3b8; text-align: left; padding: 12px; font-weight: 600; border-bottom: 1px solid #334155; }}
-        .meta-info {{ font-size: 0.82rem; color: #94a3b8; margin-top: 14px; text-align: center; }}
+        input[type="text"] {{
+          flex: 1;
+          padding: 12px 16px;
+          background: #0b1120;
+          border: 1px solid var(--border);
+          border-radius: 8px;
+          color: var(--text);
+          font-size: 0.95rem;
+          outline: none;
+        }}
+        input:focus {{ border-color: var(--primary); }}
+        
+        .btn-primary {{
+          padding: 12px 22px;
+          background: var(--primary);
+          color: #042f2e;
+          border: none;
+          border-radius: 8px;
+          font-size: 0.95rem;
+          font-weight: 700;
+          cursor: pointer;
+          white-space: nowrap;
+          transition: background 0.15s ease;
+        }}
+        .btn-primary:hover {{ background: var(--primary-hover); color: white; }}
+        .btn-success {{
+          background: var(--accent);
+          color: #022c22;
+          padding: 10px 18px;
+          border-radius: 8px;
+          text-decoration: none;
+          font-weight: 700;
+          font-size: 0.9rem;
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+        }}
+        .btn-success:hover {{ background: #059669; color: white; }}
+
+        /* Format selector pills */
+        .format-selector {{
+          display: flex;
+          gap: 12px;
+          margin-top: 14px;
+          align-items: center;
+        }}
+        .format-pill {{
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          font-size: 0.9rem;
+          color: var(--text-muted);
+          cursor: pointer;
+          user-select: none;
+        }}
+        .format-pill input {{ accent-color: var(--primary); }}
+
+        /* Status & Alert */
+        .status-box {{
+          margin-top: 16px;
+          padding: 12px 16px;
+          border-radius: 8px;
+          background: #0f172a;
+          border: 1px solid var(--border);
+          font-size: 0.9rem;
+          display: none;
+          align-items: center;
+          gap: 10px;
+        }}
+        .spinner {{
+          width: 20px;
+          height: 20px;
+          border: 3px solid #334155;
+          border-top-color: var(--primary);
+          border-radius: 50%;
+          animation: spin 0.8s linear infinite;
+        }}
+        @keyframes spin {{ to {{ transform: rotate(360deg); }} }}
+
+        /* Player Card */
+        #playerCard {{
+          display: none;
+          background: #0f172a;
+          border: 1px solid #0284c7;
+          border-radius: 12px;
+          padding: 20px;
+          margin-bottom: 24px;
+          box-shadow: 0 8px 24px rgba(2, 132, 199, 0.2);
+        }}
+        .player-header {{
+          display: flex;
+          justify-content: space-between;
+          align-items: flex-start;
+          margin-bottom: 12px;
+        }}
+        .player-title {{
+          font-size: 1.15rem;
+          font-weight: 700;
+          color: #e0f2fe;
+          margin: 0 0 6px 0;
+        }}
+        .player-meta {{
+          font-size: 0.85rem;
+          color: var(--text-muted);
+          display: flex;
+          gap: 12px;
+          align-items: center;
+        }}
+        .player-actions {{
+          display: flex;
+          gap: 12px;
+          margin-top: 16px;
+          align-items: center;
+          flex-wrap: wrap;
+        }}
+
+        /* Table */
+        table {{
+          width: 100%;
+          border-collapse: collapse;
+          background: var(--card);
+          border-radius: 10px;
+          overflow: hidden;
+          border: 1px solid var(--border);
+          font-size: 0.9rem;
+        }}
+        th {{
+          background: #0b1120;
+          color: var(--text-muted);
+          text-align: left;
+          padding: 12px 14px;
+          font-weight: 600;
+          border-bottom: 1px solid var(--border);
+        }}
+        .meta-info {{ font-size: 0.82rem; color: var(--text-muted); margin-top: 14px; text-align: center; }}
+        
+        .pill-tag {{
+          display: inline-block;
+          padding: 2px 8px;
+          border-radius: 4px;
+          font-size: 0.75rem;
+          font-weight: 700;
+          text-transform: uppercase;
+        }}
+        .pill-video {{ background: #1e3a8a; color: #93c5fd; }}
+        .pill-audio {{ background: #064e3b; color: #6ee7b7; }}
+
+        .action-btn {{
+          padding: 4px 10px;
+          border-radius: 6px;
+          border: 1px solid var(--border);
+          background: #0f172a;
+          color: var(--text);
+          font-size: 0.8rem;
+          font-weight: 600;
+          cursor: pointer;
+          text-decoration: none;
+          display: inline-flex;
+          align-items: center;
+          gap: 4px;
+        }}
+        .action-btn:hover {{ background: #1e293b; border-color: var(--primary); }}
+        .action-delete:hover {{ border-color: #ef4444; color: #f87171; }}
       </style>
     </head>
     <body>
       <div class="container">
         <div class="header">
-          <h1>⚡ VPS Archive Lens Dashboard</h1>
-          <span class="badge">90-Day Retention Active</span>
+          <h1>⚡ VPS Power Hub</h1>
+          <span class="badge" id="storageBadge">1Gbps Hetzner Connected</span>
         </div>
 
-        <div class="archive-card">
-          <div class="form-row">
-            <input type="text" id="urlInput" placeholder="https://example.com/paywalled-article...">
-            <button onclick="archiveUrl()">Archive & View</button>
+        <!-- Navigation Tabs -->
+        <div class="tabs">
+          <button class="tab-btn" id="tabArticlesBtn" onclick="switchTab('articles')">📰 Web Articles & Reader</button>
+          <button class="tab-btn active" id="tabMediaBtn" onclick="switchTab('media')">🎬 Media Streamer & Downloader</button>
+        </div>
+
+        <!-- TAB 1: WEB ARTICLES -->
+        <div id="tabArticles" class="tab-content">
+          <div class="hub-card">
+            <div class="form-row">
+              <input type="text" id="urlInput" placeholder="https://example.com/paywalled-article...">
+              <button class="btn-primary" onclick="archiveUrl()">Archive & View</button>
+            </div>
+          </div>
+
+          <h3 style="color: #cbd5e1; margin-bottom: 12px;">Recent Snapshots</h3>
+          <table>
+            <thead>
+              <tr>
+                <th>Snapshot ID</th>
+                <th>Timestamp</th>
+                <th>Size</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              {table_content}
+            </tbody>
+          </table>
+
+          <div class="meta-info">
+            Snapshots are automatically deleted 90 days after creation.
           </div>
         </div>
 
-        <h3 style="color: #cbd5e1; margin-bottom: 12px;">Recent Snapshots</h3>
-        <table>
-          <thead>
-            <tr>
-              <th>Snapshot ID</th>
-              <th>Timestamp</th>
-              <th>Size</th>
-              <th>Action</th>
-            </tr>
-          </thead>
-          <tbody>
-            {table_content}
-          </tbody>
-        </table>
+        <!-- TAB 2: MEDIA STREAMER & DOWNLOADER -->
+        <div id="tabMedia" class="tab-content active">
+          <div class="hub-card">
+            <div class="form-row">
+              <input type="text" id="mediaUrlInput" placeholder="Paste YouTube, TikTok, Reddit, Twitter/X, Instagram, Facebook URL...">
+              <button class="btn-primary" id="grabBtn" onclick="grabMedia()">⚡ Grab to VPS</button>
+            </div>
+            
+            <div class="format-selector">
+              <label class="format-pill">
+                <input type="radio" name="mediaFormat" value="video" checked>
+                <span>🎬 Video (MP4)</span>
+              </label>
+              <label class="format-pill">
+                <input type="radio" name="mediaFormat" value="audio">
+                <span>🎵 Audio (MP3)</span>
+              </label>
+            </div>
 
-        <div class="meta-info">
-          Snapshots are automatically deleted 90 days after creation.
+            <div class="status-box" id="mediaStatusBox">
+              <div class="spinner" id="mediaSpinner"></div>
+              <span id="mediaStatusText">Grabbing media at 1Gbps...</span>
+            </div>
+          </div>
+
+          <!-- Active Player Card -->
+          <div id="playerCard">
+            <div class="player-header">
+              <div>
+                <h3 class="player-title" id="playerTitle">Media Title</h3>
+                <div class="player-meta">
+                  <span id="playerUploader">Channel</span>
+                  <span>•</span>
+                  <span id="playerDuration">00:00</span>
+                  <span>•</span>
+                  <span id="playerSize">0.0 MB</span>
+                </div>
+              </div>
+              <button class="action-btn" onclick="closePlayer()" style="font-size: 0.9rem;">✕ Close</button>
+            </div>
+
+            <video id="playerVideo" controls playsinline style="width: 100%; max-height: 480px; border-radius: 8px; background: #000; margin-top: 10px; display: none;"></video>
+            <audio id="playerAudio" controls style="width: 100%; margin-top: 10px; display: none;"></audio>
+
+            <div class="player-actions">
+              <a id="playerDownloadBtn" href="#" class="btn-success">📥 Download to Linux Mint</a>
+              <button class="action-btn" onclick="copyStreamLink()">📋 Copy Stream Link</button>
+            </div>
+          </div>
+
+          <!-- Media Library List -->
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+            <h3 style="color: #cbd5e1; margin: 0;">Saved Media on VPS</h3>
+            <span id="diskInfo" style="font-size: 0.85rem; color: var(--text-muted);">Loading storage...</span>
+          </div>
+
+          <table>
+            <thead>
+              <tr>
+                <th>Title / Media</th>
+                <th>Format</th>
+                <th>Duration / Size</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody id="mediaTableBody">
+              <tr><td colspan="4" style="padding: 24px; text-align: center; color: var(--text-muted);">Loading media library...</td></tr>
+            </tbody>
+          </table>
+
+          <div class="meta-info">
+            Downloaded directly on your VPS. Click <b>Stream</b> to watch instantly in your browser or <b>Download</b> to save to Linux Mint.
+          </div>
         </div>
+
       </div>
 
       <script>
+        const API_TOKEN = {token_js};
+        const TOKEN_PARAM = {json.dumps(token_param)};
+        let activeStreamUrl = '';
+
+        function switchTab(tab) {{
+          document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+          document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+
+          if (tab === 'articles') {{
+            document.getElementById('tabArticlesBtn').classList.add('active');
+            document.getElementById('tabArticles').classList.add('active');
+            window.location.hash = 'articles';
+          }} else {{
+            document.getElementById('tabMediaBtn').classList.add('active');
+            document.getElementById('tabMedia').classList.add('active');
+            window.location.hash = 'media';
+            loadMediaLibrary();
+          }}
+        }}
+
+        // Handle initial tab from URL hash
+        if (window.location.hash === '#articles') {{
+          switchTab('articles');
+        }} else {{
+          switchTab('media');
+        }}
+
+        // Article Archive function
         function archiveUrl() {{
           const url = document.getElementById('urlInput').value.trim();
           if (!url) return;
-          window.location.href = '/archive?url=' + encodeURIComponent(url) + '{token_param}';
+          window.location.href = '/archive?url=' + encodeURIComponent(url) + TOKEN_PARAM;
         }}
         document.getElementById('urlInput').addEventListener('keydown', (e) => {{
           if (e.key === 'Enter') archiveUrl();
         }});
+
+        // Media Downloader logic
+        async function grabMedia() {{
+          const urlInput = document.getElementById('mediaUrlInput');
+          const url = urlInput.value.trim();
+          if (!url) return;
+
+          const format = document.querySelector('input[name="mediaFormat"]:checked').value;
+          const statusBox = document.getElementById('mediaStatusBox');
+          const statusText = document.getElementById('mediaStatusText');
+          const spinner = document.getElementById('mediaSpinner');
+          const grabBtn = document.getElementById('grabBtn');
+
+          statusBox.style.display = 'flex';
+          spinner.style.display = 'block';
+          statusText.textContent = `Grabbing ${{format === 'video' ? 'video' : 'audio'}} from URL at 1Gbps...`;
+          grabBtn.disabled = true;
+          grabBtn.style.opacity = '0.6';
+
+          try {{
+            const tokenQuery = API_TOKEN ? `?token=${{encodeURIComponent(API_TOKEN)}}` : '';
+            const res = await fetch(`/api/media/download${{tokenQuery}}`, {{
+              method: 'POST',
+              headers: {{ 'Content-Type': 'application/json' }},
+              body: JSON.stringify({{ url, format }})
+            }});
+
+            const data = await res.json();
+            if (!res.ok) {{
+              throw new Error(data.detail || 'Download failed');
+            }}
+
+            statusText.textContent = '✅ Finished downloading! Loading player...';
+            spinner.style.display = 'none';
+            setTimeout(() => {{ statusBox.style.display = 'none'; }}, 2000);
+            
+            urlInput.value = '';
+            playMedia(data.media);
+            loadMediaLibrary();
+          }} catch (err) {{
+            statusText.textContent = '❌ ' + err.message;
+            spinner.style.display = 'none';
+          }} finally {{
+            grabBtn.disabled = false;
+            grabBtn.style.opacity = '1';
+          }}
+        }}
+
+        document.getElementById('mediaUrlInput').addEventListener('keydown', (e) => {{
+          if (e.key === 'Enter') grabMedia();
+        }});
+
+        function playMedia(item) {{
+          const card = document.getElementById('playerCard');
+          const title = document.getElementById('playerTitle');
+          const uploader = document.getElementById('playerUploader');
+          const duration = document.getElementById('playerDuration');
+          const size = document.getElementById('playerSize');
+          const video = document.getElementById('playerVideo');
+          const audio = document.getElementById('playerAudio');
+          const dlBtn = document.getElementById('playerDownloadBtn');
+
+          title.textContent = item.title;
+          uploader.textContent = item.uploader || 'Web Stream';
+          duration.textContent = item.duration_str || '--:--';
+          size.textContent = item.size_mb + ' MB';
+
+          const tokenQuery = API_TOKEN ? `?token=${{encodeURIComponent(API_TOKEN)}}` : '';
+          activeStreamUrl = `/api/media/stream/${{item.id}}${{tokenQuery}}`;
+          dlBtn.href = `/api/media/download/${{item.id}}${{tokenQuery}}`;
+          dlBtn.setAttribute('download', item.filename);
+
+          if (item.format === 'audio') {{
+            video.style.display = 'none';
+            video.pause();
+            audio.src = activeStreamUrl;
+            audio.style.display = 'block';
+            audio.play();
+          }} else {{
+            audio.style.display = 'none';
+            audio.pause();
+            video.src = activeStreamUrl;
+            video.style.display = 'block';
+            video.play();
+          }}
+
+          card.style.display = 'block';
+          card.scrollIntoView({{ behavior: 'smooth', block: 'start' }});
+        }}
+
+        function closePlayer() {{
+          const video = document.getElementById('playerVideo');
+          const audio = document.getElementById('playerAudio');
+          video.pause();
+          audio.pause();
+          document.getElementById('playerCard').style.display = 'none';
+        }}
+
+        function copyStreamLink() {{
+          if (!activeStreamUrl) return;
+          const fullUrl = window.location.origin + activeStreamUrl;
+          navigator.clipboard.writeText(fullUrl).then(() => {{
+            alert('Stream link copied to clipboard!');
+          }});
+        }}
+
+        async function loadMediaLibrary() {{
+          const tbody = document.getElementById('mediaTableBody');
+          const diskInfo = document.getElementById('diskInfo');
+          const tokenQuery = API_TOKEN ? `?token=${{encodeURIComponent(API_TOKEN)}}` : '';
+
+          try {{
+            const res = await fetch(`/api/media/list${{tokenQuery}}`);
+            if (!res.ok) throw new Error('Failed to load media');
+            const data = await res.json();
+
+            if (data.disk) {{
+              diskInfo.textContent = `💾 ${{data.disk.free_gb}} GB Free on VPS`;
+            }}
+
+            if (!data.items || data.items.length === 0) {{
+              tbody.innerHTML = '<tr><td colspan="4" style="padding: 24px; text-align: center; color: var(--text-muted);">No saved media on VPS yet. Paste a link above to grab your first video!</td></tr>';
+              return;
+            }}
+
+            tbody.innerHTML = data.items.map(item => {{
+              const isAudio = item.format === 'audio';
+              const pillClass = isAudio ? 'pill-audio' : 'pill-video';
+              const itemJson = JSON.stringify(item).replace(/"/g, '&quot;');
+              return `
+                <tr style="border-bottom: 1px solid var(--border);">
+                  <td style="padding: 12px 14px;">
+                    <div style="font-weight: 600; color: #e0f2fe; margin-bottom: 4px;">${{escapeHtml(item.title)}}</div>
+                    <div style="font-size: 0.8rem; color: var(--text-muted);">${{escapeHtml(item.uploader || 'Unknown')}} • ${{new Date(item.created_at).toLocaleDateString()}}</div>
+                  </td>
+                  <td style="padding: 12px 14px;">
+                    <span class="pill-tag ${{pillClass}}">${{item.format}}</span>
+                  </td>
+                  <td style="padding: 12px 14px; color: #cbd5e1; font-size: 0.85rem;">
+                    ${{item.duration_str}} • ${{item.size_mb}} MB
+                  </td>
+                  <td style="padding: 12px 14px; display: flex; gap: 8px;">
+                    <button class="action-btn" onclick='playMedia(${{itemJson}})' style="color: #38bdf8; border-color: #0284c7;">▶️ Stream</button>
+                    <a class="action-btn" href="/api/media/download/${{item.id}}${{tokenQuery}}" download="${{escapeHtml(item.filename)}}">⬇️ DL</a>
+                    <button class="action-btn action-delete" onclick="deleteMedia('${{item.id}}')">🗑️</button>
+                  </td>
+                </tr>
+              `;
+            }}).join('');
+          }} catch (e) {{
+            tbody.innerHTML = '<tr><td colspan="4" style="padding: 24px; text-align: center; color: #f87171;">Error loading media library.</td></tr>';
+          }}
+        }}
+
+        async function deleteMedia(id) {{
+          if (!confirm('Are you sure you want to delete this media file from the VPS?')) return;
+          const tokenQuery = API_TOKEN ? `?token=${{encodeURIComponent(API_TOKEN)}}` : '';
+          try {{
+            const res = await fetch(`/api/media/${{id}}${{tokenQuery}}`, {{ method: 'DELETE' }});
+            if (res.ok) {{
+              loadMediaLibrary();
+            }} else {{
+              alert('Failed to delete media');
+            }}
+          }} catch (e) {{
+            alert('Error deleting media: ' + e.message);
+          }}
+        }}
+
+        function escapeHtml(str) {{
+          if (!str) return '';
+          return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
+        }}
       </script>
     </body>
     </html>
@@ -1824,3 +2559,4 @@ def dashboard(token: str = Query(None)):
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run("app:app", host="0.0.0.0", port=PORT, reload=False)
+
