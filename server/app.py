@@ -5,6 +5,8 @@ import hashlib
 import asyncio
 import logging
 import re
+import socket
+import ipaddress
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
 from urllib.parse import urlparse, quote
@@ -32,6 +34,17 @@ API_TOKEN = os.getenv("API_TOKEN", "")
 STORAGE_DIR = Path(os.getenv("STORAGE_DIR", "/home/hermes/personal-archiver/snapshots"))
 IMAGE_CACHE_DIR = STORAGE_DIR / "image_cache"
 BASE_URL = os.getenv("BASE_URL", "http://localhost:8888").rstrip("/")
+MAX_IMAGE_SIZE = int(os.getenv("MAX_IMAGE_SIZE_BYTES", str(20 * 1024 * 1024)))  # 20MB limit
+MAX_CONCURRENT_ARCHIVES = int(os.getenv("MAX_CONCURRENT_ARCHIVES", "2"))
+ALLOW_PRIVATE_IPS = os.getenv("ALLOW_PRIVATE_IPS", "false").lower() in ("true", "1", "yes")
+
+_ARCHIVE_SEMAPHORE: Optional[asyncio.Semaphore] = None
+
+def get_archive_semaphore() -> asyncio.Semaphore:
+    global _ARCHIVE_SEMAPHORE
+    if _ARCHIVE_SEMAPHORE is None:
+        _ARCHIVE_SEMAPHORE = asyncio.Semaphore(MAX_CONCURRENT_ARCHIVES)
+    return _ARCHIVE_SEMAPHORE
 
 STORAGE_DIR.mkdir(parents=True, exist_ok=True)
 IMAGE_CACHE_DIR.mkdir(parents=True, exist_ok=True)
@@ -65,13 +78,92 @@ BLOCKED_DOMAINS = [
     "taboola.com"
 ]
 
+def is_ip_prohibited(ip: ipaddress.IPv4Address | ipaddress.IPv6Address) -> bool:
+    if ip.is_private or ip.is_loopback or ip.is_link_local or ip.is_reserved or ip.is_multicast or ip.is_unspecified:
+        return True
+    if hasattr(ip, "ipv4_mapped") and ip.ipv4_mapped:
+        mapped = ip.ipv4_mapped
+        if mapped.is_private or mapped.is_loopback or mapped.is_link_local or mapped.is_reserved or mapped.is_multicast or mapped.is_unspecified:
+            return True
+    return False
+
+def is_obvious_private_host(hostname: str) -> bool:
+    h = hostname.strip().lower()
+    if h in ("localhost", "127.0.0.1", "0.0.0.0", "::1", "[::1]"):
+        return True
+    if h.startswith("10.") or h.startswith("192.168.") or h.startswith("169.254."):
+        return True
+    return False
+
+def validate_url_safety(url_str: str):
+    if ALLOW_PRIVATE_IPS:
+        return
+
+    try:
+        parsed = urllib.parse.urlparse(url_str)
+    except Exception:
+        raise HTTPException(status_code=400, detail="Malformed URL")
+
+    if parsed.scheme not in ("http", "https"):
+        raise HTTPException(status_code=400, detail="Only HTTP and HTTPS URLs are permitted.")
+
+    hostname = parsed.hostname
+    if not hostname:
+        raise HTTPException(status_code=400, detail="Missing or invalid hostname in URL")
+
+    if is_obvious_private_host(hostname):
+        logger.warning(f"Blocked SSRF attempt to private/local host: {hostname}")
+        raise HTTPException(status_code=403, detail="Access to private or local network addresses is prohibited.")
+
+    try:
+        addr_info = socket.getaddrinfo(hostname, None)
+    except socket.gaierror:
+        raise HTTPException(status_code=404, detail=f"Could not resolve host: {hostname}")
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Hostname resolution error: {str(e)}")
+
+    if not addr_info:
+        raise HTTPException(status_code=404, detail="No IP address found for host")
+
+    for info in addr_info:
+        sockaddr = info[4]
+        ip_str = sockaddr[0]
+        try:
+            ip = ipaddress.ip_address(ip_str)
+            if is_ip_prohibited(ip):
+                logger.warning(f"Blocked SSRF attempt to forbidden IP {ip_str} (host: {hostname})")
+                raise HTTPException(status_code=403, detail="Access to private or local network addresses is prohibited.")
+        except HTTPException:
+            raise
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Invalid IP address format")
+
+class SafeRedirectHandler(urllib.request.HTTPRedirectHandler):
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        validate_url_safety(newurl)
+        return super().redirect_request(req, fp, code, msg, headers, newurl)
+
+def set_auth_cookie_if_valid(response: Response, token: Optional[str]):
+    if token and API_TOKEN and token.strip() == API_TOKEN:
+        response.set_cookie(
+            key="lens_token",
+            value=token.strip(),
+            max_age=2592000,
+            httponly=True,
+            samesite="lax",
+            secure=False
+        )
+
 def verify_token(req: Request, token: str = Query(None)):
     auth_header = req.headers.get("Authorization")
+    cookie_token = req.cookies.get("lens_token")
     provided_token = None
     if auth_header and auth_header.startswith("Bearer "):
         provided_token = auth_header.split(" ", 1)[1].strip()
     elif token:
         provided_token = token.strip()
+    elif cookie_token:
+        provided_token = cookie_token.strip()
     
     if API_TOKEN and provided_token != API_TOKEN:
         raise HTTPException(status_code=401, detail="Unauthorized: Invalid or missing API token")
@@ -344,6 +436,8 @@ def sanitize_and_save_snapshot(raw_html: str, resolved_url: str, target_url: str
     return meta
 
 async def capture_page(target_url: str) -> dict:
+    validate_url_safety(target_url)
+
     url_hash = hashlib.sha256(target_url.encode()).hexdigest()[:16]
     now = datetime.now(timezone.utc)
     date_str = now.strftime("%Y%m%d_%H%M%S")
@@ -355,82 +449,83 @@ async def capture_page(target_url: str) -> dict:
     resolved_url = target_url
     last_html_candidate = ""
 
-    async with async_playwright() as p:
-        browser = await p.chromium.launch(
-            headless=True,
-            args=[
-                "--no-sandbox",
-                "--disable-setuid-sandbox",
-                "--disable-dev-shm-usage",
-                "--disable-blink-features=AutomationControlled",
-                "--disable-features=IsolateOrigins,site-per-process"
-            ]
-        )
-
-        for profile in UA_PROFILES:
-            logger.info(f"Attempting fetch with profile: {profile['name']}")
-            context = await browser.new_context(
-                viewport={"width": 1280, "height": 900},
-                user_agent=profile["ua"],
-                extra_http_headers=profile.get("headers", {})
+    async with get_archive_semaphore():
+        async with async_playwright() as p:
+            browser = await p.chromium.launch(
+                headless=True,
+                args=[
+                    "--no-sandbox",
+                    "--disable-setuid-sandbox",
+                    "--disable-dev-shm-usage",
+                    "--disable-blink-features=AutomationControlled",
+                    "--disable-features=IsolateOrigins,site-per-process"
+                ]
             )
 
-            page = await context.new_page()
+            for profile in UA_PROFILES:
+                logger.info(f"Attempting fetch with profile: {profile['name']}")
+                context = await browser.new_context(
+                    viewport={"width": 1280, "height": 900},
+                    user_agent=profile["ua"],
+                    extra_http_headers=profile.get("headers", {})
+                )
 
-            async def route_interceptor(route):
-                req_url = route.request.url.lower()
-                if any(blocked in req_url for blocked in BLOCKED_DOMAINS):
-                    await route.abort()
-                else:
-                    await route.continue_()
+                page = await context.new_page()
 
-            await page.route("**/*", route_interceptor)
+                async def route_interceptor(route):
+                    req_url = route.request.url.lower()
+                    if any(blocked in req_url for blocked in BLOCKED_DOMAINS):
+                        await route.abort()
+                    else:
+                        await route.continue_()
 
-            try:
-                resp = await page.goto(target_url, wait_until="domcontentloaded", timeout=20000)
-                status_code = resp.status if resp else 200
+                await page.route("**/*", route_interceptor)
 
-                # Check if Cloudflare challenge is present and give it a few seconds to auto-resolve
-                page_title = (await page.title()).lower()
-                html_candidate = await page.content()
-                if "just a moment..." in page_title or "challenge-platform" in html_candidate:
-                    for _ in range(5):
-                        await asyncio.sleep(1.0)
-                        if "just a moment..." not in (await page.title()).lower():
-                            break
-                    html_candidate = await page.content()
-                    status_code = 200 if "just a moment..." not in (await page.title()).lower() else status_code
-
-                last_html_candidate = html_candidate
-
-                # Scroll down to trigger lazy loading of images
-                await page.evaluate("""async () => {
-                    window.scrollBy(0, window.innerHeight * 1.5);
-                    await new Promise(r => setTimeout(r, 600));
-                    window.scrollTo(0, 0);
-                }""")
-                await asyncio.sleep(1.0)
-
-                html_candidate = await page.content()
-                last_html_candidate = html_candidate
-                resolved_url = page.url or target_url
-
-                if not is_blocked_response(status_code, html_candidate):
-                    logger.info(f"Success with {profile['name']} for {resolved_url}")
-                    raw_html = html_candidate
-                    await context.close()
-                    break
-                else:
-                    logger.warning(f"Profile {profile['name']} was blocked or returned status {status_code}. Retrying with next profile...")
-            except Exception as e:
-                logger.warning(f"Fetch failed with {profile['name']}: {e}")
-            finally:
                 try:
-                    await context.close()
-                except Exception:
-                    pass
+                    resp = await page.goto(target_url, wait_until="domcontentloaded", timeout=20000)
+                    status_code = resp.status if resp else 200
 
-        await browser.close()
+                    # Check if Cloudflare challenge is present and give it a few seconds to auto-resolve
+                    page_title = (await page.title()).lower()
+                    html_candidate = await page.content()
+                    if "just a moment..." in page_title or "challenge-platform" in html_candidate:
+                        for _ in range(5):
+                            await asyncio.sleep(1.0)
+                            if "just a moment..." not in (await page.title()).lower():
+                                break
+                        html_candidate = await page.content()
+                        status_code = 200 if "just a moment..." not in (await page.title()).lower() else status_code
+
+                    last_html_candidate = html_candidate
+
+                    # Scroll down to trigger lazy loading of images
+                    await page.evaluate("""async () => {
+                        window.scrollBy(0, window.innerHeight * 1.5);
+                        await new Promise(r => setTimeout(r, 600));
+                        window.scrollTo(0, 0);
+                    }""")
+                    await asyncio.sleep(1.0)
+
+                    html_candidate = await page.content()
+                    last_html_candidate = html_candidate
+                    resolved_url = page.url or target_url
+
+                    if not is_blocked_response(status_code, html_candidate):
+                        logger.info(f"Success with {profile['name']} for {resolved_url}")
+                        raw_html = html_candidate
+                        await context.close()
+                        break
+                    else:
+                        logger.warning(f"Profile {profile['name']} was blocked or returned status {status_code}. Retrying with next profile...")
+                except Exception as e:
+                    logger.warning(f"Fetch failed with {profile['name']}: {e}")
+                finally:
+                    try:
+                        await context.close()
+                    except Exception:
+                        pass
+
+            await browser.close()
 
     if not raw_html:
         lowered_cand = last_html_candidate.lower()
@@ -459,8 +554,9 @@ class PushArchiveRequest(BaseModel):
     title: Optional[str] = ""
 
 @app.post("/archive/push")
-async def push_archive(data: PushArchiveRequest, request: Request, token: str = Query(None)):
+async def push_archive(data: PushArchiveRequest, request: Request, response: Response, token: str = Query(None)):
     verify_token(request, token)
+    set_auth_cookie_if_valid(response, token)
     if not data.html or not data.url:
         raise HTTPException(status_code=400, detail="Missing target URL or HTML payload")
     
@@ -479,13 +575,17 @@ def health():
     }
 
 @app.get("/archive", response_class=HTMLResponse)
-async def archive_web_view(request: Request, url: str = Query(...), token: str = Query(None)):
+async def archive_web_view(request: Request, response: Response, url: str = Query(...), token: str = Query(None)):
     """Browser entrypoint: Shows instant responsive loading page while unpaywalling."""
     verify_token(request, token)
     
     # Check if we already have this URL cached recently (within 5 mins)
     if url in recent_cache:
-        return RedirectResponse(recent_cache[url]["view_url"])
+        redirect_resp = RedirectResponse(recent_cache[url]["view_url"])
+        set_auth_cookie_if_valid(redirect_resp, token)
+        return redirect_resp
+
+    set_auth_cookie_if_valid(response, token)
 
     token_param = f"&token={token}" if token else ""
     url_json = json.dumps(url)
@@ -595,9 +695,10 @@ async def archive_web_view(request: Request, url: str = Query(...), token: str =
     """
 
 @app.post("/api/archive")
-async def api_archive(request: Request, url: str = Query(None), token: str = Query(None)):
+async def api_archive(request: Request, response: Response, url: str = Query(None), token: str = Query(None)):
     """API endpoint to trigger an archive job."""
     verify_token(request, token)
+    set_auth_cookie_if_valid(response, token)
     
     target_url = url
     if not target_url:
@@ -629,6 +730,9 @@ async def proxy_image(url: str = Query(...)):
     if not url or not url.startswith(("http://", "https://")):
         raise HTTPException(status_code=400, detail="Invalid image URL")
 
+    # SSRF Protection: Validate target URL before proceeding
+    validate_url_safety(url)
+
     url_hash = hashlib.sha256(url.encode()).hexdigest()
     ext = ".jpg"
     clean_url = url.split("?")[0].lower()
@@ -657,16 +761,44 @@ async def proxy_image(url: str = Query(...)):
         )
         loop = asyncio.get_event_loop()
         def fetch():
-            with urllib.request.urlopen(req, timeout=12) as resp:
-                data = resp.read()
+            opener = urllib.request.build_opener(SafeRedirectHandler)
+            with opener.open(req, timeout=12) as resp:
+                # Upfront Content-Length check to prevent DoS / OOM
+                cl = resp.headers.get("Content-Length")
+                if cl:
+                    try:
+                        if int(cl) > MAX_IMAGE_SIZE:
+                            max_mb = MAX_IMAGE_SIZE // (1024 * 1024)
+                            raise HTTPException(status_code=413, detail=f"Image exceeds limit of {max_mb}MB")
+                    except ValueError:
+                        pass
+
+                # Stream response in bounded chunks
+                chunks = []
+                total = 0
+                chunk_size = 64 * 1024
+                while True:
+                    chunk = resp.read(chunk_size)
+                    if not chunk:
+                        break
+                    total += len(chunk)
+                    if total > MAX_IMAGE_SIZE:
+                        max_mb = MAX_IMAGE_SIZE // (1024 * 1024)
+                        raise HTTPException(status_code=413, detail=f"Image exceeds limit of {max_mb}MB")
+                    chunks.append(chunk)
+
+                data = b"".join(chunks)
                 ct = resp.headers.get("Content-Type", "image/jpeg")
                 return data, ct
+
         data, content_type = await loop.run_in_executor(None, fetch)
 
         with open(cached_path, "wb") as f:
             f.write(data)
 
         return Response(content=data, media_type=content_type, headers={"Cache-Control": "public, max-age=2592000"})
+    except HTTPException:
+        raise
     except Exception as e:
         logger.warning(f"Failed to proxy image {url}: {e}")
         raise HTTPException(status_code=404, detail="Image could not be retrieved")

@@ -232,8 +232,11 @@ This dual-architecture guarantees **100% archive capability across all sites**, 
 
 | Threat | Risk Level | Mitigation in VPS Archive Lens |
 | :--- | :--- | :--- |
-| **Malicious Scripts in Snapshots** | High | All `<script>` elements and dynamic loaders are stripped from the DOM before storage or replay. |
-| **Unauthorized Proxy Usage (Open Relay)** | High | The `/archive` and `/list` endpoints require strict `API_TOKEN` verification via headers or query parameters. |
-| **Server-Side Request Forgery (SSRF)** | Medium | The image proxy only accepts `http://` and `https://` schemas and blocks loopback/internal RFC1918 IPs by default. |
+| **Server-Side Request Forgery (SSRF)** | Critical | Strict URL scheme validation (`http`/`https`), DNS pre-resolution blocking private, loopback, link-local, cloud metadata (`169.254.169.254`), and IPv6 mapped addresses. 30x redirects are intercepted and re-validated via `SafeRedirectHandler`. |
+| **DoS / Memory Exhaustion via Large Files** | High | Upfront `Content-Length` inspection and chunked streaming enforcement with a hard 20MB ceiling (`MAX_IMAGE_SIZE_BYTES`). |
+| **RAM / CPU Starvation via Concurrent Chromium** | High | Concurrent Playwright browser sessions are strictly throttled via `asyncio.Semaphore(MAX_CONCURRENT_ARCHIVES)` (default: 2). |
+| **Malicious Scripts in Snapshots** | High | All `<script>` and `<noscript>` elements and dynamic loaders are stripped from the DOM before storage or replay. |
+| **Unauthorized Proxy Usage (Open Relay)** | High | The `/archive`, `/archive/push`, and `/api/archive` endpoints require strict `API_TOKEN` verification via headers, query params, or session cookies. |
+| **Token Leakage in History / Referrers** | Medium | Seamless cookie auto-upgrade: passing a valid `?token=` sets an `HttpOnly`, `SameSite=Lax` `lens_token` cookie, allowing query strings to be cleanly omitted on subsequent visits. |
 | **Referrer & Privacy Leakage** | Low | Snapshots and Reader Views inject `<meta name="referrer" content="no-referrer">`, preventing source URLs from leaking to third parties. |
 | **Disk Exhaustion (DoS)** | Medium | Bounded retention pruning automatically deletes snapshots and cached images older than 90 days. |
