@@ -2,12 +2,13 @@
   "manifest_version": 3,
   "name": "VPS Archive Lens",
   "version": "1.0.0",
-  "description": "Right-click to bypass paywalls and region blocks using your personal VPS web archiver.",
+  "description": "Right-click to bypass paywalls and region blocks using your personal Hetzner VPS archiver.",
   "permissions": [
     "contextMenus",
     "storage",
     "activeTab",
-    "tabs"
+    "tabs",
+    "scripting"
   ],
   "background": {
     "service_worker": "background.js"

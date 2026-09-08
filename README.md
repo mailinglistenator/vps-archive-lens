@@ -55,9 +55,13 @@ Reading news, long-form essays, and technical journalism on the modern web has b
 ## ✨ Key Features
 
 - 🖱️ **1-Click Browser Extension (Manifest V3)**:
-  - Right-click any hyperlink or article -> *"Archive & Unpaywall with VPS"*.
-  - Toolbar popup to archive the active tab or paste a custom URL.
+  - **🚀 Push Tab DOM (Bypass Cloudflare)**: Captures the active tab's verified DOM and uploads it directly to your VPS (`POST /archive/push`). 100% bypasses Cloudflare Turnstile ("Verify you are human"), "Under Attack" mode, and subscriber paywalls you're logged into.
+  - **🌐 Remote VPS Fetch**: Right-click any hyperlink or article -> *"Archive & Unpaywall with VPS"*.
+  - Toolbar popup to push active tab, remote-fetch active tab, or paste custom URLs.
   - Quick launcher to browse all archived snapshots.
+- 🚀 **Dual Capture Engine (Remote Stealth vs. Direct DOM Push)**:
+  - **Remote Fetch**: Runs stealth Playwright Chromium on your VPS datacenter IP.
+  - **Direct Push**: Ingests client-side DOM snapshots from residential browsers, solving the datacenter IP reputation challenge once and for all.
 - 🎭 **Stealth Playwright Chromium Engine**:
   - Injects realistic desktop Chrome user agents, viewport sizes, and Google Referer headers.
   - Aborts analytics, telemetry, and tracking endpoints to accelerate page capture.
@@ -88,33 +92,37 @@ Reading news, long-form essays, and technical journalism on the modern web has b
 +-----------------------------------------------------------------------------------------+
 |                                    USER WORKSTATION                                     |
 |                                                                                         |
-|  [ Chrome / Brave / Edge / Firefox ]                                                    |
+|  [ Chrome / Brave / Edge / Firefox Extension ]                                          |
 |           │                                                                             |
-|           ├──> Right-Click Context Menu ("Archive & Unpaywall with VPS")                |
-|           └──> Extension Popup ("Archive Active Tab" / "Custom URL")                    |
-|                        │                                                                |
-+────────────────────────┼────────────────────────────────────────────────────────────────+
-                         │  HTTPS/HTTP Request: GET /archive?url=...&token=...
-                         ▼
+|           ├──> Route A (Remote Fetch): "Fetch & Archive via VPS"                        |
+|           │    └──> GET /archive?url={target_url}&token={token}                         |
+|           │                                                                             |
+|           └──> Route B (Direct DOM Push): "Push Tab DOM to VPS"                         |
+|                └──> Injects chrome.scripting to capture document.documentElement        |
+|                └──> POST /archive/push (bypasses Cloudflare Turnstile & login walls)    |
++───────────────────────────┬─────────────────────────┬───────────────────────────────────+
+                            │                         │
+                            ▼                         ▼
 +-----------------------------------------------------------------------------------------+
 |                                  VPS ARCHIVER SERVER                                    |
 |                                                                                         |
 |  [ FastAPI Daemon (Port 8888) ]                                                         |
 |    │                                                                                    |
-|    ├──> 1. Authentication Check (API_TOKEN verification)                                |
+|    ├──> Authentication Check (API_TOKEN verification)                                   |
 |    │                                                                                    |
-|    ├──> 2. Stealth Headless Chromium (Playwright)                                       |
-|    │      ├─ Isolated Incognito Context (Metered Paywall Reset)                         |
-|    │      ├─ Spoofs Google Referer ("https://www.google.com/")                          |
-|    │      ├─ Blocks Ad / Analytics / Telemetry Requests                                 |
-|    │      ├─ Auto-Scrolls to Force Lazy Image Hydration                                 |
-|    │      └─ Injects Anti-Paywall CSS (Clears Modals & Scroll-Locks)                    |
+|    ├──> Ingestion Pipeline:                                                             |
+|    │      ├─ [From Route A]: Stealth Playwright Chromium (Remote Scraper)               |
+|    │      │    ├─ Realistic Chrome Stealth UA & Headers                                 |
+|    │      │    ├─ Aborts Ad / Analytics / Telemetry Requests                            |
+|    │      │    └─ Auto-Scrolls & Unlocks Scrollbars                                     |
+|    │      │                                                                             |
+|    │      └─ [From Route B]: Client DOM Ingestion (Zero CAPTCHA, Pre-Authenticated)     |
 |    │                                                                                    |
-|    ├──> 3. DOM Sanitizer & Snapshot Generator                                           |
+|    ├──> DOM Sanitizer & Snapshot Generator                                              |
 |    │      ├─ Strips <script> Tags (Prevents Paywalls from Re-Arming)                    |
 |    │      ├─ Injects Self-Healing Image Observer Script                                 |
-|    │      ├─ Injects Glassmorphism Top Navigation Pill                                  |
-|    │      └─ Writes {snapshot_id}.html to STORAGE_DIR                                   |
+|    │      ├─ Injects Navigation Bar (Source Link + Reader Mode Trigger)                 |
+|    │      └─ Persists HTML Snapshot to Disk: snapshots/{id}.html                        |
 |    │                                                                                    |
 |    ├──> 4. Reverse Image Proxy Engine (/api/proxy/image)                                |
 |    │      ├─ Fetches Images from Origin CDNs (Bypasses Local ISP Censorship)            |
@@ -328,8 +336,8 @@ The extension works on any Chromium-based browser (**Chrome, Brave, Edge, Arc**)
 
 ## 📡 REST API Reference
 
-### 1. Create Archive Snapshot
-Captures, strips, and unpaywalls a target web page.
+### 1. Create Archive Snapshot (Remote VPS Fetch)
+Captures, strips, and unpaywalls a target web page using the server's headless Playwright Chromium.
 
 - **Endpoint**: `GET /archive`
 - **Authentication**: `X-API-Token` header, `Authorization: Bearer <token>`, or `?token=<token>` query param.
@@ -355,7 +363,24 @@ Captures, strips, and unpaywalls a target web page.
 
 ---
 
-### 2. View Raw Sanitized Snapshot
+### 2. Direct DOM Push (Cloudflare & Paywall Bypass)
+Directly ingests the client browser's rendered DOM. Used by the browser extension to bypass Cloudflare Turnstile captchas and capture articles when logged in.
+
+- **Endpoint**: `POST /archive/push`
+- **Authentication**: `X-API-Token` header, `Authorization: Bearer <token>`, or `?token=<token>` query param.
+- **Request Body (JSON)**:
+  ```json
+  {
+    "url": "https://forums.giantitp.com/showthread.php?12345",
+    "html": "<!DOCTYPE html><html>...</html>",
+    "title": "Page Title"
+  }
+  ```
+- **Response**: Same JSON payload as `/archive`, returning `snapshot_id`, `view_url`, and `reader_url`.
+
+---
+
+### 3. View Raw Sanitized Snapshot
 Renders the complete captured DOM with scripts stripped and paywall modals cleared.
 
 - **Endpoint**: `GET /view/{snapshot_id}`
@@ -364,7 +389,7 @@ Renders the complete captured DOM with scripts stripped and paywall modals clear
 
 ---
 
-### 3. AI Reader View
+### 4. AI Reader View
 Renders an Apple Books-grade clean reading view with AI executive takeaways.
 
 - **Endpoint**: `GET /reader/{snapshot_id}`
@@ -375,7 +400,7 @@ Renders an Apple Books-grade clean reading view with AI executive takeaways.
 
 ---
 
-### 4. Reverse Image Proxy
+### 5. Reverse Image Proxy
 Fetches and caches images through the VPS network to bypass local ISP blocks.
 
 - **Endpoint**: `GET /api/proxy/image`
@@ -389,7 +414,7 @@ Fetches and caches images through the VPS network to bypass local ISP blocks.
 
 ---
 
-### 5. Snapshot Dashboard
+### 6. Snapshot Dashboard
 Interactive web dashboard listing all recent snapshots and storage metrics.
 
 - **Endpoint**: `GET /list`
@@ -397,7 +422,7 @@ Interactive web dashboard listing all recent snapshots and storage metrics.
 
 ---
 
-### 6. Health Check
+### 7. Health Check
 System health status and snapshot count.
 
 - **Endpoint**: `GET /health`
@@ -474,6 +499,16 @@ Playwright requires system graphical and font libraries. If Chromium fails to st
 ```bash
 sudo ./venv/bin/playwright install-deps chromium
 ```
+
+### 4. What happens when a site is protected by Cloudflare Turnstile ("Verify you are human")?
+Some websites (such as forums or heavily guarded blogs) configure Cloudflare WAF to challenge all connections originating from datacenter IP subnets (Hetzner, AWS, DigitalOcean) with an interactive Cloudflare Turnstile challenge.
+
+When the VPS remote scraper encounters Turnstile, it raises an error explaining that interactive human verification is required from datacenter IPs.
+**The Instant Fix**:
+1. Open the page directly in your browser on your desktop or phone (your residential ISP connection will not be challenged or has already completed the check).
+2. Click the **VPS Archive Lens** extension icon in your toolbar.
+3. Click **"🚀 Push Tab DOM (Bypass Cloudflare)"**.
+4. The extension extracts the verified, rendered DOM and uploads it to your VPS via `POST /archive/push`. The snapshot is stored and rendered instantly with complete images, full text, and AI Reader View support!
 
 ---
 

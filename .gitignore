@@ -7,7 +7,6 @@ venv/
 
 # Snapshots storage
 snapshots/
-*.html
 
 # OS & Editor
 .DS_Store

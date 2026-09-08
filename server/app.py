@@ -14,6 +14,8 @@ import urllib.request
 from fastapi import FastAPI, Request, HTTPException, Query, Depends, Response
 from fastapi.responses import HTMLResponse, JSONResponse, FileResponse, RedirectResponse
 from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
+from typing import Optional
 from playwright.async_api import async_playwright
 from bs4 import BeautifulSoup
 import trafilatura
@@ -78,13 +80,8 @@ def verify_token(req: Request, token: str = Query(None)):
 # Cache recent captures in memory for 10 minutes to avoid duplicate work
 recent_cache = {}
 
-# User-Agent profiles: Googlebot gets First-Click-Free/SEO unpaywall access and bypasses CDN datacenter blocks
+# User-Agent profiles: Desktop Chrome first to avoid Cloudflare/WAF bot-impersonator bans; Googlebot as fallback
 UA_PROFILES = [
-    {
-        "name": "Googlebot (SEO / Paywall Bypass)",
-        "ua": "Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)",
-        "headers": {"Accept-Language": "en-US,en;q=0.9"}
-    },
     {
         "name": "Desktop Chrome Stealth",
         "ua": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
@@ -96,6 +93,11 @@ UA_PROFILES = [
             "Sec-Ch-Ua-Platform": '"Windows"',
             "DNT": "1"
         }
+    },
+    {
+        "name": "Googlebot (SEO / Paywall Bypass Fallback)",
+        "ua": "Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)",
+        "headers": {"Accept-Language": "en-US,en;q=0.9"}
     }
 ]
 
@@ -108,89 +110,19 @@ def is_blocked_response(status_code: int, html: str) -> bool:
         "errors.edgesuite.net",
         "checking your browser before accessing",
         "please enable cookies",
-        "cloudflare ray id",
         "you don't have permission to access",
-        "attention required! | cloudflare"
+        "attention required! | cloudflare",
+        "just a moment..."
     ]
     return any(sig in lowered for sig in block_signatures)
 
-async def capture_page(target_url: str) -> dict:
+def sanitize_and_save_snapshot(raw_html: str, resolved_url: str, target_url: str, now: datetime = None) -> dict:
+    if now is None:
+        now = datetime.now(timezone.utc)
     url_hash = hashlib.sha256(target_url.encode()).hexdigest()[:16]
-    now = datetime.now(timezone.utc)
     date_str = now.strftime("%Y%m%d_%H%M%S")
     snapshot_id = f"{date_str}_{url_hash}"
     filepath = STORAGE_DIR / f"{snapshot_id}.html"
-
-    logger.info(f"Starting capture for: {target_url} -> ID: {snapshot_id}")
-
-    raw_html = ""
-    resolved_url = target_url
-
-    async with async_playwright() as p:
-        browser = await p.chromium.launch(
-            headless=True,
-            args=[
-                "--no-sandbox",
-                "--disable-setuid-sandbox",
-                "--disable-dev-shm-usage",
-                "--disable-blink-features=AutomationControlled",
-                "--disable-features=IsolateOrigins,site-per-process"
-            ]
-        )
-
-        for profile in UA_PROFILES:
-            logger.info(f"Attempting fetch with profile: {profile['name']}")
-            context = await browser.new_context(
-                viewport={"width": 1280, "height": 900},
-                user_agent=profile["ua"],
-                extra_http_headers=profile.get("headers", {})
-            )
-
-            page = await context.new_page()
-
-            async def route_interceptor(route):
-                req_url = route.request.url.lower()
-                if any(blocked in req_url for blocked in BLOCKED_DOMAINS):
-                    await route.abort()
-                else:
-                    await route.continue_()
-
-            await page.route("**/*", route_interceptor)
-
-            try:
-                resp = await page.goto(target_url, wait_until="domcontentloaded", timeout=20000)
-                status_code = resp.status if resp else 200
-
-                # Scroll down to trigger lazy loading of images
-                await page.evaluate("""async () => {
-                    window.scrollBy(0, window.innerHeight * 1.5);
-                    await new Promise(r => setTimeout(r, 600));
-                    window.scrollTo(0, 0);
-                }""")
-                await asyncio.sleep(1.0)
-
-                html_candidate = await page.content()
-                resolved_url = page.url or target_url
-
-                if not is_blocked_response(status_code, html_candidate):
-                    logger.info(f"Success with {profile['name']} for {resolved_url}")
-                    raw_html = html_candidate
-                    await context.close()
-                    break
-                else:
-                    logger.warning(f"Profile {profile['name']} was blocked or returned status {status_code}. Retrying with next profile...")
-            except Exception as e:
-                logger.warning(f"Fetch failed with {profile['name']}: {e}")
-            finally:
-                try:
-                    await context.close()
-                except Exception:
-                    pass
-
-        await browser.close()
-
-    if not raw_html:
-        raise HTTPException(status_code=502, detail="Failed to fetch page: All bypass profiles were blocked by the destination server.")
 
     # Process and sanitize HTML with BeautifulSoup
     soup = BeautifulSoup(raw_html, "html.parser")
@@ -405,9 +337,135 @@ async def capture_page(target_url: str) -> dict:
         "url": target_url,
         "filename": f"{snapshot_id}.html",
         "created_at": now.isoformat(),
-        "view_url": f"{BASE_URL}/view/{snapshot_id}"
+        "view_url": f"{BASE_URL}/view/{snapshot_id}",
+        "reader_url": f"{BASE_URL}/reader/{snapshot_id}"
     }
     recent_cache[target_url] = meta
+    return meta
+
+async def capture_page(target_url: str) -> dict:
+    url_hash = hashlib.sha256(target_url.encode()).hexdigest()[:16]
+    now = datetime.now(timezone.utc)
+    date_str = now.strftime("%Y%m%d_%H%M%S")
+    snapshot_id = f"{date_str}_{url_hash}"
+
+    logger.info(f"Starting capture for: {target_url} -> ID: {snapshot_id}")
+
+    raw_html = ""
+    resolved_url = target_url
+    last_html_candidate = ""
+
+    async with async_playwright() as p:
+        browser = await p.chromium.launch(
+            headless=True,
+            args=[
+                "--no-sandbox",
+                "--disable-setuid-sandbox",
+                "--disable-dev-shm-usage",
+                "--disable-blink-features=AutomationControlled",
+                "--disable-features=IsolateOrigins,site-per-process"
+            ]
+        )
+
+        for profile in UA_PROFILES:
+            logger.info(f"Attempting fetch with profile: {profile['name']}")
+            context = await browser.new_context(
+                viewport={"width": 1280, "height": 900},
+                user_agent=profile["ua"],
+                extra_http_headers=profile.get("headers", {})
+            )
+
+            page = await context.new_page()
+
+            async def route_interceptor(route):
+                req_url = route.request.url.lower()
+                if any(blocked in req_url for blocked in BLOCKED_DOMAINS):
+                    await route.abort()
+                else:
+                    await route.continue_()
+
+            await page.route("**/*", route_interceptor)
+
+            try:
+                resp = await page.goto(target_url, wait_until="domcontentloaded", timeout=20000)
+                status_code = resp.status if resp else 200
+
+                # Check if Cloudflare challenge is present and give it a few seconds to auto-resolve
+                page_title = (await page.title()).lower()
+                html_candidate = await page.content()
+                if "just a moment..." in page_title or "challenge-platform" in html_candidate:
+                    for _ in range(5):
+                        await asyncio.sleep(1.0)
+                        if "just a moment..." not in (await page.title()).lower():
+                            break
+                    html_candidate = await page.content()
+                    status_code = 200 if "just a moment..." not in (await page.title()).lower() else status_code
+
+                last_html_candidate = html_candidate
+
+                # Scroll down to trigger lazy loading of images
+                await page.evaluate("""async () => {
+                    window.scrollBy(0, window.innerHeight * 1.5);
+                    await new Promise(r => setTimeout(r, 600));
+                    window.scrollTo(0, 0);
+                }""")
+                await asyncio.sleep(1.0)
+
+                html_candidate = await page.content()
+                last_html_candidate = html_candidate
+                resolved_url = page.url or target_url
+
+                if not is_blocked_response(status_code, html_candidate):
+                    logger.info(f"Success with {profile['name']} for {resolved_url}")
+                    raw_html = html_candidate
+                    await context.close()
+                    break
+                else:
+                    logger.warning(f"Profile {profile['name']} was blocked or returned status {status_code}. Retrying with next profile...")
+            except Exception as e:
+                logger.warning(f"Fetch failed with {profile['name']}: {e}")
+            finally:
+                try:
+                    await context.close()
+                except Exception:
+                    pass
+
+        await browser.close()
+
+    if not raw_html:
+        lowered_cand = last_html_candidate.lower()
+        if "turnstile" in lowered_cand or "verify you are human" in lowered_cand or "challenges.cloudflare.com" in lowered_cand or "just a moment..." in lowered_cand:
+            raise HTTPException(
+                status_code=502,
+                detail="Cloudflare Turnstile Protected: This site requires interactive human verification from datacenter IPs. Use 'Archive Active Tab (Direct DOM)' from the VPS Archive Lens extension to archive directly from your browser session."
+            )
+        raise HTTPException(status_code=502, detail="Failed to fetch page: All bypass profiles were blocked by the destination server.")
+
+    return sanitize_and_save_snapshot(raw_html, resolved_url, target_url, now)
+
+async def prune_old_snapshots(days: int = 90):
+    try:
+        now_ts = time.time()
+        max_age_secs = days * 86400
+        for f in STORAGE_DIR.glob("*.html"):
+            if now_ts - f.stat().st_mtime > max_age_secs:
+                f.unlink(missing_ok=True)
+    except Exception as e:
+        logger.warning(f"Snapshot pruning failed: {e}")
+
+class PushArchiveRequest(BaseModel):
+    url: str
+    html: str
+    title: Optional[str] = ""
+
+@app.post("/archive/push")
+async def push_archive(data: PushArchiveRequest, request: Request, token: str = Query(None)):
+    verify_token(request, token)
+    if not data.html or not data.url:
+        raise HTTPException(status_code=400, detail="Missing target URL or HTML payload")
+    
+    meta = sanitize_and_save_snapshot(data.html, data.url, data.url)
+    asyncio.create_task(prune_old_snapshots())
     return meta
 
 @app.get("/health")
@@ -514,7 +572,20 @@ async def archive_web_view(request: Request, url: str = Query(...), token: str =
             document.getElementById("spinner").style.display = "none";
             const errDiv = document.getElementById("error-msg");
             errDiv.style.display = "block";
-            errDiv.textContent = "Error: " + err.message;
+            let msg = err.message;
+            if (msg.includes("Cloudflare Turnstile Protected")) {{
+              errDiv.innerHTML = `
+                <div style="background: rgba(239, 68, 68, 0.12); border: 1px solid rgba(239, 68, 68, 0.3); border-radius: 8px; padding: 14px; text-align: left; margin-top: 10px;">
+                  <div style="font-weight: 600; color: #f87171; margin-bottom: 6px;">🛡️ Cloudflare Turnstile Challenge Active</div>
+                  <div style="color: #cbd5e1; font-size: 0.85rem; line-height: 1.5;">This site presented an interactive human verification captcha ("Verify you are human") that blocks automated datacenter IPs.</div>
+                  <div style="margin-top: 12px; font-size: 0.85rem; color: #38bdf8;">
+                    <b>💡 Solution:</b> Switch back to the open tab in your browser, click the <b>VPS Archive Lens</b> extension icon, and click <b>"🚀 Archive Tab (Direct DOM)"</b>. Your browser's verified session DOM will be uploaded and archived immediately!
+                  </div>
+                </div>
+              `;
+            }} else {{
+              errDiv.textContent = "Error: " + msg;
+            }}
           }}
         }}
         run();
@@ -545,6 +616,8 @@ async def api_archive(request: Request, url: str = Query(None), token: str = Que
     try:
         meta = await capture_page(target_url)
         return meta
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Failed to capture {target_url}: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Archiving failed: {str(e)}")

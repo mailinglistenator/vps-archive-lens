@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>VPS Archive Lens</title>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --card: #1e293b;
+      --border: #334155;
+      --text: #f8fafc;
+      --muted: #94a3b8;
+      --accent: #38bdf8;
+      --accent-hover: #0284c7;
+      --success: #34d399;
+      --error: #f87171;
+    }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      margin: 0;
+      padding: 16px;
+      width: 320px;
+      box-sizing: border-box;
+    }
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+    h2 {
+      font-size: 1.05rem;
+      margin: 0;
+      color: var(--accent);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .settings-btn {
+      background: none;
+      border: none;
+      color: var(--muted);
+      cursor: pointer;
+      font-size: 1.1rem;
+      padding: 4px;
+    }
+    .settings-btn:hover {
+      color: var(--text);
+    }
+    .btn-group {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+    button.btn-primary {
+      width: 100%;
+      padding: 10px 12px;
+      background: linear-gradient(135deg, #0284c7 0%, #06b6d4 100%);
+      color: white;
+      border: none;
+      border-radius: 6px;
+      font-size: 0.88rem;
+      font-weight: 600;
+      cursor: pointer;
+      text-align: left;
+      transition: all 0.2s ease;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    }
+    button.btn-primary:hover {
+      background: linear-gradient(135deg, #0369a1 0%, #0891b2 100%);
+    }
+    button.btn-secondary-action {
+      width: 100%;
+      padding: 8px 12px;
+      background: #1e293b;
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      font-size: 0.82rem;
+      font-weight: 500;
+      cursor: pointer;
+      text-align: left;
+      transition: background 0.2s;
+    }
+    button.btn-secondary-action:hover {
+      background: #334155;
+    }
+    .btn-title {
+      display: block;
+      font-weight: 600;
+      margin-bottom: 2px;
+    }
+    .btn-subtitle {
+      display: block;
+      font-size: 0.72rem;
+      color: #94a3b8;
+      font-weight: normal;
+    }
+    .btn-primary .btn-subtitle {
+      color: #e0f2fe;
+    }
+    .divider {
+      text-align: center;
+      font-size: 0.75rem;
+      color: var(--muted);
+      position: relative;
+      margin: 12px 0;
+    }
+    .divider::before, .divider::after {
+      content: "";
+      position: absolute;
+      top: 50%;
+      width: 38%;
+      height: 1px;
+      background: var(--border);
+    }
+    .divider::before { left: 0; }
+    .divider::after { right: 0; }
+    input[type="text"] {
+      width: 100%;
+      box-sizing: border-box;
+      padding: 8px 10px;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      background: #0b1120;
+      color: var(--text);
+      font-size: 0.85rem;
+      outline: none;
+      margin-bottom: 8px;
+    }
+    input:focus {
+      border-color: var(--accent);
+    }
+    .btn-secondary {
+      width: 100%;
+      padding: 8px;
+      background: #334155;
+      color: var(--text);
+      border: none;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      font-weight: 500;
+      cursor: pointer;
+    }
+    .btn-secondary:hover {
+      background: #475569;
+    }
+    #statusMessage {
+      display: none;
+      font-size: 0.8rem;
+      padding: 8px 10px;
+      border-radius: 6px;
+      margin-top: 10px;
+      line-height: 1.4;
+    }
+    .status-info {
+      background: rgba(56, 189, 248, 0.15);
+      border: 1px solid rgba(56, 189, 248, 0.3);
+      color: #7dd3fc;
+    }
+    .status-success {
+      background: rgba(52, 211, 153, 0.15);
+      border: 1px solid rgba(52, 211, 153, 0.3);
+      color: #6ee7b7;
+    }
+    .status-error {
+      background: rgba(248, 113, 113, 0.15);
+      border: 1px solid rgba(248, 113, 113, 0.3);
+      color: #fca5a5;
+    }
+    .links {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 12px;
+      padding-top: 8px;
+      border-top: 1px solid #1e293b;
+      font-size: 0.78rem;
+    }
+    .links a {
+      color: var(--accent);
+      text-decoration: none;
+      font-weight: 500;
+    }
+    .links a:hover {
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h2>🔍 VPS Archive Lens</h2>
+    <button id="openSettings" class="settings-btn" title="Settings">⚙️</button>
+  </div>
+
+  <div class="btn-group">
+    <button id="pushCurrentTab" class="btn-primary">
+      <span class="btn-title">🚀 Push Tab DOM (Bypass Cloudflare)</span>
+      <span class="btn-subtitle">Uses verified browser session • 100% bypass</span>
+    </button>
+    <button id="archiveCurrentTab" class="btn-secondary-action">
+      <span class="btn-title">🌐 Remote VPS Fetch</span>
+      <span class="btn-subtitle">Playwright scraper runs stealthily on VPS</span>
+    </button>
+  </div>
+
+  <div id="statusMessage"></div>
+
+  <div class="divider">or remote URL</div>
+
+  <input type="text" id="customUrl" placeholder="https://example.com/article...">
+  <button id="archiveCustomUrl" class="btn-secondary">Fetch Pasted URL</button>
+
+  <div class="links">
+    <a id="openDashboard" href="#">📋 Snapshots Dashboard</a>
+    <a id="openLatestReader" href="#" style="display:none;">📖 AI Reader</a>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>
