@@ -14,6 +14,8 @@ from fastapi.responses import HTMLResponse, JSONResponse, FileResponse, Redirect
 from fastapi.middleware.cors import CORSMiddleware
 from playwright.async_api import async_playwright
 from bs4 import BeautifulSoup
+import trafilatura
+import markdown
 from dotenv import load_dotenv
 
 load_dotenv(Path(__file__).parent / ".env")
@@ -352,6 +354,19 @@ async def capture_page(target_url: str) -> dict:
         <span style="color: #cbd5e1; font-size: 12px;">{date_display}</span>
         <span style="color: #475569;">•</span>
         <a href="{resolved_url}" target="_blank" rel="noopener noreferrer" style="color: #38bdf8; text-decoration: none; font-size: 12px; font-weight: 500;">Original Source ↗</a>
+        <span style="color: #475569;">•</span>
+        <a href="/reader/{snapshot_id}" style="
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            background: #0284c7;
+            color: #ffffff;
+            padding: 3px 10px;
+            border-radius: 9999px;
+            text-decoration: none;
+            font-size: 11.5px;
+            font-weight: 600;
+        ">📖 AI Reader View</a>
         <button onclick="document.getElementById('vps-lens-pill').style.display='none'" style="
             background: rgba(255,255,255,0.1);
             border: none;
@@ -538,10 +553,656 @@ def view_snapshot(snapshot_id: str):
         raise HTTPException(status_code=404, detail="Snapshot not found or expired (>90 days).")
     return FileResponse(file_path, media_type="text/html")
 
+def get_hermes_ai_provider():
+    """
+    Resolves available free/configured AI provider from Hermes configuration or environment.
+    Priority:
+    1. Nous Research Free Model (upstage/solar-pro4:free via portal token in ~/.hermes/auth.json)
+    2. OpenCode Go / Zen (if key set in env or auth.json)
+    3. NeuralWatt GLM-5.2 (from ~/.hermes/config.yaml or env)
+    4. OpenRouter Free (if OPENROUTER_API_KEY set)
+    """
+    # 1. Nous Free
+    auth_file = Path.home() / ".hermes/auth.json"
+    if auth_file.is_file():
+        try:
+            with open(auth_file, "r", encoding="utf-8") as f:
+                d = json.load(f)
+                nous = d.get("providers", {}).get("nous", {})
+                token = nous.get("access_token") or nous.get("agent_key")
+                if token:
+                    return {
+                        "provider": "nous",
+                        "model": "upstage/solar-pro4:free",
+                        "base_url": "https://inference-api.nousresearch.com/v1",
+                        "auth_header": f"Bearer {token}",
+                        "extra_headers": {"User-Agent": "HermesAgent/1.0"},
+                        "display_name": "Nous Solar Pro (Free)"
+                    }
+        except Exception as e:
+            logger.warning(f"Could not load Nous auth: {e}")
+
+    # 2. OpenCode Go / Zen
+    opencode_key = os.getenv("OPENCODE_GO_API_KEY") or os.getenv("OPENCODE_ZEN_API_KEY")
+    if opencode_key:
+        return {
+            "provider": "opencode",
+            "model": "glm-5",
+            "base_url": os.getenv("OPENCODE_GO_BASE_URL", "https://opencode.ai/zen/go/v1"),
+            "auth_header": f"Bearer {opencode_key}",
+            "extra_headers": {
+                "HTTP-Referer": "https://hermes-agent.nousresearch.com",
+                "X-Title": "Hermes Agent",
+                "User-Agent": "HermesAgent/1.0"
+            },
+            "display_name": "OpenCode Go (GLM-5)"
+        }
+
+    # 3. NeuralWatt
+    nw_key = os.getenv("NEURALWATT_API_KEY")
+    nw_base = os.getenv("NEURALWATT_BASE_URL", "https://api.neuralwatt.com/v1")
+    nw_model = os.getenv("NEURALWATT_MODEL", "glm-5.2")
+    config_yaml = Path.home() / ".hermes/config.yaml"
+    if not nw_key and config_yaml.is_file():
+        try:
+            with open(config_yaml, "r", encoding="utf-8") as f:
+                content = f.read()
+                m_key = re.search(r'neuralwatt:\s*(?:[^\n]+\n)*?\s*api_key:\s*([^\s\n]+)', content)
+                if m_key:
+                    nw_key = m_key.group(1).strip()
+                m_base = re.search(r'neuralwatt:\s*(?:[^\n]+\n)*?\s*base_url:\s*([^\s\n]+)', content)
+                if m_base:
+                    nw_base = m_base.group(1).strip()
+                m_model = re.search(r'neuralwatt:\s*(?:[^\n]+\n)*?\s*default_model:\s*([^\s\n]+)', content)
+                if m_model:
+                    nw_model = m_model.group(1).strip()
+        except Exception as e:
+            logger.warning(f"Failed to parse config.yaml: {e}")
+
+    if nw_key:
+        return {
+            "provider": "neuralwatt",
+            "model": nw_model,
+            "base_url": nw_base,
+            "auth_header": f"Bearer {nw_key}",
+            "extra_headers": {},
+            "display_name": f"NeuralWatt ({nw_model})"
+        }
+
+    # 4. OpenRouter
+    or_key = os.getenv("OPENROUTER_API_KEY")
+    if or_key:
+        return {
+            "provider": "openrouter",
+            "model": "nvidia/nemotron-3.5-lightning:free",
+            "base_url": "https://openrouter.ai/api/v1",
+            "auth_header": f"Bearer {or_key}",
+            "extra_headers": {},
+            "display_name": "OpenRouter Free"
+        }
+
+    return None
+
+def render_reader_template(
+    snapshot_id: str,
+    title: str,
+    author: str,
+    date: str,
+    image: str,
+    orig_url: str,
+    domain: str,
+    reading_time: int,
+    provider_name: str,
+    summary_bullets: list,
+    body_html: str
+) -> str:
+    bullets_li = "".join([f"<li>{b}</li>" for b in summary_bullets]) if summary_bullets else ""
+    takeaways_section = f"""
+    <div class="takeaways-box">
+      <div class="takeaways-header">
+        <span class="takeaways-badge">⚡ AI Key Takeaways</span>
+        <span class="takeaways-provider">{provider_name}</span>
+      </div>
+      <ul class="takeaways-list">
+        {bullets_li}
+      </ul>
+    </div>
+    """ if summary_bullets else ""
+
+    hero_section = f"""
+    <figure class="hero-figure">
+      <img src="{image}" alt="{title}" class="hero-image" onerror="this.parentElement.style.display='none'">
+    </figure>
+    """ if image else ""
+
+    byline_parts = []
+    if author:
+        byline_parts.append(f'<span class="author-name">By {author}</span>')
+    if date:
+        byline_parts.append(f'<span class="pub-date">{date}</span>')
+    byline_parts.append(f'<span class="reading-time">⏱️ {reading_time} min read</span>')
+    if domain:
+        byline_parts.append(f'<span class="source-domain">{domain}</span>')
+    
+    meta_row = ' <span class="meta-sep">•</span> '.join(byline_parts)
+
+    return f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>{title} — Reader View</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    :root {{
+      --bg: #0f172a;
+      --text: #f1f5f9;
+      --text-muted: #94a3b8;
+      --card-bg: #1e293b;
+      --card-border: #334155;
+      --accent: #38bdf8;
+      --accent-dim: rgba(56, 189, 248, 0.15);
+      --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      --font-size: 18px;
+      --line-height: 1.8;
+      --nav-bg: rgba(15, 23, 42, 0.88);
+      --nav-border: #334155;
+    }}
+    body.theme-oled {{
+      --bg: #000000;
+      --text: #e2e8f0;
+      --text-muted: #888888;
+      --card-bg: #111111;
+      --card-border: #222222;
+      --accent: #38bdf8;
+      --accent-dim: rgba(56, 189, 248, 0.12);
+      --nav-bg: rgba(0, 0, 0, 0.9);
+      --nav-border: #222222;
+    }}
+    body.theme-sepia {{
+      --bg: #f4ecd8;
+      --text: #433422;
+      --text-muted: #7d6b53;
+      --card-bg: #eae0c8;
+      --card-border: #dcd0b5;
+      --accent: #b45309;
+      --accent-dim: rgba(180, 83, 9, 0.12);
+      --nav-bg: rgba(244, 236, 216, 0.92);
+      --nav-border: #dcd0b5;
+    }}
+    body.theme-light {{
+      --bg: #ffffff;
+      --text: #1e293b;
+      --text-muted: #64748b;
+      --card-bg: #f8fafc;
+      --card-border: #e2e8f0;
+      --accent: #0284c7;
+      --accent-dim: rgba(2, 132, 199, 0.1);
+      --nav-bg: rgba(255, 255, 255, 0.92);
+      --nav-border: #e2e8f0;
+    }}
+    body.font-serif {{
+      --font-family: "Charter", "Merriweather", "Georgia", serif;
+    }}
+    body.font-sans {{
+      --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }}
+    * {{ box-sizing: border-box; }}
+    body {{
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font-family);
+      font-size: var(--font-size);
+      line-height: var(--line-height);
+      margin: 0;
+      padding: 0;
+      transition: background-color 0.2s ease, color 0.2s ease;
+    }}
+    #progress-bar {{
+      position: fixed;
+      top: 0;
+      left: 0;
+      height: 3px;
+      width: 0%;
+      background: var(--accent);
+      z-index: 2147483647;
+      transition: width 0.1s ease-out;
+    }}
+    .navbar {{
+      position: sticky;
+      top: 0;
+      z-index: 1000;
+      background: var(--nav-bg);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--nav-border);
+      padding: 10px 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 16px;
+    }}
+    .nav-left, .nav-right {{
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }}
+    .nav-btn {{
+      background: var(--card-bg);
+      color: var(--text);
+      border: 1px solid var(--card-border);
+      padding: 6px 12px;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.15s ease;
+    }}
+    .nav-btn:hover {{
+      border-color: var(--accent);
+      color: var(--accent);
+    }}
+    .theme-palette {{
+      display: flex;
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 6px;
+      padding: 2px;
+      gap: 2px;
+    }}
+    .theme-opt {{
+      background: transparent;
+      border: none;
+      padding: 4px 8px;
+      cursor: pointer;
+      border-radius: 4px;
+      font-size: 13px;
+    }}
+    .theme-opt:hover, .theme-opt.active {{
+      background: var(--accent-dim);
+    }}
+    .article-container {{
+      max-width: 740px;
+      margin: 0 auto;
+      padding: 48px 24px 100px 24px;
+    }}
+    h1.article-title {{
+      font-size: 2.25rem;
+      line-height: 1.25;
+      font-weight: 700;
+      margin: 0 0 18px 0;
+      color: var(--text);
+      letter-spacing: -0.01em;
+    }}
+    .meta-row {{
+      font-size: 0.88rem;
+      color: var(--text-muted);
+      margin-bottom: 30px;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 6px;
+    }}
+    .meta-sep {{
+      opacity: 0.5;
+    }}
+    .takeaways-box {{
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-left: 4px solid var(--accent);
+      border-radius: 10px;
+      padding: 20px 24px;
+      margin-bottom: 36px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+    }}
+    .takeaways-header {{
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 14px;
+    }}
+    .takeaways-badge {{
+      font-weight: 700;
+      font-size: 0.92rem;
+      color: var(--accent);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      letter-spacing: 0.02em;
+    }}
+    .takeaways-provider {{
+      font-size: 0.76rem;
+      color: var(--text-muted);
+      background: var(--accent-dim);
+      padding: 2px 8px;
+      border-radius: 9999px;
+    }}
+    .takeaways-list {{
+      margin: 0;
+      padding-left: 20px;
+    }}
+    .takeaways-list li {{
+      margin-bottom: 8px;
+      font-size: 0.95rem;
+      line-height: 1.6;
+    }}
+    .hero-figure {{
+      margin: 0 0 36px 0;
+      width: 100%;
+    }}
+    .hero-image {{
+      width: 100%;
+      height: auto;
+      border-radius: 10px;
+      display: block;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.15);
+    }}
+    .article-body {{
+      font-size: 1em;
+    }}
+    .article-body p {{
+      margin: 0 0 1.6em 0;
+    }}
+    .article-body h2, .article-body h3, .article-body h4 {{
+      color: var(--text);
+      margin: 2em 0 0.8em 0;
+      line-height: 1.3;
+    }}
+    .article-body h2 {{ font-size: 1.5rem; }}
+    .article-body h3 {{ font-size: 1.25rem; }}
+    .article-body blockquote {{
+      border-left: 3px solid var(--accent);
+      margin: 1.8em 0;
+      padding: 8px 20px;
+      font-style: italic;
+      color: var(--text-muted);
+      background: var(--card-bg);
+      border-radius: 0 8px 8px 0;
+    }}
+    .article-body img {{
+      max-width: 100%;
+      height: auto;
+      border-radius: 8px;
+      display: block;
+      margin: 2em auto;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+    }}
+    .article-body a {{
+      color: var(--accent);
+      text-decoration: underline;
+      text-underline-offset: 3px;
+    }}
+    .article-footer {{
+      margin-top: 60px;
+      padding-top: 24px;
+      border-top: 1px solid var(--card-border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.85rem;
+      color: var(--text-muted);
+    }}
+    @media (max-width: 640px) {{
+      .navbar {{ padding: 8px 12px; }}
+      h1.article-title {{ font-size: 1.7rem; }}
+      .article-container {{ padding: 24px 16px 60px 16px; }}
+    }}
+    @media print {{
+      .navbar, #progress-bar, .takeaways-box {{ display: none !important; }}
+      body {{ background: white !important; color: black !important; font-size: 12pt !important; }}
+    }}
+  </style>
+</head>
+<body class="theme-dark font-sans">
+  <div id="progress-bar"></div>
+
+  <nav class="navbar">
+    <div class="nav-left">
+      <a href="/view/{snapshot_id}" class="nav-btn">← Full Snapshot</a>
+      <a href="{orig_url}" target="_blank" rel="noopener noreferrer" class="nav-btn">Original ↗</a>
+    </div>
+
+    <div class="nav-right">
+      <button class="nav-btn" onclick="toggleFont()" title="Switch Serif/Sans" id="fontToggleBtn">Aa Serif</button>
+      <button class="nav-btn" onclick="adjustFontSize(-1)" title="Smaller text">A-</button>
+      <button class="nav-btn" onclick="adjustFontSize(1)" title="Larger text">A+</button>
+      
+      <div class="theme-palette">
+        <button class="theme-opt active" onclick="setTheme('theme-dark')" title="Dark">🌙</button>
+        <button class="theme-opt" onclick="setTheme('theme-oled')" title="OLED Black">🖤</button>
+        <button class="theme-opt" onclick="setTheme('theme-sepia')" title="Sepia">📜</button>
+        <button class="theme-opt" onclick="setTheme('theme-light')" title="Light">☀️</button>
+      </div>
+
+      <button class="nav-btn" onclick="window.print()" title="Print / Save PDF">🖨️</button>
+    </div>
+  </nav>
+
+  <main class="article-container">
+    <header>
+      <h1 class="article-title">{title}</h1>
+      <div class="meta-row">
+        {meta_row}
+      </div>
+    </header>
+
+    {takeaways_section}
+
+    {hero_section}
+
+    <article class="article-body">
+      {body_html}
+    </article>
+
+    <footer class="article-footer">
+      <span>Archived & Reconstructed with <strong>VPS Archive Lens</strong></span>
+      <a href="/view/{snapshot_id}" style="color: var(--accent); text-decoration: none;">View Original Snapshot →</a>
+    </footer>
+  </main>
+
+  <script>
+    window.addEventListener('scroll', () => {{
+      const totalHeight = document.documentElement.scrollHeight - window.innerHeight;
+      const progress = totalHeight > 0 ? (window.scrollY / totalHeight) * 100 : 0;
+      document.getElementById('progress-bar').style.width = Math.min(100, Math.max(0, progress)) + '%';
+    }});
+
+    function setTheme(theme) {{
+      document.body.classList.remove('theme-dark', 'theme-oled', 'theme-sepia', 'theme-light');
+      document.body.classList.add(theme);
+      localStorage.setItem('vps_reader_theme', theme);
+      document.querySelectorAll('.theme-opt').forEach(btn => {{
+        btn.classList.toggle('active', btn.getAttribute('onclick').includes(theme));
+      }});
+    }}
+
+    function toggleFont() {{
+      const isSerif = document.body.classList.toggle('font-serif');
+      document.body.classList.toggle('font-sans', !isSerif);
+      const btn = document.getElementById('fontToggleBtn');
+      btn.textContent = isSerif ? 'Aa Sans' : 'Aa Serif';
+      localStorage.setItem('vps_reader_font', isSerif ? 'serif' : 'sans');
+    }}
+
+    let currentFontSize = 18;
+    function adjustFontSize(delta) {{
+      currentFontSize = Math.min(26, Math.max(14, currentFontSize + (delta * 2)));
+      document.documentElement.style.setProperty('--font-size', currentFontSize + 'px');
+      localStorage.setItem('vps_reader_size', currentFontSize);
+    }}
+
+    (function initPreferences() {{
+      const savedTheme = localStorage.getItem('vps_reader_theme');
+      if (savedTheme) setTheme(savedTheme);
+
+      const savedFont = localStorage.getItem('vps_reader_font');
+      if (savedFont === 'serif') {{
+        document.body.classList.add('font-serif');
+        document.body.classList.remove('font-sans');
+        document.getElementById('fontToggleBtn').textContent = 'Aa Sans';
+      }}
+
+      const savedSize = localStorage.getItem('vps_reader_size');
+      if (savedSize) {{
+        currentFontSize = parseInt(savedSize, 10);
+        document.documentElement.style.setProperty('--font-size', currentFontSize + 'px');
+      }}
+    }})();
+  </script>
+</body>
+</html>
+"""
+
+def generate_ai_reader(snapshot_id: str, force_refresh: bool = False) -> Path:
+    safe_id = "".join(c for c in snapshot_id if c.isalnum() or c in ("_", "-"))
+    raw_path = STORAGE_DIR / f"{safe_id}.html"
+    reader_path = STORAGE_DIR / f"{safe_id}_reader.html"
+
+    if not raw_path.is_file():
+        raise HTTPException(status_code=404, detail="Snapshot not found.")
+
+    if reader_path.is_file() and not force_refresh:
+        return reader_path
+
+    with open(raw_path, "r", encoding="utf-8") as f:
+        raw_html = f.read()
+
+    soup = BeautifulSoup(raw_html, "html.parser")
+
+    # 1. Metadata extraction
+    meta = trafilatura.extract_metadata(raw_html)
+    title = (meta.title if meta and meta.title else soup.find("title").text if soup.find("title") else "Archived Article").strip()
+    author = (meta.author if meta and meta.author else "").strip()
+    date = (meta.date if meta and meta.date else "").strip()
+    image = (meta.image if meta and meta.image else "").strip()
+
+    if not image:
+        og_img = soup.find("meta", property="og:image")
+        if og_img and og_img.get("content"):
+            image = og_img["content"]
+
+    base_elem = soup.find("base")
+    orig_url = base_elem.get("href", "#") if base_elem else "#"
+    domain = ""
+    try:
+        domain = urlparse(orig_url).netloc
+    except Exception:
+        pass
+
+    # 2. Article markdown extraction
+    extracted_md = trafilatura.extract(raw_html, include_images=True, include_links=True, output_format="markdown") or ""
+
+    if len(extracted_md.strip()) < 150:
+        article_elem = soup.find("article") or soup.find(itemprop="articleBody") or soup.find("main") or soup.body
+        if article_elem:
+            ps = [p.get_text(strip=True) for p in article_elem.find_all("p") if len(p.get_text(strip=True)) > 40]
+            extracted_md = "\n\n".join(ps)
+
+    # Clean promotional and boilerplate lines
+    cleaned_lines = []
+    for line in extracted_md.split("\n"):
+        low = line.lower().strip()
+        if any(noise in low for noise in [
+            "save us as a preferred source",
+            "download our app",
+            "follow us on",
+            "sign up for our newsletter",
+            "click here to subscribe",
+            "advertisement"
+        ]):
+            continue
+        if low.startswith("# ") and title.lower() in low:
+            continue
+        cleaned_lines.append(line)
+    clean_md = "\n".join(cleaned_lines).strip()
+
+    word_count = len(clean_md.split())
+    reading_time = max(1, round(word_count / 220))
+
+    # 3. AI Key Takeaways
+    ai_provider = get_hermes_ai_provider()
+    summary_bullets = []
+    provider_name = "Heuristic Extractor"
+
+    if ai_provider:
+        provider_name = ai_provider["display_name"]
+        prompt = f"""You are an expert news editor. Given this article, summarize the 3 most important key takeaways into concise, high-impact bullet points.
+Return strictly valid JSON in this format:
+{{"summary": ["Key takeaway 1", "Key takeaway 2", "Key takeaway 3"]}}
+
+Article:
+{clean_md[:4500]}
+"""
+        try:
+            req_data = json.dumps({
+                "model": ai_provider["model"],
+                "messages": [
+                    {"role": "system", "content": "You are an editorial assistant. Return valid JSON only."},
+                    {"role": "user", "content": prompt}
+                ],
+                "response_format": {"type": "json_object"}
+            }).encode()
+
+            headers = {
+                "Authorization": ai_provider["auth_header"],
+                "Content-Type": "application/json",
+                **ai_provider.get("extra_headers", {})
+            }
+            req = urllib.request.Request(f"{ai_provider['base_url']}/chat/completions", data=req_data, headers=headers)
+            with urllib.request.urlopen(req, timeout=10) as resp:
+                data = json.loads(resp.read().decode())
+                content_str = data["choices"][0]["message"]["content"]
+                content_str = re.sub(r"^```json\s*", "", content_str.strip())
+                content_str = re.sub(r"\s*```$", "", content_str.strip())
+                parsed = json.loads(content_str)
+                summary_bullets = parsed.get("summary", [])
+        except Exception as e:
+            logger.warning(f"AI summary request failed ({provider_name}): {e}")
+
+    # Fallback bullets if AI unavailable
+    if not summary_bullets:
+        summary_bullets = [
+            line.strip() for line in clean_md.split("\n\n")
+            if len(line.strip()) > 60 and not any(line.strip().startswith(c) for c in (">", "[", "!", "#", "*", "-"))
+        ][:3]
+
+    # Convert clean markdown to HTML body
+    body_html = markdown.markdown(clean_md, extensions=["extra", "nl2br", "sane_lists"])
+
+    reader_html = render_reader_template(
+        snapshot_id=safe_id,
+        title=title,
+        author=author,
+        date=date,
+        image=image,
+        orig_url=orig_url,
+        domain=domain,
+        reading_time=reading_time,
+        provider_name=provider_name,
+        summary_bullets=summary_bullets,
+        body_html=body_html
+    )
+
+    with open(reader_path, "w", encoding="utf-8") as f:
+        f.write(reader_html)
+
+    logger.info(f"AI Reader view created: {reader_path}")
+    return reader_path
+
+@app.get("/reader/{snapshot_id}", response_class=HTMLResponse)
+def reader_view(snapshot_id: str, refresh: str = Query(None)):
+    """Serves a clean, AI-reconstructed reader view."""
+    force_refresh = (refresh == "1" or refresh == "true")
+    reader_file = generate_ai_reader(snapshot_id, force_refresh=force_refresh)
+    return FileResponse(reader_file, media_type="text/html")
+
 @app.get("/", response_class=HTMLResponse)
 @app.get("/list", response_class=HTMLResponse)
 def dashboard(token: str = Query(None)):
-    files = sorted(STORAGE_DIR.glob("*.html"), key=lambda f: f.stat().st_mtime, reverse=True)[:30]
+    files = sorted([f for f in STORAGE_DIR.glob("*.html") if not f.stem.endswith("_reader")], key=lambda f: f.stat().st_mtime, reverse=True)[:40]
     token_str = token or API_TOKEN
     token_param = f"?token={token_str}" if token_str else ""
     
@@ -552,10 +1213,13 @@ def dashboard(token: str = Query(None)):
         name = f.stem
         rows.append(f"""
         <tr style="border-bottom: 1px solid #334155;">
-          <td style="padding: 10px 12px;"><a href="/view/{name}" target="_blank" style="color: #38bdf8; text-decoration: none; font-weight: 500;">{name}</a></td>
+          <td style="padding: 10px 12px;"><a href="/reader/{name}" target="_blank" style="color: #38bdf8; text-decoration: none; font-weight: 500;">{name}</a></td>
           <td style="padding: 10px 12px; color: #94a3b8;">{mtime} UTC</td>
           <td style="padding: 10px 12px; color: #cbd5e1;">{size_kb} KB</td>
-          <td style="padding: 10px 12px;"><a href="/view/{name}" target="_blank" style="color: #38bdf8; text-decoration: underline;">Open</a></td>
+          <td style="padding: 10px 12px; display: flex; gap: 8px;">
+            <a href="/reader/{name}" target="_blank" style="background: #0284c7; color: #ffffff; padding: 4px 10px; border-radius: 6px; text-decoration: none; font-size: 0.8rem; font-weight: 600; display: inline-flex; align-items: center; gap: 4px;">📖 Reader</a>
+            <a href="/view/{name}" target="_blank" style="color: #94a3b8; text-decoration: underline; font-size: 0.85rem; display: inline-flex; align-items: center; padding: 4px;">Raw</a>
+          </td>
         </tr>
         """)
     

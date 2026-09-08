@@ -51,4 +51,19 @@ document.addEventListener("DOMContentLoaded", () => {
       window.open(chrome.runtime.getURL("options.html"));
     }
   });
+
+  const dashboardLink = document.getElementById("openDashboard");
+  if (dashboardLink) {
+    dashboardLink.addEventListener("click", async (e) => {
+      e.preventDefault();
+      const { vpsUrl = "", apiToken = "" } = await chrome.storage.sync.get(["vpsUrl", "apiToken"]);
+      if (!vpsUrl) {
+        chrome.runtime.openOptionsPage();
+        return;
+      }
+      const cleanVpsUrl = vpsUrl.replace(/\/+$/, "");
+      chrome.tabs.create({ url: `${cleanVpsUrl}/list${apiToken ? `?token=${encodeURIComponent(apiToken)}` : ""}` });
+      window.close();
+    });
+  }
 });

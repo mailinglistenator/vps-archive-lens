@@ -11,7 +11,8 @@
 1. **Evades Paywalls & Region Blocks**: Bypasses ISP/country blocks by routing through your VPS IP. Uses isolated incognito browser contexts to reset metered article counts.
 2. **Strips Tracking & Paywall Modals**: Renders the complete DOM via headless Chromium, then strips `<script>` tags, paywall overlays (Piano, Tinypass, Evolok), and scroll-locks so paywalls cannot execute on playback.
 3. **Auto-Pruning (Default: 90 Days)**: Automatically deletes snapshots older than 90 days in the background. Zero maintenance, zero runaway disk usage.
-4. **Right-Click Browser Extension**: Integrates directly into Chrome, Brave, Edge, and Firefox. Right-click any link or article and click *"Archive & Unpaywall with VPS"*.
+4. **AI Reader View & Key Takeaways**: Reconstructs noisy or ad-bloated articles into an elegant, distraction-free reading experience (with Dark, OLED, Sepia, and Light themes, Serif/Sans typography, and AI-generated 3-bullet executive takeaways powered by free LLMs like Nous Portal, OpenCode, or NeuralWatt).
+5. **Right-Click Browser Extension**: Integrates directly into Chrome, Brave, Edge, and Firefox. Right-click any link or article and click *"Archive & Unpaywall with VPS"*.
 
 ---
 
