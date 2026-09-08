@@ -1,0 +1,18 @@
+version: "3.8"
+
+services:
+  archiver:
+    build: .
+    container_name: vps-archive-lens
+    restart: unless-stopped
+    ports:
+      - "${PORT:-8888}:8888"
+    environment:
+      - PORT=8888
+      - API_TOKEN=${API_TOKEN}
+      - BASE_URL=${BASE_URL:-http://localhost:8888}
+      - STORAGE_DIR=/app/snapshots
+      - RETENTION_DAYS=${RETENTION_DAYS:-90}
+    volumes:
+      - ./snapshots:/app/snapshots
+    shm_size: "1gb"
