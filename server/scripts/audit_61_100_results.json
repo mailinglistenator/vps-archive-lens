@@ -1,0 +1,1560 @@
+[
+  {
+    "id": 61,
+    "name": "USA Today",
+    "domain": "usatoday.com",
+    "type": "us_news",
+    "accessible": false,
+    "status_code": 403,
+    "direct_api_available": false,
+    "direct_api_notes": null,
+    "article_url_sampled": null,
+    "json_ld": {
+      "found": false,
+      "types": [],
+      "has_headline": false,
+      "has_date": false,
+      "has_author": false,
+      "has_article_body": false
+    },
+    "dom_selectors": {
+      "title_selector": null,
+      "body_selector": null,
+      "author_selector": null,
+      "date_selector": null
+    },
+    "image_handling": {
+      "lazy_attrs": [],
+      "cdn_host": null,
+      "unresizing_rule": null
+    },
+    "notice_dialogs": {
+      "consent_banner": null
+    },
+    "rendering_model": "SSR",
+    "wait_for_selector": null,
+    "notes": [
+      "Root returned HTTP status 403"
+    ]
+  },
+  {
+    "id": 62,
+    "name": "The Times of India",
+    "domain": "timesofindia.indiatimes.com",
+    "type": "global_news",
+    "accessible": true,
+    "status_code": 200,
+    "direct_api_available": false,
+    "direct_api_notes": null,
+    "article_url_sampled": "https://timesofindia.indiatimes.com/world/us/in-1927-paramount-bought-a-2700-acre-california-ranch-and-filmed-more-than-160-movies-there-after-wildfire-destroyed-almost-everything-in-2018-a-26-million-rebuild-is-nearly-complete/articleshow/133964321.cms",
+    "json_ld": {
+      "found": true,
+      "types": [
+        "WebPage",
+        "NewsArticle",
+        "ViewAction"
+      ],
+      "has_headline": true,
+      "has_date": true,
+      "has_author": true,
+      "has_article_body": true
+    },
+    "dom_selectors": {
+      "title_selector": "h1",
+      "body_selector": null,
+      "author_selector": "[class*='author']",
+      "date_selector": null
+    },
+    "image_handling": {
+      "lazy_attrs": [
+        "data-src"
+      ],
+      "cdn_host": "static.toiimg.com",
+      "unresizing_rule": null
+    },
+    "notice_dialogs": {
+      "consent_banner": null
+    },
+    "rendering_model": "SSR (Server-Rendered HTML)",
+    "wait_for_selector": null,
+    "notes": []
+  },
+  {
+    "id": 63,
+    "name": "The Hindu",
+    "domain": "thehindu.com",
+    "type": "global_news",
+    "accessible": true,
+    "status_code": 200,
+    "direct_api_available": false,
+    "direct_api_notes": null,
+    "article_url_sampled": "https://www.thehindu.com/news/international/us-military-says-it-destroyed-five-iranian-oil-tankers-tehran-hits-back-at-american-targets-in-jordan/article71445527.ece",
+    "json_ld": {
+      "found": false,
+      "types": [],
+      "has_headline": false,
+      "has_date": false,
+      "has_author": false,
+      "has_article_body": false
+    },
+    "dom_selectors": {
+      "title_selector": "h1[class*='title']",
+      "body_selector": null,
+      "author_selector": "[class*='author']",
+      "date_selector": "[class*='date']"
+    },
+    "image_handling": {
+      "lazy_attrs": [],
+      "cdn_host": null,
+      "unresizing_rule": null
+    },
+    "notice_dialogs": {
+      "consent_banner": null
+    },
+    "rendering_model": "SSR (Server-Rendered HTML)",
+    "wait_for_selector": null,
+    "notes": []
+  },
+  {
+    "id": 64,
+    "name": "The Sydney Morning Herald",
+    "domain": "smh.com.au",
+    "type": "australian_news",
+    "accessible": true,
+    "status_code": 200,
+    "direct_api_available": false,
+    "direct_api_notes": null,
+    "article_url_sampled": "https://www.smh.com.au/national/nsw/man-shot-dead-in-sydney-s-south-west-20260909-p60vyg.html",
+    "json_ld": {
+      "found": true,
+      "types": [
+        "NewsArticle",
+        "BreadcrumbList"
+      ],
+      "has_headline": true,
+      "has_date": true,
+      "has_author": true,
+      "has_article_body": false
+    },
+    "dom_selectors": {
+      "title_selector": "h1",
+      "body_selector": "main",
+      "author_selector": null,
+      "date_selector": "time[datetime]"
+    },
+    "image_handling": {
+      "lazy_attrs": [
+        "srcset"
+      ],
+      "cdn_host": null,
+      "unresizing_rule": null
+    },
+    "notice_dialogs": {
+      "consent_banner": null
+    },
+    "rendering_model": "SSR (Server-Rendered HTML)",
+    "wait_for_selector": "main",
+    "notes": []
+  },
+  {
+    "id": 65,
+    "name": "ABC News Australia",
+    "domain": "abc.net.au",
+    "type": "australian_news",
+    "accessible": true,
+    "status_code": 200,
+    "direct_api_available": false,
+    "direct_api_notes": null,
+    "article_url_sampled": "https://www.abc.net.au/news/2026-09-09/andrew-hastie-demands-one-nation-delete-traitor-cartoon-on-x/107134606",
+    "json_ld": {
+      "found": false,
+      "types": [],
+      "has_headline": false,
+      "has_date": false,
+      "has_author": false,
+      "has_article_body": false
+    },
+    "dom_selectors": {
+      "title_selector": "h1[class*='title']",
+      "body_selector": "article",
+      "author_selector": "[class*='byline']",
+      "date_selector": "time[datetime]"
+    },
+    "image_handling": {
+      "lazy_attrs": [],
+      "cdn_host": "live-production.wcms.abc-cdn.net.au",
+      "unresizing_rule": null
+    },
+    "notice_dialogs": {
+      "consent_banner": null
+    },
+    "rendering_model": "SSR + Client Hydration (Next.js / SPA)",
+    "wait_for_selector": "article",
+    "notes": []
+  },
+  {
+    "id": 66,
+    "name": "CBC News",
+    "domain": "cbc.ca",
+    "type": "canadian_news",
+    "accessible": true,
+    "status_code": 200,
+    "direct_api_available": false,
+    "direct_api_notes": null,
+    "article_url_sampled": "https://www.cbc.ca/news/politics/trump-canadian-aclohol-banned-9.7336507",
+    "json_ld": {
+      "found": true,
+      "types": [
+        "ReportageNewsArticle",
+        "WebPage"
+      ],
+      "has_headline": true,
+      "has_date": true,
+      "has_author": true,
+      "has_article_body": false
+    },
+    "dom_selectors": {
+      "title_selector": "h1",
+      "body_selector": "main",
+      "author_selector": "[class*='byline']",
+      "date_selector": "time[datetime]"
+    },
+    "image_handling": {
+      "lazy_attrs": [
+        "srcset"
+      ],
+      "cdn_host": null,
+      "unresizing_rule": null
+    },
+    "notice_dialogs": {
+      "consent_banner": null
+    },
+    "rendering_model": "SSR + Client Hydration (Next.js / SPA)",
+    "wait_for_selector": "main",
+    "notes": []
+  },
+  {
+    "id": 67,
+    "name": "The Globe and Mail",
+    "domain": "theglobeandmail.com",
+    "type": "canadian_news",
+    "accessible": true,
+    "status_code": 200,
+    "direct_api_available": false,
+    "direct_api_notes": null,
+    "article_url_sampled": "https://www.theglobeandmail.com/canada/article-trump-bans-imports-some-canadian-goods-response-countertariffs/",
+    "json_ld": {
+      "found": true,
+      "types": [
+        "NewsArticle",
+        "BreadcrumbList"
+      ],
+      "has_headline": true,
+      "has_date": true,
+      "has_author": true,
+      "has_article_body": false
+    },
+    "dom_selectors": {
+      "title_selector": "h1[class*='title']",
+      "body_selector": "article",
+      "author_selector": "[class*='author']",
+      "date_selector": "time[datetime]"
+    },
+    "image_handling": {
+      "lazy_attrs": [
+        "srcset"
+      ],
+      "cdn_host": null,
+      "unresizing_rule": null
+    },
+    "notice_dialogs": {
+      "consent_banner": null
+    },
+    "rendering_model": "SSR (Server-Rendered HTML)",
+    "wait_for_selector": "article",
+    "notes": []
+  },
+  {
+    "id": 68,
+    "name": "South China Morning Post",
+    "domain": "scmp.com",
+    "type": "asian_news",
+    "accessible": true,
+    "status_code": 200,
+    "direct_api_available": false,
+    "direct_api_notes": null,
+    "article_url_sampled": "https://www.scmp.com/news/china/military/article/3366928/beijing-boosts-taiwan-facing-firepower-brigade-level-155mm-howitzer-deployment?module=top_story&pgtype=homepage",
+    "json_ld": {
+      "found": true,
+      "types": [
+        "Organization",
+        "NewsMediaOrganization",
+        "WebSite",
+        "BreadcrumbList",
+        "WebPage",
+        "NewsArticle",
+        "ReportageNewsArticle",
+        "ImageObject"
+      ],
+      "has_headline": true,
+      "has_date": true,
+      "has_author": true,
+      "has_article_body": true
+    },
+    "dom_selectors": {
+      "title_selector": "article h1",
+      "body_selector": "article",
+      "author_selector": null,
+      "date_selector": "time[datetime]"
+    },
+    "image_handling": {
+      "lazy_attrs": [],
+      "cdn_host": "cdn.i-scmp.com",
+      "unresizing_rule": null
+    },
+    "notice_dialogs": {
+      "consent_banner": null
+    },
+    "rendering_model": "SSR + Client Hydration (Next.js / SPA)",
+    "wait_for_selector": "article",
+    "notes": []
+  },
+  {
+    "id": 69,
+    "name": "The Straits Times",
+    "domain": "straitstimes.com",
+    "type": "asian_news",
+    "accessible": true,
+    "status_code": 200,
+    "direct_api_available": false,
+    "direct_api_notes": null,
+    "article_url_sampled": "https://www.straitstimes.com/singapore/politics/live-pm-wong-chan-chun-sing-to-speak-on-political-office-holders-salary-review?ref=top-stories",
+    "json_ld": {
+      "found": true,
+      "types": [
+        "NewsMediaOrganization",
+        "LiveBlogPosting"
+      ],
+      "has_headline": true,
+      "has_date": true,
+      "has_author": false,
+      "has_article_body": false
+    },
+    "dom_selectors": {
+      "title_selector": "h1",
+      "body_selector": "main",
+      "author_selector": "[class*='byline']",
+      "date_selector": null
+    },
+    "image_handling": {
+      "lazy_attrs": [],
+      "cdn_host": null,
+      "unresizing_rule": null
+    },
+    "notice_dialogs": {
+      "consent_banner": null
+    },
+    "rendering_model": "SSR (Server-Rendered HTML)",
+    "wait_for_selector": "main",
+    "notes": []
+  },
+  {
+    "id": 70,
+    "name": "France 24",
+    "domain": "france24.com",
+    "type": "global_broadcaster",
+    "accessible": false,
+    "status_code": 403,
+    "direct_api_available": false,
+    "direct_api_notes": null,
+    "article_url_sampled": null,
+    "json_ld": {
+      "found": false,
+      "types": [],
+      "has_headline": false,
+      "has_date": false,
+      "has_author": false,
+      "has_article_body": false
+    },
+    "dom_selectors": {
+      "title_selector": null,
+      "body_selector": null,
+      "author_selector": null,
+      "date_selector": null
+    },
+    "image_handling": {
+      "lazy_attrs": [],
+      "cdn_host": null,
+      "unresizing_rule": null
+    },
+    "notice_dialogs": {
+      "consent_banner": null
+    },
+    "rendering_model": "SSR",
+    "wait_for_selector": null,
+    "notes": [
+      "Root returned HTTP status 403"
+    ]
+  },
+  {
+    "id": 71,
+    "name": "Le Monde (English)",
+    "domain": "lemonde.fr",
+    "type": "european_news",
+    "accessible": true,
+    "status_code": 200,
+    "direct_api_available": false,
+    "direct_api_notes": null,
+    "article_url_sampled": "https://www.lemonde.fr/en/about-us/article/2023/09/06/le-monde-in-english-now-available-on-our-mobile-app_6125308_115.html",
+    "json_ld": {
+      "found": false,
+      "types": [],
+      "has_headline": false,
+      "has_date": false,
+      "has_author": false,
+      "has_article_body": false
+    },
+    "dom_selectors": {
+      "title_selector": "h1",
+      "body_selector": "main",
+      "author_selector": null,
+      "date_selector": null
+    },
+    "image_handling": {
+      "lazy_attrs": [],
+      "cdn_host": null,
+      "unresizing_rule": null
+    },
+    "notice_dialogs": {
+      "consent_banner": null
+    },
+    "rendering_model": "SSR (Server-Rendered HTML)",
+    "wait_for_selector": "main",
+    "notes": []
+  },
+  {
+    "id": 72,
+    "name": "Der Spiegel (Int)",
+    "domain": "spiegel.de",
+    "type": "european_news",
+    "accessible": true,
+    "status_code": 200,
+    "direct_api_available": false,
+    "direct_api_notes": null,
+    "article_url_sampled": "https://www.spiegel.de/international/",
+    "json_ld": {
+      "found": true,
+      "types": [
+        "WebPage",
+        "BreadcrumbList"
+      ],
+      "has_headline": true,
+      "has_date": false,
+      "has_author": false,
+      "has_article_body": false
+    },
+    "dom_selectors": {
+      "title_selector": "h1",
+      "body_selector": "article",
+      "author_selector": null,
+      "date_selector": null
+    },
+    "image_handling": {
+      "lazy_attrs": [
+        "data-src",
+        "srcset"
+      ],
+      "cdn_host": "cdn.prod.www.spiegel.de",
+      "unresizing_rule": null
+    },
+    "notice_dialogs": {
+      "consent_banner": null
+    },
+    "rendering_model": "SSR (Server-Rendered HTML)",
+    "wait_for_selector": "article",
+    "notes": [
+      "Could not auto-discover article link from root page"
+    ]
+  },
+  {
+    "id": 73,
+    "name": "Engadget",
+    "domain": "engadget.com",
+    "type": "tech_media",
+    "accessible": true,
+    "status_code": 200,
+    "direct_api_available": false,
+    "direct_api_notes": null,
+    "article_url_sampled": "https://www.engadget.com/gaming/best-handheld-gaming-system-140018863.html",
+    "json_ld": {
+      "found": true,
+      "types": [
+        "Article"
+      ],
+      "has_headline": true,
+      "has_date": true,
+      "has_author": false,
+      "has_article_body": false
+    },
+    "dom_selectors": {
+      "title_selector": "h1[class*='title']",
+      "body_selector": "article",
+      "author_selector": "[class*='author']",
+      "date_selector": "time[datetime]"
+    },
+    "image_handling": {
+      "lazy_attrs": [],
+      "cdn_host": null,
+      "unresizing_rule": null
+    },
+    "notice_dialogs": {
+      "consent_banner": null
+    },
+    "rendering_model": "SSR (Server-Rendered HTML)",
+    "wait_for_selector": "article",
+    "notes": []
+  },
+  {
+    "id": 74,
+    "name": "Gizmodo",
+    "domain": "gizmodo.com",
+    "type": "tech_media",
+    "accessible": false,
+    "status_code": 403,
+    "direct_api_available": false,
+    "direct_api_notes": null,
+    "article_url_sampled": null,
+    "json_ld": {
+      "found": false,
+      "types": [],
+      "has_headline": false,
+      "has_date": false,
+      "has_author": false,
+      "has_article_body": false
+    },
+    "dom_selectors": {
+      "title_selector": null,
+      "body_selector": null,
+      "author_selector": null,
+      "date_selector": null
+    },
+    "image_handling": {
+      "lazy_attrs": [],
+      "cdn_host": null,
+      "unresizing_rule": null
+    },
+    "notice_dialogs": {
+      "consent_banner": null
+    },
+    "rendering_model": "SSR",
+    "wait_for_selector": null,
+    "notes": [
+      "Root returned HTTP status 403"
+    ]
+  },
+  {
+    "id": 75,
+    "name": "Mashable",
+    "domain": "mashable.com",
+    "type": "tech_media",
+    "accessible": true,
+    "status_code": 200,
+    "direct_api_available": false,
+    "direct_api_notes": null,
+    "article_url_sampled": "https://mashable.com/article/ps5-vs-ps5-slim-differences",
+    "json_ld": {
+      "found": true,
+      "types": [
+        "NewsArticle",
+        "Organization",
+        "BreadcrumbList"
+      ],
+      "has_headline": true,
+      "has_date": true,
+      "has_author": true,
+      "has_article_body": true
+    },
+    "dom_selectors": {
+      "title_selector": "article h1",
+      "body_selector": "article",
+      "author_selector": null,
+      "date_selector": "time[datetime]"
+    },
+    "image_handling": {
+      "lazy_attrs": [
+        "srcset"
+      ],
+      "cdn_host": null,
+      "unresizing_rule": null
+    },
+    "notice_dialogs": {
+      "consent_banner": null
+    },
+    "rendering_model": "SSR (Server-Rendered HTML)",
+    "wait_for_selector": "article",
+    "notes": []
+  },
+  {
+    "id": 76,
+    "name": "CNET",
+    "domain": "cnet.com",
+    "type": "tech_media",
+    "accessible": true,
+    "status_code": 200,
+    "direct_api_available": false,
+    "direct_api_notes": null,
+    "article_url_sampled": "https://www.cnet.com/culture/entertainment/",
+    "json_ld": {
+      "found": false,
+      "types": [],
+      "has_headline": false,
+      "has_date": false,
+      "has_author": false,
+      "has_article_body": false
+    },
+    "dom_selectors": {
+      "title_selector": "h1[class*='title']",
+      "body_selector": "main",
+      "author_selector": null,
+      "date_selector": "[class*='date']"
+    },
+    "image_handling": {
+      "lazy_attrs": [
+        "srcset"
+      ],
+      "cdn_host": null,
+      "unresizing_rule": null
+    },
+    "notice_dialogs": {
+      "consent_banner": null
+    },
+    "rendering_model": "SSR (Server-Rendered HTML)",
+    "wait_for_selector": "main",
+    "notes": []
+  },
+  {
+    "id": 77,
+    "name": "VentureBeat",
+    "domain": "venturebeat.com",
+    "type": "tech_media",
+    "accessible": true,
+    "status_code": 200,
+    "direct_api_available": false,
+    "direct_api_notes": null,
+    "article_url_sampled": "https://venturebeat.com/",
+    "json_ld": {
+      "found": false,
+      "types": [],
+      "has_headline": false,
+      "has_date": false,
+      "has_author": false,
+      "has_article_body": false
+    },
+    "dom_selectors": {
+      "title_selector": null,
+      "body_selector": "article",
+      "author_selector": "[rel='author']",
+      "date_selector": "time[datetime]"
+    },
+    "image_handling": {
+      "lazy_attrs": [
+        "srcset"
+      ],
+      "cdn_host": null,
+      "unresizing_rule": null
+    },
+    "notice_dialogs": {
+      "consent_banner": null
+    },
+    "rendering_model": "SSR (Server-Rendered HTML)",
+    "wait_for_selector": "article",
+    "notes": [
+      "Could not auto-discover article link from root page"
+    ]
+  },
+  {
+    "id": 78,
+    "name": "CoinDesk",
+    "domain": "coindesk.com",
+    "type": "crypto_finance",
+    "accessible": true,
+    "status_code": 200,
+    "direct_api_available": false,
+    "direct_api_notes": null,
+    "article_url_sampled": "https://www.coindesk.com/business/2026/09/09/algorand-names-former-chainlink-executive-william-herkelrath-as-ceo",
+    "json_ld": {
+      "found": true,
+      "types": [
+        "NewsArticle"
+      ],
+      "has_headline": true,
+      "has_date": true,
+      "has_author": true,
+      "has_article_body": false
+    },
+    "dom_selectors": {
+      "title_selector": "h1[class*='headline']",
+      "body_selector": "main",
+      "author_selector": null,
+      "date_selector": "time[datetime]"
+    },
+    "image_handling": {
+      "lazy_attrs": [
+        "srcset"
+      ],
+      "cdn_host": null,
+      "unresizing_rule": null
+    },
+    "notice_dialogs": {
+      "consent_banner": null
+    },
+    "rendering_model": "SSR (Server-Rendered HTML)",
+    "wait_for_selector": "main",
+    "notes": []
+  },
+  {
+    "id": 79,
+    "name": "CoinTelegraph",
+    "domain": "cointelegraph.com",
+    "type": "crypto_finance",
+    "accessible": true,
+    "status_code": 200,
+    "direct_api_available": false,
+    "direct_api_notes": null,
+    "article_url_sampled": "https://cointelegraph.com/news/bitmart-misses-roadmap-deadline-appoints-financial-adviser",
+    "json_ld": {
+      "found": true,
+      "types": [
+        "NewsArticle",
+        "BreadcrumbList"
+      ],
+      "has_headline": true,
+      "has_date": true,
+      "has_author": true,
+      "has_article_body": false
+    },
+    "dom_selectors": {
+      "title_selector": "h1",
+      "body_selector": "main",
+      "author_selector": null,
+      "date_selector": null
+    },
+    "image_handling": {
+      "lazy_attrs": [
+        "srcset"
+      ],
+      "cdn_host": "s3-images.ctmedia.io",
+      "unresizing_rule": null
+    },
+    "notice_dialogs": {
+      "consent_banner": null
+    },
+    "rendering_model": "SSR (Server-Rendered HTML)",
+    "wait_for_selector": "main",
+    "notes": []
+  },
+  {
+    "id": 80,
+    "name": "ScienceDaily",
+    "domain": "sciencedaily.com",
+    "type": "science_news",
+    "accessible": true,
+    "status_code": 200,
+    "direct_api_available": false,
+    "direct_api_notes": null,
+    "article_url_sampled": "https://www.sciencedaily.com/releases/2026/09/260909005155.htm",
+    "json_ld": {
+      "found": false,
+      "types": [],
+      "has_headline": false,
+      "has_date": false,
+      "has_author": false,
+      "has_article_body": false
+    },
+    "dom_selectors": {
+      "title_selector": "h1[class*='headline']",
+      "body_selector": "main",
+      "author_selector": null,
+      "date_selector": "[class*='date']"
+    },
+    "image_handling": {
+      "lazy_attrs": [
+        "srcset"
+      ],
+      "cdn_host": null,
+      "unresizing_rule": null
+    },
+    "notice_dialogs": {
+      "consent_banner": null
+    },
+    "rendering_model": "SSR (Server-Rendered HTML)",
+    "wait_for_selector": "main",
+    "notes": []
+  },
+  {
+    "id": 81,
+    "name": "Phys.org",
+    "domain": "phys.org",
+    "type": "science_news",
+    "accessible": true,
+    "status_code": 200,
+    "direct_api_available": false,
+    "direct_api_notes": null,
+    "article_url_sampled": "https://phys.org/news/2026-09-career-doesnt-expats-stronger.html",
+    "json_ld": {
+      "found": false,
+      "types": [],
+      "has_headline": false,
+      "has_date": false,
+      "has_author": false,
+      "has_article_body": false
+    },
+    "dom_selectors": {
+      "title_selector": "h1",
+      "body_selector": null,
+      "author_selector": null,
+      "date_selector": null
+    },
+    "image_handling": {
+      "lazy_attrs": [],
+      "cdn_host": null,
+      "unresizing_rule": null
+    },
+    "notice_dialogs": {
+      "consent_banner": null
+    },
+    "rendering_model": "SSR (Server-Rendered HTML)",
+    "wait_for_selector": null,
+    "notes": []
+  },
+  {
+    "id": 82,
+    "name": "Polygon",
+    "domain": "polygon.com",
+    "type": "gaming_culture",
+    "accessible": false,
+    "status_code": null,
+    "direct_api_available": false,
+    "direct_api_notes": null,
+    "article_url_sampled": null,
+    "json_ld": {
+      "found": false,
+      "types": [],
+      "has_headline": false,
+      "has_date": false,
+      "has_author": false,
+      "has_article_body": false
+    },
+    "dom_selectors": {
+      "title_selector": null,
+      "body_selector": null,
+      "author_selector": null,
+      "date_selector": null
+    },
+    "image_handling": {
+      "lazy_attrs": [],
+      "cdn_host": null,
+      "unresizing_rule": null
+    },
+    "notice_dialogs": {
+      "consent_banner": null
+    },
+    "rendering_model": "SSR",
+    "wait_for_selector": null,
+    "notes": [
+      "Root fetch error: Server disconnected without sending a response."
+    ]
+  },
+  {
+    "id": 83,
+    "name": "Business Insider",
+    "domain": "businessinsider.com",
+    "type": "business_media",
+    "accessible": true,
+    "status_code": 200,
+    "direct_api_available": false,
+    "direct_api_notes": null,
+    "article_url_sampled": "https://www.snapchat.com/p/6f1c2e77-0539-4e08-a90c-7bdd4b3f1da9/3298916208531456",
+    "json_ld": {
+      "found": true,
+      "types": [
+        "ProfilePage"
+      ],
+      "has_headline": false,
+      "has_date": false,
+      "has_author": false,
+      "has_article_body": false
+    },
+    "dom_selectors": {
+      "title_selector": "h1",
+      "body_selector": "main",
+      "author_selector": null,
+      "date_selector": null
+    },
+    "image_handling": {
+      "lazy_attrs": [
+        "srcset"
+      ],
+      "cdn_host": null,
+      "unresizing_rule": null
+    },
+    "notice_dialogs": {
+      "consent_banner": null
+    },
+    "rendering_model": "SSR + Client Hydration (Next.js / SPA)",
+    "wait_for_selector": "main",
+    "notes": []
+  },
+  {
+    "id": 84,
+    "name": "MarketWatch",
+    "domain": "marketwatch.com",
+    "type": "financial_markets",
+    "accessible": false,
+    "status_code": 401,
+    "direct_api_available": false,
+    "direct_api_notes": null,
+    "article_url_sampled": null,
+    "json_ld": {
+      "found": false,
+      "types": [],
+      "has_headline": false,
+      "has_date": false,
+      "has_author": false,
+      "has_article_body": false
+    },
+    "dom_selectors": {
+      "title_selector": null,
+      "body_selector": null,
+      "author_selector": null,
+      "date_selector": null
+    },
+    "image_handling": {
+      "lazy_attrs": [],
+      "cdn_host": null,
+      "unresizing_rule": null
+    },
+    "notice_dialogs": {
+      "consent_banner": null
+    },
+    "rendering_model": "SSR",
+    "wait_for_selector": null,
+    "notes": [
+      "Root returned HTTP status 401"
+    ]
+  },
+  {
+    "id": 85,
+    "name": "Barron's",
+    "domain": "barrons.com",
+    "type": "financial_markets",
+    "accessible": false,
+    "status_code": 401,
+    "direct_api_available": false,
+    "direct_api_notes": null,
+    "article_url_sampled": null,
+    "json_ld": {
+      "found": false,
+      "types": [],
+      "has_headline": false,
+      "has_date": false,
+      "has_author": false,
+      "has_article_body": false
+    },
+    "dom_selectors": {
+      "title_selector": null,
+      "body_selector": null,
+      "author_selector": null,
+      "date_selector": null
+    },
+    "image_handling": {
+      "lazy_attrs": [],
+      "cdn_host": null,
+      "unresizing_rule": null
+    },
+    "notice_dialogs": {
+      "consent_banner": null
+    },
+    "rendering_model": "SSR",
+    "wait_for_selector": null,
+    "notes": [
+      "Root returned HTTP status 401"
+    ]
+  },
+  {
+    "id": 86,
+    "name": "Fortune",
+    "domain": "fortune.com",
+    "type": "business_media",
+    "accessible": true,
+    "status_code": 200,
+    "direct_api_available": false,
+    "direct_api_notes": null,
+    "article_url_sampled": "https://fortune.com/2026/09/09/apple-iphone-18-foldable-launch-event-john-ternus-siri-ai/",
+    "json_ld": {
+      "found": true,
+      "types": [
+        "NewsArticle"
+      ],
+      "has_headline": true,
+      "has_date": true,
+      "has_author": true,
+      "has_article_body": false
+    },
+    "dom_selectors": {
+      "title_selector": "h1",
+      "body_selector": "article",
+      "author_selector": null,
+      "date_selector": null
+    },
+    "image_handling": {
+      "lazy_attrs": [
+        "srcset"
+      ],
+      "cdn_host": null,
+      "unresizing_rule": null
+    },
+    "notice_dialogs": {
+      "consent_banner": null
+    },
+    "rendering_model": "SSR (Server-Rendered HTML)",
+    "wait_for_selector": "article",
+    "notes": []
+  },
+  {
+    "id": 87,
+    "name": "Fast Company",
+    "domain": "fastcompany.com",
+    "type": "business_media",
+    "accessible": false,
+    "status_code": 403,
+    "direct_api_available": false,
+    "direct_api_notes": null,
+    "article_url_sampled": null,
+    "json_ld": {
+      "found": false,
+      "types": [],
+      "has_headline": false,
+      "has_date": false,
+      "has_author": false,
+      "has_article_body": false
+    },
+    "dom_selectors": {
+      "title_selector": null,
+      "body_selector": null,
+      "author_selector": null,
+      "date_selector": null
+    },
+    "image_handling": {
+      "lazy_attrs": [],
+      "cdn_host": null,
+      "unresizing_rule": null
+    },
+    "notice_dialogs": {
+      "consent_banner": null
+    },
+    "rendering_model": "SSR",
+    "wait_for_selector": null,
+    "notes": [
+      "Root returned HTTP status 403"
+    ]
+  },
+  {
+    "id": 88,
+    "name": "Inc. Magazine",
+    "domain": "inc.com",
+    "type": "business_media",
+    "accessible": false,
+    "status_code": 403,
+    "direct_api_available": false,
+    "direct_api_notes": null,
+    "article_url_sampled": null,
+    "json_ld": {
+      "found": false,
+      "types": [],
+      "has_headline": false,
+      "has_date": false,
+      "has_author": false,
+      "has_article_body": false
+    },
+    "dom_selectors": {
+      "title_selector": null,
+      "body_selector": null,
+      "author_selector": null,
+      "date_selector": null
+    },
+    "image_handling": {
+      "lazy_attrs": [],
+      "cdn_host": null,
+      "unresizing_rule": null
+    },
+    "notice_dialogs": {
+      "consent_banner": null
+    },
+    "rendering_model": "SSR",
+    "wait_for_selector": null,
+    "notes": [
+      "Root returned HTTP status 403"
+    ]
+  },
+  {
+    "id": 89,
+    "name": "S&P Global",
+    "domain": "spglobal.com",
+    "type": "financial_markets",
+    "accessible": false,
+    "status_code": 403,
+    "direct_api_available": false,
+    "direct_api_notes": null,
+    "article_url_sampled": null,
+    "json_ld": {
+      "found": false,
+      "types": [],
+      "has_headline": false,
+      "has_date": false,
+      "has_author": false,
+      "has_article_body": false
+    },
+    "dom_selectors": {
+      "title_selector": null,
+      "body_selector": null,
+      "author_selector": null,
+      "date_selector": null
+    },
+    "image_handling": {
+      "lazy_attrs": [],
+      "cdn_host": null,
+      "unresizing_rule": null
+    },
+    "notice_dialogs": {
+      "consent_banner": null
+    },
+    "rendering_model": "SSR",
+    "wait_for_selector": null,
+    "notes": [
+      "Root returned HTTP status 403"
+    ]
+  },
+  {
+    "id": 90,
+    "name": "The Hill",
+    "domain": "thehill.com",
+    "type": "policy_news",
+    "accessible": false,
+    "status_code": 403,
+    "direct_api_available": false,
+    "direct_api_notes": null,
+    "article_url_sampled": null,
+    "json_ld": {
+      "found": false,
+      "types": [],
+      "has_headline": false,
+      "has_date": false,
+      "has_author": false,
+      "has_article_body": false
+    },
+    "dom_selectors": {
+      "title_selector": null,
+      "body_selector": null,
+      "author_selector": null,
+      "date_selector": null
+    },
+    "image_handling": {
+      "lazy_attrs": [],
+      "cdn_host": null,
+      "unresizing_rule": null
+    },
+    "notice_dialogs": {
+      "consent_banner": null
+    },
+    "rendering_model": "SSR",
+    "wait_for_selector": null,
+    "notes": [
+      "Root returned HTTP status 403"
+    ]
+  },
+  {
+    "id": 91,
+    "name": "Axios",
+    "domain": "axios.com",
+    "type": "news_newsletter",
+    "accessible": false,
+    "status_code": 403,
+    "direct_api_available": false,
+    "direct_api_notes": null,
+    "article_url_sampled": null,
+    "json_ld": {
+      "found": false,
+      "types": [],
+      "has_headline": false,
+      "has_date": false,
+      "has_author": false,
+      "has_article_body": false
+    },
+    "dom_selectors": {
+      "title_selector": null,
+      "body_selector": null,
+      "author_selector": null,
+      "date_selector": null
+    },
+    "image_handling": {
+      "lazy_attrs": [],
+      "cdn_host": null,
+      "unresizing_rule": null
+    },
+    "notice_dialogs": {
+      "consent_banner": null
+    },
+    "rendering_model": "SSR",
+    "wait_for_selector": null,
+    "notes": [
+      "Root returned HTTP status 403"
+    ]
+  },
+  {
+    "id": 92,
+    "name": "Semafor",
+    "domain": "semafor.com",
+    "type": "news_newsletter",
+    "accessible": true,
+    "status_code": 200,
+    "direct_api_available": false,
+    "direct_api_notes": null,
+    "article_url_sampled": "https://www.semafor.com/article/09/08/2026/trump-moves-to-ban-canadian-imports",
+    "json_ld": {
+      "found": true,
+      "types": [
+        "NewsArticle",
+        "BreadcrumbList"
+      ],
+      "has_headline": true,
+      "has_date": true,
+      "has_author": true,
+      "has_article_body": false
+    },
+    "dom_selectors": {
+      "title_selector": "h1[class*='title']",
+      "body_selector": "div.article-content",
+      "author_selector": null,
+      "date_selector": null
+    },
+    "image_handling": {
+      "lazy_attrs": [],
+      "cdn_host": null,
+      "unresizing_rule": null
+    },
+    "notice_dialogs": {
+      "consent_banner": null
+    },
+    "rendering_model": "SSR (Server-Rendered HTML)",
+    "wait_for_selector": "div.article-content",
+    "notes": []
+  },
+  {
+    "id": 93,
+    "name": "Yomiuri Shimbun",
+    "domain": "yomiuri.co.jp",
+    "type": "japanese_news",
+    "accessible": true,
+    "status_code": 200,
+    "direct_api_available": false,
+    "direct_api_notes": null,
+    "article_url_sampled": "https://www.yomiuri.co.jp/medical/20260909-GYT1T00284/",
+    "json_ld": {
+      "found": true,
+      "types": [
+        "NewsArticle",
+        "BreadcrumbList"
+      ],
+      "has_headline": true,
+      "has_date": true,
+      "has_author": true,
+      "has_article_body": false
+    },
+    "dom_selectors": {
+      "title_selector": "h1[class*='title']",
+      "body_selector": "article",
+      "author_selector": "[class*='author']",
+      "date_selector": "time[datetime]"
+    },
+    "image_handling": {
+      "lazy_attrs": [],
+      "cdn_host": null,
+      "unresizing_rule": null
+    },
+    "notice_dialogs": {
+      "consent_banner": null
+    },
+    "rendering_model": "SSR (Server-Rendered HTML)",
+    "wait_for_selector": "article",
+    "notes": []
+  },
+  {
+    "id": 94,
+    "name": "Mainichi Shimbun",
+    "domain": "mainichi.jp",
+    "type": "japanese_news",
+    "accessible": true,
+    "status_code": 200,
+    "direct_api_available": false,
+    "direct_api_notes": null,
+    "article_url_sampled": "https://mainichi.jp/articles/20260824/org/00m/040/001000d",
+    "json_ld": {
+      "found": true,
+      "types": [
+        "NewsArticle"
+      ],
+      "has_headline": true,
+      "has_date": true,
+      "has_author": true,
+      "has_article_body": false
+    },
+    "dom_selectors": {
+      "title_selector": "h1[class*='title']",
+      "body_selector": "article",
+      "author_selector": null,
+      "date_selector": "[class*='date']"
+    },
+    "image_handling": {
+      "lazy_attrs": [],
+      "cdn_host": "cdn.mainichi.jp",
+      "unresizing_rule": null
+    },
+    "notice_dialogs": {
+      "consent_banner": null
+    },
+    "rendering_model": "SSR (Server-Rendered HTML)",
+    "wait_for_selector": "article",
+    "notes": []
+  },
+  {
+    "id": 95,
+    "name": "Kyodo News",
+    "domain": "english.kyodonews.net",
+    "type": "japanese_news",
+    "accessible": true,
+    "status_code": 200,
+    "direct_api_available": false,
+    "direct_api_notes": null,
+    "article_url_sampled": "https://english.kyodonews.net/list/news/japan",
+    "json_ld": {
+      "found": true,
+      "types": [
+        "WebSite",
+        "BreadcrumbList"
+      ],
+      "has_headline": false,
+      "has_date": false,
+      "has_author": false,
+      "has_article_body": false
+    },
+    "dom_selectors": {
+      "title_selector": null,
+      "body_selector": "main",
+      "author_selector": null,
+      "date_selector": "time[datetime]"
+    },
+    "image_handling": {
+      "lazy_attrs": [
+        "srcset"
+      ],
+      "cdn_host": "english-kyodo.ismcdn.jp",
+      "unresizing_rule": null
+    },
+    "notice_dialogs": {
+      "consent_banner": null
+    },
+    "rendering_model": "SSR (Server-Rendered HTML)",
+    "wait_for_selector": "main",
+    "notes": []
+  },
+  {
+    "id": 96,
+    "name": "MoneyToday",
+    "domain": "mt.co.kr",
+    "type": "korean_news",
+    "accessible": true,
+    "status_code": 200,
+    "direct_api_available": false,
+    "direct_api_notes": null,
+    "article_url_sampled": "https://www.mt.co.kr/living/2026/09/09/2026090813520651051",
+    "json_ld": {
+      "found": true,
+      "types": [
+        "NewsArticle",
+        "BreadcrumbList"
+      ],
+      "has_headline": true,
+      "has_date": true,
+      "has_author": true,
+      "has_article_body": false
+    },
+    "dom_selectors": {
+      "title_selector": "h1[class*='headline']",
+      "body_selector": "article",
+      "author_selector": null,
+      "date_selector": "[class*='date']"
+    },
+    "image_handling": {
+      "lazy_attrs": [],
+      "cdn_host": null,
+      "unresizing_rule": null
+    },
+    "notice_dialogs": {
+      "consent_banner": null
+    },
+    "rendering_model": "SSR (Server-Rendered HTML)",
+    "wait_for_selector": "article",
+    "notes": []
+  },
+  {
+    "id": 97,
+    "name": "Edaily",
+    "domain": "edaily.co.kr",
+    "type": "korean_news",
+    "accessible": true,
+    "status_code": 200,
+    "direct_api_available": false,
+    "direct_api_notes": null,
+    "article_url_sampled": "https://www.edaily.co.kr/News/Read?newsId=05720326645578480&mediaCodeNo=257",
+    "json_ld": {
+      "found": true,
+      "types": [
+        "NewsMediaOrganization"
+      ],
+      "has_headline": false,
+      "has_date": false,
+      "has_author": false,
+      "has_article_body": false
+    },
+    "dom_selectors": {
+      "title_selector": "h1",
+      "body_selector": null,
+      "author_selector": null,
+      "date_selector": "[class*='date']"
+    },
+    "image_handling": {
+      "lazy_attrs": [],
+      "cdn_host": null,
+      "unresizing_rule": null
+    },
+    "notice_dialogs": {
+      "consent_banner": null
+    },
+    "rendering_model": "SSR (Server-Rendered HTML)",
+    "wait_for_selector": null,
+    "notes": []
+  },
+  {
+    "id": 98,
+    "name": "OhmyNews",
+    "domain": "ohmynews.com",
+    "type": "korean_news",
+    "accessible": true,
+    "status_code": 200,
+    "direct_api_available": false,
+    "direct_api_notes": null,
+    "article_url_sampled": "https://www.ohmynews.com/NWS_Web/tenman/article.aspx?CMPT_CD=PT001",
+    "json_ld": {
+      "found": false,
+      "types": [],
+      "has_headline": false,
+      "has_date": false,
+      "has_author": false,
+      "has_article_body": false
+    },
+    "dom_selectors": {
+      "title_selector": null,
+      "body_selector": null,
+      "author_selector": null,
+      "date_selector": "[class*='date']"
+    },
+    "image_handling": {
+      "lazy_attrs": [],
+      "cdn_host": null,
+      "unresizing_rule": null
+    },
+    "notice_dialogs": {
+      "consent_banner": null
+    },
+    "rendering_model": "SSR (Server-Rendered HTML)",
+    "wait_for_selector": null,
+    "notes": []
+  },
+  {
+    "id": 99,
+    "name": "AllTop",
+    "domain": "alltop.com",
+    "type": "aggregator",
+    "accessible": true,
+    "status_code": 200,
+    "direct_api_available": false,
+    "direct_api_notes": null,
+    "article_url_sampled": "https://alltop.com/",
+    "json_ld": {
+      "found": false,
+      "types": [],
+      "has_headline": false,
+      "has_date": false,
+      "has_author": false,
+      "has_article_body": false
+    },
+    "dom_selectors": {
+      "title_selector": "h1",
+      "body_selector": "article",
+      "author_selector": null,
+      "date_selector": "[class*='time']"
+    },
+    "image_handling": {
+      "lazy_attrs": [],
+      "cdn_host": null,
+      "unresizing_rule": null
+    },
+    "notice_dialogs": {
+      "consent_banner": null
+    },
+    "rendering_model": "SSR (Server-Rendered HTML)",
+    "wait_for_selector": "article",
+    "notes": [
+      "Could not auto-discover article link from root page"
+    ]
+  },
+  {
+    "id": 100,
+    "name": "SmartBrief",
+    "domain": "smartbrief.com",
+    "type": "aggregator",
+    "accessible": false,
+    "status_code": 403,
+    "direct_api_available": false,
+    "direct_api_notes": null,
+    "article_url_sampled": null,
+    "json_ld": {
+      "found": false,
+      "types": [],
+      "has_headline": false,
+      "has_date": false,
+      "has_author": false,
+      "has_article_body": false
+    },
+    "dom_selectors": {
+      "title_selector": null,
+      "body_selector": null,
+      "author_selector": null,
+      "date_selector": null
+    },
+    "image_handling": {
+      "lazy_attrs": [],
+      "cdn_host": null,
+      "unresizing_rule": null
+    },
+    "notice_dialogs": {
+      "consent_banner": null
+    },
+    "rendering_model": "SSR",
+    "wait_for_selector": null,
+    "notes": [
+      "Root returned HTTP status 403"
+    ]
+  }
+]

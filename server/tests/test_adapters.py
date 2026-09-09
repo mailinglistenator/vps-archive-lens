@@ -51,8 +51,8 @@ from server.adapters import (
 class TestAdaptersRegistry(unittest.TestCase):
     """Verify registry mappings and browser hints for all Top 30 platforms."""
 
-    TOP_30_DOMAINS = [
-        # Group A
+    TOP_100_DOMAINS = [
+        # Batch 1 (1–30 Original)
         "msn.com",
         "news.yahoo.com",
         "finance.yahoo.com",
@@ -62,7 +62,6 @@ class TestAdaptersRegistry(unittest.TestCase):
         "medium.com",
         "reddit.com",
         "feedly.com",
-        # Group B
         "n.news.naver.com",
         "v.daum.net",
         "news.nate.com",
@@ -73,7 +72,6 @@ class TestAdaptersRegistry(unittest.TestCase):
         "hankookilbo.com",
         "topstarnews.net",
         "tenasia.co.kr",
-        # Group C
         "reuters.com",
         "apnews.com",
         "bbc.com",
@@ -86,16 +84,93 @@ class TestAdaptersRegistry(unittest.TestCase):
         "cnn.com",
         "cnbc.com",
         "theverge.com",
+        # Batch 1 Additions (31–38)
+        "news.ycombinator.com",
+        "flipboard.com",
+        "getpocket.com",
+        "apple.news",
+        "dev.to",
+        "bsky.app",
+        "ghost.org",
+        "wordpress.org",
+        # Batch 2 Additions (39–48)
+        "mk.co.kr",
+        "hankyung.com",
+        "hani.co.kr",
+        "khan.co.kr",
+        "segye.com",
+        "news1.kr",
+        "newsis.com",
+        "news.yahoo.co.jp",
+        "asia.nikkei.com",
+        "asahi.com",
+        # Batch 3 Additions (49–60)
+        "arstechnica.com",
+        "wired.com",
+        "techcrunch.com",
+        "theatlantic.com",
+        "politico.com",
+        "forbes.com",
+        "economist.com",
+        "propublica.org",
+        "latimes.com",
+        "aljazeera.com",
+        "dw.com",
+        "npr.org",
+        # Batch 4 Additions (61–72)
+        "usatoday.com",
+        "timesofindia.indiatimes.com",
+        "thehindu.com",
+        "smh.com.au",
+        "abc.net.au",
+        "cbc.ca",
+        "theglobeandmail.com",
+        "scmp.com",
+        "straitstimes.com",
+        "france24.com",
+        "lemonde.fr",
+        "spiegel.de",
+        # Batch 5 Additions (73–82)
+        "engadget.com",
+        "gizmodo.com",
+        "mashable.com",
+        "cnet.com",
+        "venturebeat.com",
+        "coindesk.com",
+        "cointelegraph.com",
+        "sciencedaily.com",
+        "phys.org",
+        "polygon.com",
+        # Batch 6 Additions (83–92)
+        "businessinsider.com",
+        "marketwatch.com",
+        "barrons.com",
+        "fortune.com",
+        "fastcompany.com",
+        "inc.com",
+        "spglobal.com",
+        "thehill.com",
+        "axios.com",
+        "semafor.com",
+        # Batch 7 Additions (93–100)
+        "yomiuri.co.jp",
+        "mainichi.jp",
+        "english.kyodonews.net",
+        "mt.co.kr",
+        "edaily.co.kr",
+        "ohmynews.com",
+        "alltop.com",
+        "smartbrief.com",
     ]
 
-    def test_all_top_30_registered(self):
-        for domain in self.TOP_30_DOMAINS:
+    def test_all_top_100_registered(self):
+        for domain in self.TOP_100_DOMAINS:
             with self.subTest(domain=domain):
                 adapter = get_adapter_for_url(f"https://{domain}/article/sample")
                 self.assertIsNotNone(adapter, f"Missing adapter for {domain}")
 
     def test_browser_hints_registered(self):
-        for domain in self.TOP_30_DOMAINS:
+        for domain in self.TOP_100_DOMAINS:
             with self.subTest(domain=domain):
                 hints = get_browser_hints(f"https://{domain}/article/sample")
                 self.assertIn("wait_for_selector", hints)
@@ -904,6 +979,275 @@ class TestHighLevelExtractArticle(unittest.TestCase):
         self.assertIn("title", res)
         self.assertIn("body_html", res)
         self.assertIn("authors", res)
+
+
+class TestNewPlatformExtractors(unittest.TestCase):
+    """Unit tests for newly added platform extractors across Batches 1 to 7."""
+
+    def test_extract_hackernews(self):
+        from server.adapters import extract_hackernews
+        html = """
+        <html>
+          <body>
+            <table>
+              <tr><td class="title"><span class="titleline"><a href="https://example.com/show-hn">Show HN: Offline Archiver</a></span></td></tr>
+              <tr><td class="subtext"><span class="hnuser">antigravity</span> <span class="age"><a href="item?id=12345">2 hours ago</a></span></td></tr>
+              <tr><td class="toptext">This is an Ask or Show HN description text for testing.</td></tr>
+            </table>
+          </body>
+        </html>
+        """
+        soup = BeautifulSoup(html, "html.parser")
+        res = extract_hackernews("https://news.ycombinator.com/item?id=12345", soup, html, fetch_network=False)
+        self.assertEqual(res["title"], "Show HN: Offline Archiver")
+        self.assertIn("<p>This is an Ask or Show HN", res["body_html"])
+        self.assertEqual(res["authors"], ["antigravity"])
+
+    def test_extract_devto(self):
+        from server.adapters import extract_devto
+        html = """
+        <html>
+          <body>
+            <h1 class="crayons-article__title">Building Web Scrapers with Modern Best Practices</h1>
+            <div id="article-body">
+              <p>Python and BeautifulSoup make content extraction reliable and maintainable.</p>
+            </div>
+          </body>
+        </html>
+        """
+        soup = BeautifulSoup(html, "html.parser")
+        res = extract_devto("https://dev.to/author/modern-scraping", soup, html, fetch_network=False)
+        self.assertEqual(res["title"], "Building Web Scrapers with Modern Best Practices")
+        self.assertIn("<p>Python and BeautifulSoup", res["body_html"])
+
+    def test_extract_mk(self):
+        from server.adapters import extract_mk
+        html = """
+        <html>
+          <body>
+            <h2 class="top_title">매일경제 주요 헤드라인 기사</h2>
+            <div class="news_cnt_detail_wrap">
+              <p>국내 증시가 상승 마감하며 긍정적인 투자 심리를 반영했습니다.</p>
+            </div>
+          </body>
+        </html>
+        """
+        soup = BeautifulSoup(html, "html.parser")
+        res = extract_mk("https://mk.co.kr/news/economy/123", soup, html, fetch_network=False)
+        self.assertEqual(res["title"], "매일경제 주요 헤드라인 기사")
+        self.assertIn("<p>국내 증시가 상승", res["body_html"])
+
+    def test_extract_yahoojp(self):
+        from server.adapters import extract_yahoojp
+        html = """
+        <html>
+          <body>
+            <header><h1>Yahoo!ニュース</h1></header>
+            <article>
+              <h1>日本の経済動向と今後の展望について</h1>
+              <div class="article_body">
+                <p>日銀の金融政策決定会合が終了し、新たな方針が発表されました。</p>
+              </div>
+            </article>
+          </body>
+        </html>
+        """
+        soup = BeautifulSoup(html, "html.parser")
+        res = extract_yahoojp("https://news.yahoo.co.jp/articles/xyz", soup, html, fetch_network=False)
+        self.assertEqual(res["title"], "日本の経済動向と今後の展望について")
+        self.assertNotIn("Yahoo!ニュース", res["title"])
+        self.assertIn("<p>日銀の金融政策決定会合", res["body_html"])
+
+    def test_extract_timesofindia_json_ld(self):
+        from server.adapters import extract_timesofindia
+        html = """
+        <html>
+          <head>
+            <script type="application/ld+json">
+            {
+              "@type": "NewsArticle",
+              "headline": "India Launches Landmark Renewable Energy Initiative",
+              "articleBody": "New Delhi announced an extensive expansion of solar and wind generation capacity today, signaling rapid acceleration toward green infrastructure targets over the next decade. Industry analysts praised the aggressive policy incentives outlined during the summit."
+            }
+            </script>
+          </head>
+          <body>
+            <h1>Fallback H1</h1>
+          </body>
+        </html>
+        """
+        soup = BeautifulSoup(html, "html.parser")
+        res = extract_timesofindia("https://timesofindia.indiatimes.com/india/energy/123", soup, html, fetch_network=False)
+        self.assertEqual(res["title"], "India Launches Landmark Renewable Energy Initiative")
+        self.assertIn("<p>New Delhi announced", res["body_html"])
+
+    def test_extract_mashable_json_ld(self):
+        from server.adapters import extract_mashable
+        html = """
+        <html>
+          <head>
+            <script type="application/ld+json">
+            {
+              "@type": "NewsArticle",
+              "headline": "The Ultimate Guide to Modern Smart Home Gear",
+              "articleBody": "Smart home standards are evolving with Matter protocol support expanding across major device manufacturers worldwide. Here are our top-rated smart switches and hubs for 2026."
+            }
+            </script>
+          </head>
+          <body></body>
+        </html>
+        """
+        soup = BeautifulSoup(html, "html.parser")
+        res = extract_mashable("https://mashable.com/article/smart-home-guide", soup, html, fetch_network=False)
+        self.assertEqual(res["title"], "The Ultimate Guide to Modern Smart Home Gear")
+        self.assertIn("<p>Smart home standards", res["body_html"])
+
+    def test_extract_techcrunch_dom(self):
+        from server.adapters import extract_techcrunch
+        html = """
+        <html>
+          <body>
+            <h1 class="article__title">Autonomous Logistics Startup Raises $50M Series B</h1>
+            <div class="entry-content">
+              <p>The round was led by premier venture funds with participation from strategic industrial partners.</p>
+            </div>
+          </body>
+        </html>
+        """
+        soup = BeautifulSoup(html, "html.parser")
+        res = extract_techcrunch("https://techcrunch.com/2026/09/09/autonomous-logistics-50m", soup, html, fetch_network=False)
+        self.assertEqual(res["title"], "Autonomous Logistics Startup Raises $50M Series B")
+        self.assertIn("<p>The round was led", res["body_html"])
+
+    def test_extract_axios_dom(self):
+        from server.adapters import extract_axios
+        html = """
+        <html>
+          <head>
+            <script type="application/ld+json">
+            {
+              "@type": "NewsArticle",
+              "headline": "Why AI Infrastructure is Driving Regional Tech Hubs"
+            }
+            </script>
+          </head>
+          <body>
+            <div data-cy="story-body">
+              <p>Data center expansion across the Midwest is spurring local economic growth and specialized talent pipelines.</p>
+            </div>
+          </body>
+        </html>
+        """
+        soup = BeautifulSoup(html, "html.parser")
+        res = extract_axios("https://www.axios.com/2026/09/09/ai-infrastructure-hubs", soup, html, fetch_network=False)
+        self.assertEqual(res["title"], "Why AI Infrastructure is Driving Regional Tech Hubs")
+        self.assertIn("<p>Data center expansion", res["body_html"])
+
+    def test_extract_scmp_json_ld(self):
+        from server.adapters import extract_scmp
+        html = """
+        <html>
+          <head>
+            <script type="application/ld+json">
+            {
+              "@type": "NewsArticle",
+              "headline": "Hong Kong Enhances Cross-Border Trade Technology Infrastructure",
+              "articleBody": "Hong Kong's financial authority announced modernized digital clearing corridors today to streamline cross-border enterprise settlements. The development is designed to reduce friction for international supply chains throughout the region."
+            }
+            </script>
+          </head>
+          <body></body>
+        </html>
+        """
+        soup = BeautifulSoup(html, "html.parser")
+        res = extract_scmp("https://scmp.com/economy/global/article/123", soup, html, fetch_network=False)
+        self.assertEqual(res["title"], "Hong Kong Enhances Cross-Border Trade Technology Infrastructure")
+        self.assertIn("financial authority announced modernized digital clearing", res["body_html"])
+
+    def test_extract_hani(self):
+        from server.adapters import extract_hani
+        html = """
+        <html>
+          <body>
+            <h1 class="title">한겨레 단독: 기후위기 대응 특별 보고서 공개</h1>
+            <div class="article-text">
+              <p>탄소 배출 저감을 위한 신규 에너지 전환 정책이 국회 심의에 돌입했습니다.</p>
+            </div>
+          </body>
+        </html>
+        """
+        soup = BeautifulSoup(html, "html.parser")
+        res = extract_hani("https://www.hani.co.kr/arti/economy/123", soup, html, fetch_network=False)
+        self.assertEqual(res["title"], "한겨레 단독: 기후위기 대응 특별 보고서 공개")
+        self.assertIn("<p>탄소 배출 저감을", res["body_html"])
+
+    def test_extract_nikkei(self):
+        from server.adapters import extract_nikkei
+        html = """
+        <html>
+          <body>
+            <h1 class="c-article_title">Japan Advanced Semiconductor Materials Gain Global Demand</h1>
+            <div class="c-article_body">
+              <p>Specialized packaging silicon and wafer substrates are seeing surge bookings from international fabrication plants.</p>
+            </div>
+          </body>
+        </html>
+        """
+        soup = BeautifulSoup(html, "html.parser")
+        res = extract_nikkei("https://asia.nikkei.com/Business/Tech/semiconductors", soup, html, fetch_network=False)
+        self.assertEqual(res["title"], "Japan Advanced Semiconductor Materials Gain Global Demand")
+        self.assertIn("<p>Specialized packaging silicon", res["body_html"])
+
+    def test_extract_usatoday(self):
+        from server.adapters import extract_usatoday
+        html = """
+        <html>
+          <body>
+            <h1 class="headline">New High-Speed Rail Corridors Receive Federal Grant Approvals</h1>
+            <div class="gnt_ar_b">
+              <p>Transportation officials announced billions in matching infrastructure investments across key intercity transit routes.</p>
+            </div>
+          </body>
+        </html>
+        """
+        soup = BeautifulSoup(html, "html.parser")
+        res = extract_usatoday("https://usatoday.com/story/news/transit/123", soup, html, fetch_network=False)
+        self.assertEqual(res["title"], "New High-Speed Rail Corridors Receive Federal Grant Approvals")
+        self.assertIn("<p>Transportation officials announced", res["body_html"])
+
+    def test_extract_coindesk(self):
+        from server.adapters import extract_coindesk
+        html = """
+        <html>
+          <body>
+            <h1 class="typography__StyledTypography">Decentralized Settlement Layer Upgrades Mainnet Protocol</h1>
+            <div class="content-wrapper">
+              <p>Zero-knowledge verification algorithms have been finalized following extensive cryptographic testnet auditing.</p>
+            </div>
+          </body>
+        </html>
+        """
+        soup = BeautifulSoup(html, "html.parser")
+        res = extract_coindesk("https://coindesk.com/tech/2026/09/09/zk-mainnet", soup, html, fetch_network=False)
+        self.assertEqual(res["title"], "Decentralized Settlement Layer Upgrades Mainnet Protocol")
+        self.assertIn("<p>Zero-knowledge verification", res["body_html"])
+
+    def test_extract_sciencedaily(self):
+        from server.adapters import extract_sciencedaily
+        html = """
+        <html>
+          <body>
+            <h1 id="headline">Marine Biologists Discover Novel Deep-Sea Enzyme Mechanism</h1>
+            <div id="story_text">
+              <p>Extreme barophilic organisms employ unique peptide folding patterns capable of bioremediation applications.</p>
+            </div>
+          </body>
+        </html>
+        """
+        soup = BeautifulSoup(html, "html.parser")
+        res = extract_sciencedaily("https://sciencedaily.com/releases/2026/09/123.htm", soup, html, fetch_network=False)
+        self.assertEqual(res["title"], "Marine Biologists Discover Novel Deep-Sea Enzyme Mechanism")
+        self.assertIn("<p>Extreme barophilic organisms", res["body_html"])
 
 
 if __name__ == "__main__":

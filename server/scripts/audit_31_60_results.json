@@ -1,0 +1,1192 @@
+[
+  {
+    "id": 31,
+    "name": "Hacker News",
+    "domain": "news.ycombinator.com",
+    "type": "aggregator",
+    "accessible": true,
+    "status_code": 200,
+    "direct_api_available": true,
+    "direct_api_notes": "Firebase REST API at https://hacker-news.firebaseio.com/v0/item/{id}.json",
+    "article_url_sampled": "https://news.ycombinator.com/item?id=49624394",
+    "json_ld": {
+      "found": false,
+      "types": [],
+      "has_headline": false,
+      "has_date": false,
+      "has_author": false,
+      "has_article_body": false
+    },
+    "dom_selectors": {
+      "title_selector": null,
+      "body_selector": null,
+      "author_selector": null,
+      "date_selector": null
+    },
+    "image_handling": {
+      "lazy_attrs": [],
+      "cdn_host": null,
+      "unresizing_rule": null
+    },
+    "notice_dialogs": {
+      "consent_banner": null,
+      "paywall_modal": null
+    },
+    "rendering_model": "SSR (Server-Rendered HTML)",
+    "wait_for_selector": null,
+    "notes": []
+  },
+  {
+    "id": 32,
+    "name": "Flipboard",
+    "domain": "flipboard.com",
+    "type": "aggregator",
+    "accessible": true,
+    "status_code": 200,
+    "direct_api_available": false,
+    "direct_api_notes": null,
+    "article_url_sampled": "https://flipboard.com/topic/news/dolly-parton-s-sister-stella-parton-shares-why-the-country-music-star-kept-her/a-HND-Tw8rQ0OBUvSqvMckKQ%3Aa%3A2476075171-3c484da128%2Fcbsnews.com",
+    "json_ld": {
+      "found": true,
+      "types": [
+        "BreadcrumbList",
+        "NewsArticle"
+      ],
+      "has_headline": true,
+      "has_date": true,
+      "has_author": true,
+      "has_article_body": false
+    },
+    "dom_selectors": {
+      "title_selector": "h1[class*='title']",
+      "body_selector": "main",
+      "author_selector": null,
+      "date_selector": null
+    },
+    "image_handling": {
+      "lazy_attrs": [],
+      "cdn_host": "um-cdn.flipboard.com",
+      "unresizing_rule": null
+    },
+    "notice_dialogs": {
+      "consent_banner": null,
+      "paywall_modal": null
+    },
+    "rendering_model": "SSR (Server-Rendered HTML)",
+    "wait_for_selector": "main",
+    "notes": []
+  },
+  {
+    "id": 33,
+    "name": "Pocket",
+    "domain": "getpocket.com",
+    "type": "aggregator",
+    "accessible": true,
+    "status_code": 200,
+    "direct_api_available": false,
+    "direct_api_notes": null,
+    "article_url_sampled": "https://getpocket.com/explore",
+    "json_ld": {
+      "found": false,
+      "types": [],
+      "has_headline": false,
+      "has_date": false,
+      "has_author": false,
+      "has_article_body": false
+    },
+    "dom_selectors": {
+      "title_selector": "h1",
+      "body_selector": "main",
+      "author_selector": null,
+      "date_selector": null
+    },
+    "image_handling": {
+      "lazy_attrs": [],
+      "cdn_host": null,
+      "unresizing_rule": null
+    },
+    "notice_dialogs": {
+      "consent_banner": null,
+      "paywall_modal": null
+    },
+    "rendering_model": "SSR + Client Hydration (Next.js / SPA)",
+    "wait_for_selector": "main",
+    "notes": [
+      "Could not auto-discover article link from root page"
+    ]
+  },
+  {
+    "id": 34,
+    "name": "Apple News Web",
+    "domain": "apple.news",
+    "type": "aggregator",
+    "accessible": true,
+    "status_code": 200,
+    "direct_api_available": false,
+    "direct_api_notes": null,
+    "article_url_sampled": "https://apple.news/",
+    "json_ld": {
+      "found": false,
+      "types": [],
+      "has_headline": false,
+      "has_date": false,
+      "has_author": false,
+      "has_article_body": false
+    },
+    "dom_selectors": {
+      "title_selector": null,
+      "body_selector": null,
+      "author_selector": null,
+      "date_selector": null
+    },
+    "image_handling": {
+      "lazy_attrs": [],
+      "cdn_host": null,
+      "unresizing_rule": null
+    },
+    "notice_dialogs": {
+      "consent_banner": null,
+      "paywall_modal": null
+    },
+    "rendering_model": "SSR (Server-Rendered HTML)",
+    "wait_for_selector": null,
+    "notes": [
+      "Could not auto-discover article link from root page"
+    ]
+  },
+  {
+    "id": 35,
+    "name": "Dev.to",
+    "domain": "dev.to",
+    "type": "developer",
+    "accessible": true,
+    "status_code": 200,
+    "direct_api_available": true,
+    "direct_api_notes": "Public REST API at https://dev.to/api/articles/{id} with full body_html",
+    "article_url_sampled": "https://bsky.app/profile/dev.to",
+    "json_ld": {
+      "found": true,
+      "types": [
+        "ProfilePage"
+      ],
+      "has_headline": false,
+      "has_date": true,
+      "has_author": false,
+      "has_article_body": false
+    },
+    "dom_selectors": {
+      "title_selector": "h1",
+      "body_selector": null,
+      "author_selector": null,
+      "date_selector": null
+    },
+    "image_handling": {
+      "lazy_attrs": [],
+      "cdn_host": null,
+      "unresizing_rule": null
+    },
+    "notice_dialogs": {
+      "consent_banner": null,
+      "paywall_modal": null
+    },
+    "rendering_model": "SSR (Server-Rendered HTML)",
+    "wait_for_selector": null,
+    "notes": []
+  },
+  {
+    "id": 36,
+    "name": "Bluesky",
+    "domain": "bsky.app",
+    "type": "social_discourse",
+    "accessible": true,
+    "status_code": 200,
+    "direct_api_available": false,
+    "direct_api_notes": null,
+    "article_url_sampled": "https://bsky.app/",
+    "json_ld": {
+      "found": false,
+      "types": [],
+      "has_headline": false,
+      "has_date": false,
+      "has_author": false,
+      "has_article_body": false
+    },
+    "dom_selectors": {
+      "title_selector": "h1",
+      "body_selector": null,
+      "author_selector": null,
+      "date_selector": null
+    },
+    "image_handling": {
+      "lazy_attrs": [],
+      "cdn_host": null,
+      "unresizing_rule": null
+    },
+    "notice_dialogs": {
+      "consent_banner": null,
+      "paywall_modal": null
+    },
+    "rendering_model": "SSR (Server-Rendered HTML)",
+    "wait_for_selector": null,
+    "notes": [
+      "Could not auto-discover article link from root page"
+    ]
+  },
+  {
+    "id": 37,
+    "name": "Ghost CMS",
+    "domain": "ghost.org",
+    "type": "cms_network",
+    "accessible": true,
+    "status_code": 200,
+    "direct_api_available": true,
+    "direct_api_notes": "RSS and Ghost Content API (/ghost/api/v4/content/posts/)",
+    "article_url_sampled": "https://ghost.org/blog/",
+    "json_ld": {
+      "found": true,
+      "types": [
+        "WebSite"
+      ],
+      "has_headline": false,
+      "has_date": false,
+      "has_author": false,
+      "has_article_body": false
+    },
+    "dom_selectors": {
+      "title_selector": "h1",
+      "body_selector": "main",
+      "author_selector": null,
+      "date_selector": "[class*='date']"
+    },
+    "image_handling": {
+      "lazy_attrs": [],
+      "cdn_host": null,
+      "unresizing_rule": null
+    },
+    "notice_dialogs": {
+      "consent_banner": null,
+      "paywall_modal": null
+    },
+    "rendering_model": "SSR (Server-Rendered HTML)",
+    "wait_for_selector": "main",
+    "notes": [
+      "Could not auto-discover article link from root page"
+    ]
+  },
+  {
+    "id": 38,
+    "name": "WordPress Core REST",
+    "domain": "wordpress.org",
+    "type": "cms_network",
+    "accessible": true,
+    "status_code": 200,
+    "direct_api_available": false,
+    "direct_api_notes": null,
+    "article_url_sampled": "https://wordpress.org/news/#wp--skip-link--target",
+    "json_ld": {
+      "found": false,
+      "types": [],
+      "has_headline": false,
+      "has_date": false,
+      "has_author": false,
+      "has_article_body": false
+    },
+    "dom_selectors": {
+      "title_selector": null,
+      "body_selector": "main",
+      "author_selector": null,
+      "date_selector": "time[datetime]"
+    },
+    "image_handling": {
+      "lazy_attrs": [
+        "srcset"
+      ],
+      "cdn_host": null,
+      "unresizing_rule": null
+    },
+    "notice_dialogs": {
+      "consent_banner": null,
+      "paywall_modal": null
+    },
+    "rendering_model": "SSR (Server-Rendered HTML)",
+    "wait_for_selector": "main",
+    "notes": []
+  },
+  {
+    "id": 39,
+    "name": "Maeil Business (MK)",
+    "domain": "mk.co.kr",
+    "type": "korean_news",
+    "accessible": true,
+    "status_code": 200,
+    "direct_api_available": false,
+    "direct_api_notes": null,
+    "article_url_sampled": "https://www.mk.co.kr/news/realestate/11937136#active_commentary",
+    "json_ld": {
+      "found": true,
+      "types": [
+        "NewsMediaOrganization",
+        "BreadcrumbList",
+        "NewsArticle"
+      ],
+      "has_headline": true,
+      "has_date": true,
+      "has_author": true,
+      "has_article_body": false
+    },
+    "dom_selectors": {
+      "title_selector": null,
+      "body_selector": "div.news_cnt_detail_wrap",
+      "author_selector": "[class*='byline']",
+      "date_selector": "[class*='date']"
+    },
+    "image_handling": {
+      "lazy_attrs": [],
+      "cdn_host": null,
+      "unresizing_rule": null
+    },
+    "notice_dialogs": {
+      "consent_banner": null,
+      "paywall_modal": null
+    },
+    "rendering_model": "SSR (Server-Rendered HTML)",
+    "wait_for_selector": "div.news_cnt_detail_wrap",
+    "notes": []
+  },
+  {
+    "id": 40,
+    "name": "Korea Economic Daily",
+    "domain": "hankyung.com",
+    "type": "korean_news",
+    "accessible": false,
+    "status_code": 403,
+    "direct_api_available": false,
+    "direct_api_notes": null,
+    "article_url_sampled": null,
+    "json_ld": {
+      "found": false,
+      "types": [],
+      "has_headline": false,
+      "has_date": false,
+      "has_author": false,
+      "has_article_body": false
+    },
+    "dom_selectors": {
+      "title_selector": null,
+      "body_selector": null,
+      "author_selector": null,
+      "date_selector": null
+    },
+    "image_handling": {
+      "lazy_attrs": [],
+      "cdn_host": null,
+      "unresizing_rule": null
+    },
+    "notice_dialogs": {
+      "consent_banner": null,
+      "paywall_modal": null
+    },
+    "rendering_model": "SSR",
+    "wait_for_selector": null,
+    "notes": [
+      "Root returned HTTP status 403"
+    ]
+  },
+  {
+    "id": 41,
+    "name": "Hankyoreh",
+    "domain": "hani.co.kr",
+    "type": "korean_news",
+    "accessible": true,
+    "status_code": 200,
+    "direct_api_available": false,
+    "direct_api_notes": null,
+    "article_url_sampled": "https://www.hani.co.kr/arti/opinion/column/1276997.html",
+    "json_ld": {
+      "found": true,
+      "types": [
+        "NewsArticle"
+      ],
+      "has_headline": true,
+      "has_date": true,
+      "has_author": true,
+      "has_article_body": false
+    },
+    "dom_selectors": {
+      "title_selector": null,
+      "body_selector": "div.article-text",
+      "author_selector": null,
+      "date_selector": "[class*='date']"
+    },
+    "image_handling": {
+      "lazy_attrs": [],
+      "cdn_host": "flexible.img.hani.co.kr",
+      "unresizing_rule": null
+    },
+    "notice_dialogs": {
+      "consent_banner": null,
+      "paywall_modal": null
+    },
+    "rendering_model": "SSR + Client Hydration (Next.js / SPA)",
+    "wait_for_selector": "div.article-text",
+    "notes": []
+  },
+  {
+    "id": 42,
+    "name": "Kyunghyang Shinmun",
+    "domain": "khan.co.kr",
+    "type": "korean_news",
+    "accessible": true,
+    "status_code": 200,
+    "direct_api_available": false,
+    "direct_api_notes": null,
+    "article_url_sampled": "https://www.khan.co.kr/article/202609091934001",
+    "json_ld": {
+      "found": true,
+      "types": [
+        "NewsArticle"
+      ],
+      "has_headline": true,
+      "has_date": true,
+      "has_author": true,
+      "has_article_body": false
+    },
+    "dom_selectors": {
+      "title_selector": "article h1",
+      "body_selector": "div.art_body",
+      "author_selector": null,
+      "date_selector": "[class*='date']"
+    },
+    "image_handling": {
+      "lazy_attrs": [],
+      "cdn_host": "img.khan.co.kr",
+      "unresizing_rule": null
+    },
+    "notice_dialogs": {
+      "consent_banner": null,
+      "paywall_modal": null
+    },
+    "rendering_model": "SSR (Server-Rendered HTML)",
+    "wait_for_selector": "div.art_body",
+    "notes": []
+  },
+  {
+    "id": 43,
+    "name": "Segye Ilbo",
+    "domain": "segye.com",
+    "type": "korean_news",
+    "accessible": true,
+    "status_code": 200,
+    "direct_api_available": false,
+    "direct_api_notes": null,
+    "article_url_sampled": "https://www.segye.com/newsView/20260909519647",
+    "json_ld": {
+      "found": true,
+      "types": [
+        "BreadcrumbList",
+        "NewsMediaOrganization"
+      ],
+      "has_headline": false,
+      "has_date": false,
+      "has_author": false,
+      "has_article_body": false
+    },
+    "dom_selectors": {
+      "title_selector": null,
+      "body_selector": "article",
+      "author_selector": ".reporter",
+      "date_selector": "time[datetime]"
+    },
+    "image_handling": {
+      "lazy_attrs": [],
+      "cdn_host": "img.segye.com",
+      "unresizing_rule": null
+    },
+    "notice_dialogs": {
+      "consent_banner": null,
+      "paywall_modal": null
+    },
+    "rendering_model": "SSR (Server-Rendered HTML)",
+    "wait_for_selector": "article",
+    "notes": []
+  },
+  {
+    "id": 44,
+    "name": "News1",
+    "domain": "news1.kr",
+    "type": "korean_news",
+    "accessible": false,
+    "status_code": 403,
+    "direct_api_available": false,
+    "direct_api_notes": null,
+    "article_url_sampled": null,
+    "json_ld": {
+      "found": false,
+      "types": [],
+      "has_headline": false,
+      "has_date": false,
+      "has_author": false,
+      "has_article_body": false
+    },
+    "dom_selectors": {
+      "title_selector": null,
+      "body_selector": null,
+      "author_selector": null,
+      "date_selector": null
+    },
+    "image_handling": {
+      "lazy_attrs": [],
+      "cdn_host": null,
+      "unresizing_rule": null
+    },
+    "notice_dialogs": {
+      "consent_banner": null,
+      "paywall_modal": null
+    },
+    "rendering_model": "SSR",
+    "wait_for_selector": null,
+    "notes": [
+      "Root returned HTTP status 403"
+    ]
+  },
+  {
+    "id": 45,
+    "name": "Newsis",
+    "domain": "newsis.com",
+    "type": "korean_news",
+    "accessible": true,
+    "status_code": 200,
+    "direct_api_available": false,
+    "direct_api_notes": null,
+    "article_url_sampled": "https://www.newsis.com/",
+    "json_ld": {
+      "found": false,
+      "types": [],
+      "has_headline": false,
+      "has_date": false,
+      "has_author": false,
+      "has_article_body": false
+    },
+    "dom_selectors": {
+      "title_selector": null,
+      "body_selector": null,
+      "author_selector": null,
+      "date_selector": "[class*='date']"
+    },
+    "image_handling": {
+      "lazy_attrs": [],
+      "cdn_host": "img1.newsis.com",
+      "unresizing_rule": null
+    },
+    "notice_dialogs": {
+      "consent_banner": null,
+      "paywall_modal": null
+    },
+    "rendering_model": "SSR (Server-Rendered HTML)",
+    "wait_for_selector": null,
+    "notes": [
+      "Could not auto-discover article link from root page"
+    ]
+  },
+  {
+    "id": 46,
+    "name": "Yahoo! Japan",
+    "domain": "news.yahoo.co.jp",
+    "type": "japanese_news",
+    "accessible": true,
+    "status_code": 200,
+    "direct_api_available": false,
+    "direct_api_notes": null,
+    "article_url_sampled": "https://news.yahoo.co.jp/articles/70cc244de718aa28f0f300bd21e5e1cab5fb7570",
+    "json_ld": {
+      "found": true,
+      "types": [
+        "NewsArticle"
+      ],
+      "has_headline": true,
+      "has_date": true,
+      "has_author": true,
+      "has_article_body": false
+    },
+    "dom_selectors": {
+      "title_selector": "article h1",
+      "body_selector": "div.article_body",
+      "author_selector": null,
+      "date_selector": null
+    },
+    "image_handling": {
+      "lazy_attrs": [],
+      "cdn_host": "s.yimg.jp",
+      "unresizing_rule": "Strip resizing dimensions from yimg.jp"
+    },
+    "notice_dialogs": {
+      "consent_banner": null,
+      "paywall_modal": null
+    },
+    "rendering_model": "SSR (Server-Rendered HTML)",
+    "wait_for_selector": "div.article_body",
+    "notes": []
+  },
+  {
+    "id": 47,
+    "name": "Nikkei / Nikkei Asia",
+    "domain": "asia.nikkei.com",
+    "type": "japanese_news",
+    "accessible": true,
+    "status_code": 200,
+    "direct_api_available": false,
+    "direct_api_notes": null,
+    "article_url_sampled": "https://asia.nikkei.com/spotlight/iran-tensions",
+    "json_ld": {
+      "found": true,
+      "types": [
+        "Thing"
+      ],
+      "has_headline": false,
+      "has_date": false,
+      "has_author": false,
+      "has_article_body": false
+    },
+    "dom_selectors": {
+      "title_selector": "h1[class*='title']",
+      "body_selector": null,
+      "author_selector": null,
+      "date_selector": "[class*='date']"
+    },
+    "image_handling": {
+      "lazy_attrs": [],
+      "cdn_host": null,
+      "unresizing_rule": null
+    },
+    "notice_dialogs": {
+      "consent_banner": null,
+      "paywall_modal": null
+    },
+    "rendering_model": "SSR + Client Hydration (Next.js / SPA)",
+    "wait_for_selector": "article, main",
+    "notes": []
+  },
+  {
+    "id": 48,
+    "name": "Asahi Shimbun",
+    "domain": "asahi.com",
+    "type": "japanese_news",
+    "accessible": true,
+    "status_code": 200,
+    "direct_api_available": false,
+    "direct_api_notes": null,
+    "article_url_sampled": "https://digital.asahi.com/info/information/articles/SDI202607300003.html?iref=comtop_announce_above",
+    "json_ld": {
+      "found": false,
+      "types": [],
+      "has_headline": false,
+      "has_date": false,
+      "has_author": false,
+      "has_article_body": false
+    },
+    "dom_selectors": {
+      "title_selector": "h1",
+      "body_selector": "div.ArticleBody",
+      "author_selector": null,
+      "date_selector": "[class*='date']"
+    },
+    "image_handling": {
+      "lazy_attrs": [],
+      "cdn_host": null,
+      "unresizing_rule": null
+    },
+    "notice_dialogs": {
+      "consent_banner": null,
+      "paywall_modal": null
+    },
+    "rendering_model": "SSR (Server-Rendered HTML)",
+    "wait_for_selector": "div.ArticleBody",
+    "notes": []
+  },
+  {
+    "id": 49,
+    "name": "Ars Technica",
+    "domain": "arstechnica.com",
+    "type": "tech_media",
+    "accessible": false,
+    "status_code": 202,
+    "direct_api_available": false,
+    "direct_api_notes": null,
+    "article_url_sampled": null,
+    "json_ld": {
+      "found": false,
+      "types": [],
+      "has_headline": false,
+      "has_date": false,
+      "has_author": false,
+      "has_article_body": false
+    },
+    "dom_selectors": {
+      "title_selector": null,
+      "body_selector": null,
+      "author_selector": null,
+      "date_selector": null
+    },
+    "image_handling": {
+      "lazy_attrs": [],
+      "cdn_host": null,
+      "unresizing_rule": null
+    },
+    "notice_dialogs": {
+      "consent_banner": null,
+      "paywall_modal": null
+    },
+    "rendering_model": "SSR",
+    "wait_for_selector": null,
+    "notes": [
+      "Root returned HTTP status 202"
+    ]
+  },
+  {
+    "id": 50,
+    "name": "Wired",
+    "domain": "wired.com",
+    "type": "tech_media",
+    "accessible": true,
+    "status_code": 200,
+    "direct_api_available": false,
+    "direct_api_notes": null,
+    "article_url_sampled": "https://www.wired.com/story/egg-freezing-startup-cofertility-weirder-than-you-could-imagine/",
+    "json_ld": {
+      "found": true,
+      "types": [
+        "NewsArticle",
+        "BreadcrumbList"
+      ],
+      "has_headline": true,
+      "has_date": true,
+      "has_author": true,
+      "has_article_body": true
+    },
+    "dom_selectors": {
+      "title_selector": "article h1",
+      "body_selector": "div[data-testid='BodyWrapper']",
+      "author_selector": "[class*='byline']",
+      "date_selector": "[class*='date']"
+    },
+    "image_handling": {
+      "lazy_attrs": [
+        "data-src",
+        "srcset"
+      ],
+      "cdn_host": "media.wired.com",
+      "unresizing_rule": null
+    },
+    "notice_dialogs": {
+      "consent_banner": null,
+      "paywall_modal": null
+    },
+    "rendering_model": "SSR (Server-Rendered HTML)",
+    "wait_for_selector": "div[data-testid='BodyWrapper']",
+    "notes": []
+  },
+  {
+    "id": 51,
+    "name": "TechCrunch",
+    "domain": "techcrunch.com",
+    "type": "tech_media",
+    "accessible": true,
+    "status_code": 200,
+    "direct_api_available": true,
+    "direct_api_notes": "WordPress VIP REST API at /wp-json/wp/v2/posts?slug={slug} returns content.rendered",
+    "article_url_sampled": "https://techcrunch.com/2026/09/08/hackers-are-stealing-claude-tokens-from-subscribers/",
+    "json_ld": {
+      "found": false,
+      "types": [],
+      "has_headline": false,
+      "has_date": false,
+      "has_author": false,
+      "has_article_body": false
+    },
+    "dom_selectors": {
+      "title_selector": "h1[class*='title']",
+      "body_selector": "div.entry-content",
+      "author_selector": "[class*='author']",
+      "date_selector": "time[datetime]"
+    },
+    "image_handling": {
+      "lazy_attrs": [
+        "srcset"
+      ],
+      "cdn_host": null,
+      "unresizing_rule": null
+    },
+    "notice_dialogs": {
+      "consent_banner": null,
+      "paywall_modal": null
+    },
+    "rendering_model": "SSR (Server-Rendered HTML)",
+    "wait_for_selector": "div.entry-content",
+    "notes": []
+  },
+  {
+    "id": 52,
+    "name": "The Atlantic",
+    "domain": "theatlantic.com",
+    "type": "journalism",
+    "accessible": true,
+    "status_code": 200,
+    "direct_api_available": false,
+    "direct_api_notes": null,
+    "article_url_sampled": "https://www.theatlantic.com/magazine/archive/1861/01/henry-wadsworth-longfellow-paul-reveres-ride/308349/",
+    "json_ld": {
+      "found": true,
+      "types": [
+        "WebSite",
+        "Organization",
+        "NewsArticle"
+      ],
+      "has_headline": true,
+      "has_date": true,
+      "has_author": true,
+      "has_article_body": false
+    },
+    "dom_selectors": {
+      "title_selector": "article h1",
+      "body_selector": "article",
+      "author_selector": "[class*='author']",
+      "date_selector": "time[datetime]"
+    },
+    "image_handling": {
+      "lazy_attrs": [
+        "srcset"
+      ],
+      "cdn_host": "cdn.theatlantic.com",
+      "unresizing_rule": null
+    },
+    "notice_dialogs": {
+      "consent_banner": null,
+      "paywall_modal": null
+    },
+    "rendering_model": "SSR + Client Hydration (Next.js / SPA)",
+    "wait_for_selector": "article",
+    "notes": []
+  },
+  {
+    "id": 53,
+    "name": "Politico",
+    "domain": "politico.com",
+    "type": "journalism",
+    "accessible": false,
+    "status_code": 403,
+    "direct_api_available": false,
+    "direct_api_notes": null,
+    "article_url_sampled": null,
+    "json_ld": {
+      "found": false,
+      "types": [],
+      "has_headline": false,
+      "has_date": false,
+      "has_author": false,
+      "has_article_body": false
+    },
+    "dom_selectors": {
+      "title_selector": null,
+      "body_selector": null,
+      "author_selector": null,
+      "date_selector": null
+    },
+    "image_handling": {
+      "lazy_attrs": [],
+      "cdn_host": null,
+      "unresizing_rule": null
+    },
+    "notice_dialogs": {
+      "consent_banner": null,
+      "paywall_modal": null
+    },
+    "rendering_model": "SSR",
+    "wait_for_selector": null,
+    "notes": [
+      "Root returned HTTP status 403"
+    ]
+  },
+  {
+    "id": 54,
+    "name": "Forbes",
+    "domain": "forbes.com",
+    "type": "business_media",
+    "accessible": true,
+    "status_code": 200,
+    "direct_api_available": false,
+    "direct_api_notes": null,
+    "article_url_sampled": "https://www.forbes.com/sites/forbesvideo/2026/08/19/forbes-daily-briefing/",
+    "json_ld": {
+      "found": false,
+      "types": [],
+      "has_headline": false,
+      "has_date": false,
+      "has_author": false,
+      "has_article_body": false
+    },
+    "dom_selectors": {
+      "title_selector": null,
+      "body_selector": null,
+      "author_selector": null,
+      "date_selector": null
+    },
+    "image_handling": {
+      "lazy_attrs": [],
+      "cdn_host": null,
+      "unresizing_rule": null
+    },
+    "notice_dialogs": {
+      "consent_banner": null,
+      "paywall_modal": null
+    },
+    "rendering_model": "SSR (Server-Rendered HTML)",
+    "wait_for_selector": null,
+    "notes": []
+  },
+  {
+    "id": 55,
+    "name": "The Economist",
+    "domain": "economist.com",
+    "type": "business_media",
+    "accessible": false,
+    "status_code": 403,
+    "direct_api_available": false,
+    "direct_api_notes": null,
+    "article_url_sampled": null,
+    "json_ld": {
+      "found": false,
+      "types": [],
+      "has_headline": false,
+      "has_date": false,
+      "has_author": false,
+      "has_article_body": false
+    },
+    "dom_selectors": {
+      "title_selector": null,
+      "body_selector": null,
+      "author_selector": null,
+      "date_selector": null
+    },
+    "image_handling": {
+      "lazy_attrs": [],
+      "cdn_host": null,
+      "unresizing_rule": null
+    },
+    "notice_dialogs": {
+      "consent_banner": null,
+      "paywall_modal": null
+    },
+    "rendering_model": "SSR",
+    "wait_for_selector": null,
+    "notes": [
+      "Root returned HTTP status 403"
+    ]
+  },
+  {
+    "id": 56,
+    "name": "ProPublica",
+    "domain": "propublica.org",
+    "type": "investigative",
+    "accessible": true,
+    "status_code": 200,
+    "direct_api_available": false,
+    "direct_api_notes": null,
+    "article_url_sampled": "https://www.propublica.org/article/ectopic-pregnancy-deaths-doubled-analysis",
+    "json_ld": {
+      "found": false,
+      "types": [],
+      "has_headline": false,
+      "has_date": false,
+      "has_author": false,
+      "has_article_body": false
+    },
+    "dom_selectors": {
+      "title_selector": "h1[class*='title']",
+      "body_selector": "div.article-body",
+      "author_selector": "[class*='byline']",
+      "date_selector": "time[datetime]"
+    },
+    "image_handling": {
+      "lazy_attrs": [
+        "srcset"
+      ],
+      "cdn_host": null,
+      "unresizing_rule": null
+    },
+    "notice_dialogs": {
+      "consent_banner": null,
+      "paywall_modal": null
+    },
+    "rendering_model": "SSR (Server-Rendered HTML)",
+    "wait_for_selector": "div.article-body",
+    "notes": []
+  },
+  {
+    "id": 57,
+    "name": "Los Angeles Times",
+    "domain": "latimes.com",
+    "type": "journalism",
+    "accessible": true,
+    "status_code": 200,
+    "direct_api_available": false,
+    "direct_api_notes": null,
+    "article_url_sampled": "https://www.latimes.com/lifestyle/image/story/2022-09-13/trend-analysis",
+    "json_ld": {
+      "found": true,
+      "types": [
+        "WebPage"
+      ],
+      "has_headline": true,
+      "has_date": true,
+      "has_author": false,
+      "has_article_body": false
+    },
+    "dom_selectors": {
+      "title_selector": "h1[class*='headline']",
+      "body_selector": "article",
+      "author_selector": "[class*='byline']",
+      "date_selector": "time[datetime]"
+    },
+    "image_handling": {
+      "lazy_attrs": [
+        "srcset"
+      ],
+      "cdn_host": "ca-times.brightspotcdn.com",
+      "unresizing_rule": null
+    },
+    "notice_dialogs": {
+      "consent_banner": null,
+      "paywall_modal": null
+    },
+    "rendering_model": "SSR (Server-Rendered HTML)",
+    "wait_for_selector": "article",
+    "notes": []
+  },
+  {
+    "id": 58,
+    "name": "Al Jazeera English",
+    "domain": "aljazeera.com",
+    "type": "global_broadcaster",
+    "accessible": true,
+    "status_code": 200,
+    "direct_api_available": false,
+    "direct_api_notes": null,
+    "article_url_sampled": "https://www.aljazeera.com/news/2025/11/11/how-many-times-has-israel-violated-the-gaza-ceasefire-here-are-the-numbers",
+    "json_ld": {
+      "found": true,
+      "types": [
+        "NewsMediaOrganization",
+        "NewsArticle",
+        "WebPage",
+        "VideoObject",
+        "BreadcrumbList"
+      ],
+      "has_headline": true,
+      "has_date": true,
+      "has_author": true,
+      "has_article_body": false
+    },
+    "dom_selectors": {
+      "title_selector": "h1",
+      "body_selector": "div.wysiwyg--all-content",
+      "author_selector": "[class*='byline']",
+      "date_selector": "[class*='date']"
+    },
+    "image_handling": {
+      "lazy_attrs": [
+        "srcset"
+      ],
+      "cdn_host": null,
+      "unresizing_rule": null
+    },
+    "notice_dialogs": {
+      "consent_banner": null,
+      "paywall_modal": null
+    },
+    "rendering_model": "SSR (Server-Rendered HTML)",
+    "wait_for_selector": "div.wysiwyg--all-content",
+    "notes": []
+  },
+  {
+    "id": 59,
+    "name": "Deutsche Welle (DW)",
+    "domain": "dw.com",
+    "type": "global_broadcaster",
+    "accessible": true,
+    "status_code": 200,
+    "direct_api_available": false,
+    "direct_api_notes": null,
+    "article_url_sampled": "https://www.dw.com/en/german-economy-frets-about-saxony-anhalt-election-results/a-79162871",
+    "json_ld": {
+      "found": true,
+      "types": [
+        "NewsArticle"
+      ],
+      "has_headline": true,
+      "has_date": true,
+      "has_author": true,
+      "has_article_body": false
+    },
+    "dom_selectors": {
+      "title_selector": "article h1",
+      "body_selector": "div.rich-text",
+      "author_selector": "[class*='author']",
+      "date_selector": "[class*='date']"
+    },
+    "image_handling": {
+      "lazy_attrs": [
+        "srcset"
+      ],
+      "cdn_host": null,
+      "unresizing_rule": null
+    },
+    "notice_dialogs": {
+      "consent_banner": null,
+      "paywall_modal": null
+    },
+    "rendering_model": "SSR (Server-Rendered HTML)",
+    "wait_for_selector": "div.rich-text",
+    "notes": []
+  },
+  {
+    "id": 60,
+    "name": "NPR",
+    "domain": "npr.org",
+    "type": "public_media",
+    "accessible": true,
+    "status_code": 200,
+    "direct_api_available": false,
+    "direct_api_notes": null,
+    "article_url_sampled": "https://www.npr.org/2023/11/10/1212408194/military-veteran-mortgage-foreclosure-covid-forbearance",
+    "json_ld": {
+      "found": true,
+      "types": [
+        "NewsArticle"
+      ],
+      "has_headline": true,
+      "has_date": true,
+      "has_author": true,
+      "has_article_body": false
+    },
+    "dom_selectors": {
+      "title_selector": "article h1",
+      "body_selector": "div#storytext",
+      "author_selector": "[class*='byline']",
+      "date_selector": "time[datetime]"
+    },
+    "image_handling": {
+      "lazy_attrs": [
+        "data-original"
+      ],
+      "cdn_host": "media.npr.org",
+      "unresizing_rule": null
+    },
+    "notice_dialogs": {
+      "consent_banner": null,
+      "paywall_modal": null
+    },
+    "rendering_model": "SSR (Server-Rendered HTML)",
+    "wait_for_selector": "div#storytext",
+    "notes": []
+  }
+]

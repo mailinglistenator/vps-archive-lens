@@ -337,6 +337,177 @@ def parse_arc_fusion_metadata(soup: BeautifulSoup) -> Optional[Dict[str, Any]]:
         return None
 
 
+def extract_with_selectors(
+    url: str,
+    soup: BeautifulSoup,
+    site_name: str,
+    body_selectors: List[str],
+    title_selectors: Optional[List[str]] = None,
+    author_selectors: Optional[List[str]] = None,
+    date_selectors: Optional[List[str]] = None,
+    check_json_ld_body: bool = False,
+    min_json_ld_body_len: int = 100,
+) -> Dict[str, Any]:
+    """
+    Standardized helper combining JSON-LD resolution with custom scoped DOM selectors
+    for article title, body, author, and published date.
+    """
+    json_ld = find_json_ld_article(extract_json_ld(soup))
+
+    # Title resolution: Prioritize scoped specific selectors, then JSON-LD, then generic h1 / og:title
+    title = ""
+    if title_selectors:
+        for sel in title_selectors:
+            if sel != "h1":
+                elem = soup.select_one(sel)
+                if elem and elem.get_text(strip=True):
+                    title = clean_text(elem.get_text(strip=True))
+                    break
+    if not title and json_ld:
+        title = clean_text(json_ld.get("headline", ""))
+    if not title and title_selectors and "h1" in title_selectors:
+        h1_elem = soup.find("h1")
+        if h1_elem and h1_elem.get_text(strip=True):
+            title = clean_text(h1_elem.get_text(strip=True))
+    if not title:
+        og_title = soup.find("meta", property="og:title") or soup.find("meta", attrs={"name": "twitter:title"})
+        if og_title and og_title.get("content"):
+            title = clean_text(og_title["content"])
+    if not title:
+        h1 = soup.find("h1")
+        if h1 and h1.get_text(strip=True):
+            title = clean_text(h1.get_text(strip=True))
+
+    # Authors resolution
+    authors: List[str] = []
+    if json_ld:
+        authors = parse_authors_from_json_ld(json_ld.get("author"))
+    if not authors and author_selectors:
+        for sel in author_selectors:
+            elems = soup.select(sel)
+            for el in elems:
+                t = clean_text(el.get_text(strip=True))
+                if t and t not in authors:
+                    authors.append(t)
+            if authors:
+                break
+    if not authors:
+        meta_author = soup.find("meta", attrs={"name": re.compile(r"author|byl", re.I)})
+        if meta_author and meta_author.get("content"):
+            authors = [clean_text(meta_author["content"])]
+
+    # Published date resolution
+    pub_date = ""
+    if json_ld:
+        pub_date = json_ld.get("datePublished", "") or json_ld.get("dateModified", "")
+    if not pub_date and date_selectors:
+        for sel in date_selectors:
+            elem = soup.select_one(sel)
+            if elem:
+                pub_date = elem.get("datetime") or elem.get("data-date-time") or clean_text(elem.get_text(strip=True))
+                if pub_date:
+                    break
+    if not pub_date:
+        meta_date = soup.find("meta", property=re.compile(r"published_time|release_date", re.I)) or soup.find("meta", attrs={"name": re.compile(r"date|pubdate", re.I)})
+        if meta_date and meta_date.get("content"):
+            pub_date = clean_text(meta_date["content"])
+
+    # Hero image resolution
+    hero_img = ""
+    if json_ld:
+        hero_img = parse_image_from_json_ld(json_ld.get("image"))
+    if not hero_img:
+        og_img = soup.find("meta", property="og:image") or soup.find("meta", attrs={"name": "twitter:image"})
+        if og_img and og_img.get("content"):
+            hero_img = og_img["content"].strip()
+
+    # Fast-path JSON-LD articleBody check
+    body_html = ""
+    if check_json_ld_body and json_ld and json_ld.get("articleBody"):
+        body_text = json_ld["articleBody"].strip()
+        if len(body_text) >= min_json_ld_body_len:
+            body_html = text_to_semantic_html(body_text)
+
+    # DOM body extraction
+    if not body_html and body_selectors:
+        for sel in body_selectors:
+            elem = soup.select_one(sel)
+            if elem:
+                extracted = sanitize_element_to_html(elem)
+                if len(extracted.strip()) > 30:
+                    body_html = extracted
+                    break
+
+    # Fallback to article or main
+    if not body_html:
+        fallback_elem = soup.find("article") or soup.find("main")
+        if fallback_elem:
+            body_html = sanitize_element_to_html(fallback_elem)
+
+    return {
+        "title": title,
+        "body_html": body_html,
+        "authors": authors,
+        "published_date": pub_date,
+        "hero_image_url": hero_img,
+        "canonical_url": url,
+        "site_name": site_name,
+    }
+
+
+def extract_with_rss_fallback(
+    url: str,
+    soup: BeautifulSoup,
+    site_name: str,
+    feed_url: str,
+    body_selectors: List[str],
+    title_selectors: Optional[List[str]] = None,
+    fetch_network: bool = True,
+) -> Dict[str, Any]:
+    """
+    Attempts matching article URL within publisher's public RSS/syndication feed
+    for full text, falling back to standard selector-based extraction.
+    """
+    if fetch_network and feed_url:
+        try:
+            with httpx.Client(headers={"User-Agent": "Mozilla/5.0"}, timeout=6.0, follow_redirects=True) as client:
+                resp = client.get(feed_url)
+                if resp.status_code == 200:
+                    feed_soup = BeautifulSoup(resp.content, "html.parser")
+                    for item in feed_soup.find_all(["item", "entry"]):
+                        link_node = item.find("link")
+                        link = ""
+                        if link_node:
+                            link = link_node.get("href") or link_node.get_text(strip=True)
+                        if link and (link in url or url in link):
+                            content_node = item.find("content:encoded") or item.find("content") or item.find("description")
+                            if content_node:
+                                c_text = content_node.get_text(strip=True)
+                                if len(c_text) > 200:
+                                    title_node = item.find("title")
+                                    title = clean_text(title_node.get_text(strip=True) if title_node else "")
+                                    c_soup = BeautifulSoup(c_text, "html.parser")
+                                    return {
+                                        "title": title,
+                                        "body_html": sanitize_element_to_html(c_soup),
+                                        "authors": [],
+                                        "published_date": clean_text(item.find(["pubdate", "published"]).get_text(strip=True)) if item.find(["pubdate", "published"]) else "",
+                                        "hero_image_url": "",
+                                        "canonical_url": link,
+                                        "site_name": site_name,
+                                    }
+        except Exception as e:
+            logger.debug(f"Feed query for {site_name} failed: {e}")
+
+    return extract_with_selectors(
+        url=url,
+        soup=soup,
+        site_name=site_name,
+        body_selectors=body_selectors,
+        title_selectors=title_selectors,
+    )
+
+
 # ==============================================================================
 # 2. Site Extractors: Group A. Major Aggregators & Portals
 # ==============================================================================
@@ -1494,6 +1665,1037 @@ def extract_generic_fallback(url: str, soup: BeautifulSoup, raw_html: str, fetch
 
 
 # ==============================================================================
+# ==============================================================================
+# 4. Extended Platform Extractors (Sites 31 to 100)
+# ==============================================================================
+
+# ------------------------------------------------------------------------------
+# Batch 1: Aggregators, Developer Feeds & Modern Discourse (Sites 31–38)
+# ------------------------------------------------------------------------------
+
+def extract_hackernews(url: str, soup: BeautifulSoup, raw_html: str, fetch_network: bool = True) -> Dict[str, Any]:
+    """Hacker News extractor (news.ycombinator.com) with Firebase REST API fast path."""
+    parsed = urlparse(url)
+    qs = parse_qs(parsed.query)
+    item_id = qs.get("id", [""])[0]
+
+    if item_id and fetch_network:
+        api_url = f"https://hacker-news.firebaseio.com/v0/item/{item_id}.json"
+        try:
+            with httpx.Client(timeout=8.0) as client:
+                resp = client.get(api_url)
+                if resp.status_code == 200:
+                    data = resp.json()
+                    if isinstance(data, dict):
+                        title = clean_text(data.get("title", ""))
+                        by = data.get("by", "")
+                        score = data.get("score", 0)
+                        descendants = data.get("descendants", 0)
+                        text = data.get("text", "")
+                        story_url = data.get("url", "")
+                        pub_time = ""
+                        if data.get("time"):
+                            from datetime import datetime, timezone
+                            pub_time = datetime.fromtimestamp(data["time"], timezone.utc).isoformat()
+
+                        body_parts = []
+                        if story_url:
+                            body_parts.append(f'<p><strong>Original Link:</strong> <a href="{html.escape(story_url)}" target="_blank">{html.escape(story_url)}</a></p>')
+                            body_parts.append(f'<p><em>Score: {score} points | Comments: {descendants}</em></p>')
+                        if text:
+                            t_soup = BeautifulSoup(text, "html.parser")
+                            body_parts.append(sanitize_element_to_html(t_soup))
+
+                        return {
+                            "title": title or "Hacker News Discussion",
+                            "body_html": "\n".join(body_parts) if body_parts else "<p>Hacker News Discussion</p>",
+                            "authors": [by] if by else [],
+                            "published_date": pub_time,
+                            "hero_image_url": "",
+                            "canonical_url": url,
+                            "site_name": "Hacker News",
+                        }
+        except Exception as e:
+            logger.debug(f"Hacker News API fetch failed: {e}")
+
+    title_elem = soup.select_one(".titleline > a") or soup.select_one(".title a") or soup.find("h1")
+    title = clean_text(title_elem.get_text(strip=True)) if title_elem else "Hacker News"
+    subtext = soup.select_one(".subtext")
+    author = ""
+    date = ""
+    if subtext:
+        author_elem = subtext.select_one(".hnuser")
+        if author_elem:
+            author = clean_text(author_elem.get_text(strip=True))
+        age_elem = subtext.select_one(".age")
+        if age_elem:
+            date = age_elem.get("title", "") or clean_text(age_elem.get_text(strip=True))
+
+    body_elem = soup.select_one(".toptext") or soup.select_one(".comment-tree") or soup.select_one("table.fatitem")
+    body_html = sanitize_element_to_html(body_elem) if body_elem else ""
+
+    return {
+        "title": title,
+        "body_html": body_html,
+        "authors": [author] if author else [],
+        "published_date": date,
+        "hero_image_url": "",
+        "canonical_url": url,
+        "site_name": "Hacker News",
+    }
+
+
+def extract_flipboard(url: str, soup: BeautifulSoup, raw_html: str, fetch_network: bool = True) -> Dict[str, Any]:
+    """Flipboard extractor (flipboard.com)."""
+    return extract_with_selectors(
+        url=url,
+        soup=soup,
+        site_name="Flipboard",
+        body_selectors=["div[data-testid='article-body']", ".article-content", "article", ".post-content"],
+        title_selectors=["h1.title", "h1[data-testid='title']", "h1"],
+    )
+
+
+def extract_pocket(url: str, soup: BeautifulSoup, raw_html: str, fetch_network: bool = True) -> Dict[str, Any]:
+    """Pocket extractor (getpocket.com)."""
+    return extract_with_selectors(
+        url=url,
+        soup=soup,
+        site_name="Pocket",
+        body_selectors=["article", ".reader-container", ".item-body", ".article-content"],
+        title_selectors=["h1.title", "h1"],
+    )
+
+
+def extract_applenews(url: str, soup: BeautifulSoup, raw_html: str, fetch_network: bool = True) -> Dict[str, Any]:
+    """Apple News Web extractor (apple.news)."""
+    canonical = url
+    can_tag = soup.find("link", rel="canonical")
+    if can_tag and can_tag.get("href"):
+        canonical = can_tag["href"]
+    og_url = soup.find("meta", property="og:url")
+    if og_url and og_url.get("content"):
+        canonical = og_url["content"]
+
+    return extract_with_selectors(
+        url=canonical,
+        soup=soup,
+        site_name="Apple News",
+        body_selectors=["div.article-content", "article", "main"],
+        title_selectors=["h1.title", "h1"],
+    )
+
+
+def extract_devto(url: str, soup: BeautifulSoup, raw_html: str, fetch_network: bool = True) -> Dict[str, Any]:
+    """Dev.to extractor with public REST API fast-path."""
+    parsed = urlparse(url)
+    path_parts = [p for p in parsed.path.strip("/").split("/") if p]
+    if len(path_parts) >= 2 and fetch_network:
+        username = path_parts[0]
+        slug = path_parts[1]
+        api_url = f"https://dev.to/api/articles/{username}/{slug}"
+        try:
+            with httpx.Client(headers={"User-Agent": "Mozilla/5.0"}, timeout=8.0) as client:
+                resp = client.get(api_url)
+                if resp.status_code == 200:
+                    data = resp.json()
+                    if isinstance(data, dict) and data.get("body_html"):
+                        b_soup = BeautifulSoup(data["body_html"], "html.parser")
+                        return {
+                            "title": clean_text(data.get("title", "")),
+                            "body_html": sanitize_element_to_html(b_soup),
+                            "authors": [clean_text(data.get("user", {}).get("name", ""))] if data.get("user") else [],
+                            "published_date": data.get("published_at", ""),
+                            "hero_image_url": data.get("cover_image", "") or data.get("social_image", ""),
+                            "canonical_url": data.get("canonical_url", url),
+                            "site_name": "DEV Community",
+                        }
+        except Exception as e:
+            logger.debug(f"Dev.to API fetch failed: {e}")
+
+    return extract_with_selectors(
+        url=url,
+        soup=soup,
+        site_name="DEV Community",
+        body_selectors=["div#article-body", "div.crayons-article__main", "article"],
+        title_selectors=["h1", ".crayons-article__title"],
+    )
+
+
+def extract_bluesky(url: str, soup: BeautifulSoup, raw_html: str, fetch_network: bool = True) -> Dict[str, Any]:
+    """Bluesky extractor (bsky.app) with AT Protocol public API."""
+    parsed = urlparse(url)
+    match = re.search(r"/profile/([^/]+)/post/([^/]+)", parsed.path)
+    if match and fetch_network:
+        actor = match.group(1)
+        rkey = match.group(2)
+        api_url = f"https://public.api.bsky.app/xrpc/app.bsky.feed.getPostThread?uri=at://{actor}/app.bsky.feed.post/{rkey}&depth=1"
+        try:
+            with httpx.Client(headers={"User-Agent": "Mozilla/5.0"}, timeout=8.0) as client:
+                resp = client.get(api_url)
+                if resp.status_code == 200:
+                    data = resp.json()
+                    thread = data.get("thread", {})
+                    post = thread.get("post", {})
+                    record = post.get("record", {})
+                    author_info = post.get("author", {})
+                    author_name = author_info.get("displayName") or author_info.get("handle", "")
+                    text = record.get("text", "")
+                    created_at = record.get("createdAt", "")
+                    avatar = author_info.get("avatar", "")
+
+                    return {
+                        "title": f"Bluesky post by {author_name}" if author_name else "Bluesky Post",
+                        "body_html": text_to_semantic_html(text),
+                        "authors": [clean_text(author_name)] if author_name else [],
+                        "published_date": created_at,
+                        "hero_image_url": avatar,
+                        "canonical_url": url,
+                        "site_name": "Bluesky",
+                    }
+        except Exception as e:
+            logger.debug(f"Bluesky API fetch failed: {e}")
+
+    return extract_with_selectors(
+        url=url,
+        soup=soup,
+        site_name="Bluesky",
+        body_selectors=["div[data-testid*='postText']", "div[data-testid='postThreadItem']", "article"],
+        title_selectors=["h1", "title"],
+    )
+
+
+def extract_ghost(url: str, soup: BeautifulSoup, raw_html: str, fetch_network: bool = True) -> Dict[str, Any]:
+    """Ghost CMS Blog extractor (ghost.org / *.ghost.io)."""
+    return extract_with_selectors(
+        url=url,
+        soup=soup,
+        site_name="Ghost",
+        body_selectors=["div.gh-content", "div.post-content", "article.post", "article"],
+        title_selectors=["h1.article-title", "h1.post-title", "h1"],
+    )
+
+
+def extract_wordpress(url: str, soup: BeautifulSoup, raw_html: str, fetch_network: bool = True) -> Dict[str, Any]:
+    """Generic WordPress / WP Core REST extractor."""
+    wp_link = soup.find("link", rel="alternate", type="application/json", href=re.compile(r"/wp-json/wp/v2/posts/\d+"))
+    if wp_link and wp_link.get("href") and fetch_network:
+        api_url = wp_link["href"]
+        try:
+            with httpx.Client(headers={"User-Agent": "Mozilla/5.0"}, timeout=8.0, follow_redirects=True) as client:
+                resp = client.get(api_url)
+                if resp.status_code == 200:
+                    data = resp.json()
+                    if isinstance(data, dict):
+                        title = clean_text(data.get("title", {}).get("rendered", ""))
+                        b_soup = BeautifulSoup(data.get("content", {}).get("rendered", ""), "html.parser")
+                        return {
+                            "title": title,
+                            "body_html": sanitize_element_to_html(b_soup),
+                            "authors": [],
+                            "published_date": data.get("date_gmt", "") or data.get("date", ""),
+                            "hero_image_url": "",
+                            "canonical_url": data.get("link", url),
+                            "site_name": "WordPress",
+                        }
+        except Exception as e:
+            logger.debug(f"WP REST API fetch failed: {e}")
+
+    return extract_with_selectors(
+        url=url,
+        soup=soup,
+        site_name="WordPress",
+        body_selectors=["div.entry-content", "div.wp-block-post-content", "div.post-content", "article"],
+        title_selectors=["h1.entry-title", "h1"],
+    )
+
+
+# ------------------------------------------------------------------------------
+# Batch 2: Extended East Asian Outlets (Sites 39–48 & 93–98)
+# ------------------------------------------------------------------------------
+
+def extract_mk(url: str, soup: BeautifulSoup, raw_html: str, fetch_network: bool = True) -> Dict[str, Any]:
+    """Maeil Business Newspaper / MK extractor (mk.co.kr)."""
+    return extract_with_selectors(
+        url=url,
+        soup=soup,
+        site_name="매일경제 (MK)",
+        body_selectors=["div.news_cnt_detail_wrap", "div#article_body", "div.art_txt", "article"],
+        title_selectors=["h2.top_title", "h2.news_ttl", "h1.top_title", "h1"],
+        date_selectors=["li.lasttime", "span.time", "div.time_area"],
+        author_selectors=["span.author", "li.author"],
+    )
+
+
+def extract_hankyung(url: str, soup: BeautifulSoup, raw_html: str, fetch_network: bool = True) -> Dict[str, Any]:
+    """Korea Economic Daily / Hankyung extractor (hankyung.com)."""
+    return extract_with_selectors(
+        url=url,
+        soup=soup,
+        site_name="한국경제 (Hankyung)",
+        body_selectors=["#articletxt", "div.article-body", "article"],
+        title_selectors=["h1.article-tit", "h1.headline", "h1"],
+        date_selectors=["span.date-time", "span.date"],
+        author_selectors=["span.author", "div.byline"],
+    )
+
+
+def extract_hani(url: str, soup: BeautifulSoup, raw_html: str, fetch_network: bool = True) -> Dict[str, Any]:
+    """Hankyoreh extractor (hani.co.kr)."""
+    return extract_with_selectors(
+        url=url,
+        soup=soup,
+        site_name="한겨레 (Hankyoreh)",
+        body_selectors=["div.article-text", "div.text", "article"],
+        title_selectors=["h1.title", "span.title", "h1"],
+        date_selectors=["span.date-time", "ul.date-time"],
+        author_selectors=["span.name", "li.name"],
+    )
+
+
+def extract_khan(url: str, soup: BeautifulSoup, raw_html: str, fetch_network: bool = True) -> Dict[str, Any]:
+    """Kyunghyang Shinmun extractor (khan.co.kr)."""
+    return extract_with_selectors(
+        url=url,
+        soup=soup,
+        site_name="경향신문 (Kyunghyang)",
+        body_selectors=["div.art_body", "p.content_text", "div#articleBody", "article"],
+        title_selectors=["h1.headline", "article h1", "h1"],
+        date_selectors=["span.date", "em.date"],
+        author_selectors=["span.name", "em.name"],
+    )
+
+
+def extract_segye(url: str, soup: BeautifulSoup, raw_html: str, fetch_network: bool = True) -> Dict[str, Any]:
+    """Segye Ilbo extractor (segye.com)."""
+    return extract_with_selectors(
+        url=url,
+        soup=soup,
+        site_name="세계일보 (Segye)",
+        body_selectors=["#article_txt", "div.view_con", "article"],
+        title_selectors=["h1.title", "h1#article_title", "h1"],
+        date_selectors=["span.date", "p.date"],
+        author_selectors=["span.name", "p.byline"],
+    )
+
+
+def extract_news1(url: str, soup: BeautifulSoup, raw_html: str, fetch_network: bool = True) -> Dict[str, Any]:
+    """News1 Korea extractor (news1.kr)."""
+    return extract_with_selectors(
+        url=url,
+        soup=soup,
+        site_name="뉴스1 (News1)",
+        body_selectors=["div#articles_detail", "div.detail", "article"],
+        title_selectors=["h1.title", "h1"],
+        date_selectors=["span.date", "div.info"],
+        author_selectors=["span.reporter", "span.name"],
+    )
+
+
+def extract_newsis(url: str, soup: BeautifulSoup, raw_html: str, fetch_network: bool = True) -> Dict[str, Any]:
+    """Newsis extractor (newsis.com)."""
+    return extract_with_selectors(
+        url=url,
+        soup=soup,
+        site_name="뉴시스 (Newsis)",
+        body_selectors=["article#articleBody", "div.viewer", "article"],
+        title_selectors=["h1.title", "h1"],
+        date_selectors=["p.date", "span.date"],
+        author_selectors=["p.writer", "span.writer"],
+    )
+
+
+def extract_yahoojp(url: str, soup: BeautifulSoup, raw_html: str, fetch_network: bool = True) -> Dict[str, Any]:
+    """
+    Yahoo! Japan extractor (news.yahoo.co.jp).
+    Specifically avoids top-level 'Yahoo!ニュース' portal logo h1 by targeting article h1.
+    """
+    return extract_with_selectors(
+        url=url,
+        soup=soup,
+        site_name="Yahoo! JAPAN ニュース",
+        body_selectors=["div.article_body", "#uamods-article", "div[class*='articleBody']", "article"],
+        title_selectors=["article h1", "h1[class*='Title']", "h1.sc-1bx5pky-0"],
+        date_selectors=["time"],
+        author_selectors=["p[class*='source']", "span[class*='source']"],
+    )
+
+
+def extract_nikkei(url: str, soup: BeautifulSoup, raw_html: str, fetch_network: bool = True) -> Dict[str, Any]:
+    """Nikkei / Nikkei Asia extractor (asia.nikkei.com / nikkei.com)."""
+    return extract_with_selectors(
+        url=url,
+        soup=soup,
+        site_name="Nikkei Asia",
+        body_selectors=["div.c-article_body", "article", "div[class*='articleBody']"],
+        title_selectors=["h1[class*='title']", "h1"],
+        date_selectors=["time", "span[class*='time']"],
+        author_selectors=["span[class*='author']"],
+    )
+
+
+def extract_asahi(url: str, soup: BeautifulSoup, raw_html: str, fetch_network: bool = True) -> Dict[str, Any]:
+    """Asahi Shimbun extractor (asahi.com)."""
+    return extract_with_selectors(
+        url=url,
+        soup=soup,
+        site_name="朝日新聞 (Asahi Shimbun)",
+        body_selectors=["div.ArticleBody", "div.nfyDetail", "article"],
+        title_selectors=["h1", "div[class*='Title'] h1"],
+        date_selectors=["time", "span.UpdateDate"],
+    )
+
+
+def extract_yomiuri(url: str, soup: BeautifulSoup, raw_html: str, fetch_network: bool = True) -> Dict[str, Any]:
+    """Yomiuri Shimbun extractor (yomiuri.co.jp)."""
+    return extract_with_selectors(
+        url=url,
+        soup=soup,
+        site_name="読売新聞 (Yomiuri Shimbun)",
+        body_selectors=["div.body-text", "article"],
+        title_selectors=["h1.title", "h1"],
+        date_selectors=["time"],
+    )
+
+
+def extract_mainichi(url: str, soup: BeautifulSoup, raw_html: str, fetch_network: bool = True) -> Dict[str, Any]:
+    """Mainichi Shimbun extractor (mainichi.jp)."""
+    return extract_with_selectors(
+        url=url,
+        soup=soup,
+        site_name="毎日新聞 (Mainichi Shimbun)",
+        body_selectors=["div.main-text", "article"],
+        title_selectors=["h1.title", "h1"],
+        date_selectors=["time"],
+    )
+
+
+def extract_kyodonews(url: str, soup: BeautifulSoup, raw_html: str, fetch_network: bool = True) -> Dict[str, Any]:
+    """Kyodo News extractor (english.kyodonews.net / kyodonews.net)."""
+    return extract_with_selectors(
+        url=url,
+        soup=soup,
+        site_name="Kyodo News",
+        body_selectors=["div.article-body", "div.p-article-body", "article"],
+        title_selectors=["h1", "h1.title"],
+        date_selectors=["time", "p.date"],
+    )
+
+
+def extract_moneytoday(url: str, soup: BeautifulSoup, raw_html: str, fetch_network: bool = True) -> Dict[str, Any]:
+    """MoneyToday extractor (mt.co.kr)."""
+    return extract_with_selectors(
+        url=url,
+        soup=soup,
+        site_name="머니투데이 (MoneyToday)",
+        body_selectors=["div#textBody", "div.article_body", "article"],
+        title_selectors=["h1.subject", "h1"],
+        date_selectors=["li.date", "span.date"],
+        author_selectors=["li.author", "span.author"],
+    )
+
+
+def extract_edaily(url: str, soup: BeautifulSoup, raw_html: str, fetch_network: bool = True) -> Dict[str, Any]:
+    """Edaily extractor (edaily.co.kr)."""
+    return extract_with_selectors(
+        url=url,
+        soup=soup,
+        site_name="이데일리 (Edaily)",
+        body_selectors=["div.news_body", "article"],
+        title_selectors=["h1.headline", "h1"],
+        date_selectors=["div.dates", "span.date"],
+        author_selectors=["div.byline", "span.author"],
+    )
+
+
+def extract_ohmynews(url: str, soup: BeautifulSoup, raw_html: str, fetch_network: bool = True) -> Dict[str, Any]:
+    """OhmyNews extractor (ohmynews.com)."""
+    return extract_with_selectors(
+        url=url,
+        soup=soup,
+        site_name="오마이뉴스 (OhmyNews)",
+        body_selectors=["div.content_box", "div.at_content", "article"],
+        title_selectors=["h3.atc", "h1"],
+        date_selectors=["div.info_data", "span.date"],
+        author_selectors=["div.info_data a"],
+    )
+
+
+# ------------------------------------------------------------------------------
+# Batch 3: Global Tech, Science & In-Depth Journalism (Sites 49–60)
+# ------------------------------------------------------------------------------
+
+def extract_arstechnica(url: str, soup: BeautifulSoup, raw_html: str, fetch_network: bool = True) -> Dict[str, Any]:
+    """Ars Technica extractor (arstechnica.com)."""
+    return extract_with_selectors(
+        url=url,
+        soup=soup,
+        site_name="Ars Technica",
+        body_selectors=["div.article-content", "section.article-guts", "article"],
+        title_selectors=["h1"],
+    )
+
+
+def extract_wired(url: str, soup: BeautifulSoup, raw_html: str, fetch_network: bool = True) -> Dict[str, Any]:
+    """Wired extractor (wired.com)."""
+    return extract_with_selectors(
+        url=url,
+        soup=soup,
+        site_name="Wired",
+        body_selectors=["div[data-testid='BodyWrapper']", "div.body__inner-container", "article"],
+        title_selectors=["h1"],
+    )
+
+
+def extract_techcrunch(url: str, soup: BeautifulSoup, raw_html: str, fetch_network: bool = True) -> Dict[str, Any]:
+    """TechCrunch extractor with WordPress VIP REST API fast path."""
+    parsed = urlparse(url)
+    slug_match = re.search(r"/([^/]+)/?$", parsed.path.strip("/"))
+    slug = slug_match.group(1) if slug_match else ""
+
+    if slug and fetch_network:
+        api_url = f"https://techcrunch.com/wp-json/wp/v2/posts?slug={slug}"
+        try:
+            with httpx.Client(headers={"User-Agent": "Mozilla/5.0"}, timeout=8.0, follow_redirects=True) as client:
+                resp = client.get(api_url)
+                if resp.status_code == 200:
+                    posts = resp.json()
+                    if isinstance(posts, list) and posts:
+                        p = posts[0]
+                        title = clean_text(p.get("title", {}).get("rendered", ""))
+                        rendered_body = p.get("content", {}).get("rendered", "")
+                        b_soup = BeautifulSoup(rendered_body, "html.parser")
+                        body_html = sanitize_element_to_html(b_soup)
+                        pub_date = p.get("date_gmt", "") or p.get("date", "")
+
+                        authors = []
+                        hero_image = ""
+                        yoast = p.get("yoast_head_json", {})
+                        if isinstance(yoast, dict):
+                            if yoast.get("author"):
+                                authors.append(clean_text(yoast["author"]))
+                            og_img = yoast.get("og_image", [])
+                            if og_img and isinstance(og_img, list) and og_img[0].get("url"):
+                                hero_image = og_img[0]["url"]
+
+                        return {
+                            "title": title,
+                            "body_html": body_html,
+                            "authors": authors,
+                            "published_date": pub_date,
+                            "hero_image_url": hero_image,
+                            "canonical_url": p.get("link", url),
+                            "site_name": "TechCrunch",
+                        }
+        except Exception as e:
+            logger.debug(f"TechCrunch WP API fetch failed: {e}")
+
+    return extract_with_selectors(
+        url=url,
+        soup=soup,
+        site_name="TechCrunch",
+        body_selectors=["div.entry-content", "div.wp-block-post-content", "article"],
+        title_selectors=["h1.article__title", "h1"],
+    )
+
+
+def extract_theatlantic(url: str, soup: BeautifulSoup, raw_html: str, fetch_network: bool = True) -> Dict[str, Any]:
+    """The Atlantic extractor (theatlantic.com)."""
+    return extract_with_selectors(
+        url=url,
+        soup=soup,
+        site_name="The Atlantic",
+        body_selectors=["section[data-component='ArticleBody']", "article", "div.c-article__body"],
+        title_selectors=["h1"],
+    )
+
+
+def extract_politico(url: str, soup: BeautifulSoup, raw_html: str, fetch_network: bool = True) -> Dict[str, Any]:
+    """Politico extractor (politico.com)."""
+    return extract_with_selectors(
+        url=url,
+        soup=soup,
+        site_name="Politico",
+        body_selectors=["div.story-text", "div.story-content", "article"],
+        title_selectors=["h1"],
+    )
+
+
+def extract_forbes(url: str, soup: BeautifulSoup, raw_html: str, fetch_network: bool = True) -> Dict[str, Any]:
+    """Forbes extractor (forbes.com)."""
+    return extract_with_selectors(
+        url=url,
+        soup=soup,
+        site_name="Forbes",
+        body_selectors=["div.article-body-container", "div.body-container", "article"],
+        title_selectors=["h1"],
+        check_json_ld_body=True,
+    )
+
+
+def extract_economist(url: str, soup: BeautifulSoup, raw_html: str, fetch_network: bool = True) -> Dict[str, Any]:
+    """The Economist extractor (economist.com)."""
+    return extract_with_selectors(
+        url=url,
+        soup=soup,
+        site_name="The Economist",
+        body_selectors=["div[data-component='article-body']", "article", "div.article__body"],
+        title_selectors=["h1"],
+    )
+
+
+def extract_propublica(url: str, soup: BeautifulSoup, raw_html: str, fetch_network: bool = True) -> Dict[str, Any]:
+    """ProPublica extractor (propublica.org)."""
+    return extract_with_selectors(
+        url=url,
+        soup=soup,
+        site_name="ProPublica",
+        body_selectors=["div.article-body", "div.body-content", "article"],
+        title_selectors=["h1"],
+    )
+
+
+def extract_latimes(url: str, soup: BeautifulSoup, raw_html: str, fetch_network: bool = True) -> Dict[str, Any]:
+    """Los Angeles Times extractor (latimes.com)."""
+    return extract_with_selectors(
+        url=url,
+        soup=soup,
+        site_name="Los Angeles Times",
+        body_selectors=["article", "div.page-content", "div.story-body"],
+        title_selectors=["h1[class*='headline']", "h1"],
+    )
+
+
+def extract_aljazeera(url: str, soup: BeautifulSoup, raw_html: str, fetch_network: bool = True) -> Dict[str, Any]:
+    """Al Jazeera English extractor (aljazeera.com)."""
+    return extract_with_selectors(
+        url=url,
+        soup=soup,
+        site_name="Al Jazeera",
+        body_selectors=["div.wysiwyg--all-content", "div.wysiwyg", "article"],
+        title_selectors=["h1"],
+    )
+
+
+def extract_dw(url: str, soup: BeautifulSoup, raw_html: str, fetch_network: bool = True) -> Dict[str, Any]:
+    """Deutsche Welle extractor (dw.com)."""
+    return extract_with_selectors(
+        url=url,
+        soup=soup,
+        site_name="Deutsche Welle",
+        body_selectors=["div.rich-text", "div.article-content", "article"],
+        title_selectors=["h1"],
+    )
+
+
+def extract_npr(url: str, soup: BeautifulSoup, raw_html: str, fetch_network: bool = True) -> Dict[str, Any]:
+    """NPR extractor (npr.org)."""
+    return extract_with_selectors(
+        url=url,
+        soup=soup,
+        site_name="NPR",
+        body_selectors=["div#storytext", "div.storytext", "article"],
+        title_selectors=["h1"],
+    )
+
+
+# ------------------------------------------------------------------------------
+# Batch 4: Global Breaking News & International Presses (Sites 61–72)
+# ------------------------------------------------------------------------------
+
+def extract_usatoday(url: str, soup: BeautifulSoup, raw_html: str, fetch_network: bool = True) -> Dict[str, Any]:
+    """USA Today extractor (usatoday.com)."""
+    return extract_with_selectors(
+        url=url,
+        soup=soup,
+        site_name="USA Today",
+        body_selectors=["div.gnt_ar_b", "div.story-asset", "div[class*='article-body']", "article"],
+        title_selectors=["h1.headline", "h1"],
+    )
+
+
+def extract_timesofindia(url: str, soup: BeautifulSoup, raw_html: str, fetch_network: bool = True) -> Dict[str, Any]:
+    """The Times of India extractor with JSON-LD articleBody zero-scrape fast path."""
+    return extract_with_selectors(
+        url=url,
+        soup=soup,
+        site_name="The Times of India",
+        body_selectors=["div._s30J", "div.main-content", "div.artText", "article"],
+        title_selectors=["h1.HNMDR", "h1"],
+        check_json_ld_body=True,
+    )
+
+
+def extract_thehindu(url: str, soup: BeautifulSoup, raw_html: str, fetch_network: bool = True) -> Dict[str, Any]:
+    """The Hindu extractor (thehindu.com)."""
+    return extract_with_selectors(
+        url=url,
+        soup=soup,
+        site_name="The Hindu",
+        body_selectors=["div#schemaDiv", "div.articlebodycontent", "div[class*='article-body']", "article"],
+        title_selectors=["h1.title", "h1"],
+    )
+
+
+def extract_smh(url: str, soup: BeautifulSoup, raw_html: str, fetch_network: bool = True) -> Dict[str, Any]:
+    """The Sydney Morning Herald / The Age extractor (smh.com.au / theage.com.au)."""
+    return extract_with_selectors(
+        url=url,
+        soup=soup,
+        site_name="The Sydney Morning Herald",
+        body_selectors=["div[data-testid='article-body']", "article"],
+        title_selectors=["h1[data-testid='headline']", "h1"],
+    )
+
+
+def extract_abc_au(url: str, soup: BeautifulSoup, raw_html: str, fetch_network: bool = True) -> Dict[str, Any]:
+    """ABC News Australia extractor (abc.net.au)."""
+    return extract_with_selectors(
+        url=url,
+        soup=soup,
+        site_name="ABC News (Australia)",
+        body_selectors=["div#body", "div[data-component='ArticleBody']", "div[class*='ArticleBody']", "article"],
+        title_selectors=["h1[data-component='Heading']", "h1"],
+    )
+
+
+def extract_cbc(url: str, soup: BeautifulSoup, raw_html: str, fetch_network: bool = True) -> Dict[str, Any]:
+    """CBC News extractor (cbc.ca)."""
+    return extract_with_selectors(
+        url=url,
+        soup=soup,
+        site_name="CBC News",
+        body_selectors=["div.story", "div.storyWrapper", "div[class*='story']", "article"],
+        title_selectors=["h1.detail-headline", "h1"],
+    )
+
+
+def extract_globeandmail(url: str, soup: BeautifulSoup, raw_html: str, fetch_network: bool = True) -> Dict[str, Any]:
+    """The Globe and Mail extractor (theglobeandmail.com)."""
+    return extract_with_selectors(
+        url=url,
+        soup=soup,
+        site_name="The Globe and Mail",
+        body_selectors=["div.c-article-body", "div[data-testid='article-body']", "article"],
+        title_selectors=["h1.c-article-header__headline", "h1"],
+    )
+
+
+def extract_scmp(url: str, soup: BeautifulSoup, raw_html: str, fetch_network: bool = True) -> Dict[str, Any]:
+    """South China Morning Post extractor with JSON-LD articleBody zero-scrape fast path."""
+    return extract_with_selectors(
+        url=url,
+        soup=soup,
+        site_name="South China Morning Post",
+        body_selectors=["div.article-body-wrapper", "div[class*='articleBody']", "article"],
+        title_selectors=["h1"],
+        check_json_ld_body=True,
+    )
+
+
+def extract_straitstimes(url: str, soup: BeautifulSoup, raw_html: str, fetch_network: bool = True) -> Dict[str, Any]:
+    """The Straits Times extractor (straitstimes.com)."""
+    return extract_with_selectors(
+        url=url,
+        soup=soup,
+        site_name="The Straits Times",
+        body_selectors=["div.text-wrapper", "div.story-content", "div[class*='article-body']", "article"],
+        title_selectors=["h1.headline", "h1"],
+    )
+
+
+def extract_france24(url: str, soup: BeautifulSoup, raw_html: str, fetch_network: bool = True) -> Dict[str, Any]:
+    """France 24 extractor (france24.com) with public wire RSS fast path."""
+    return extract_with_rss_fallback(
+        url=url,
+        soup=soup,
+        site_name="France 24",
+        feed_url="https://www.france24.com/en/rss",
+        body_selectors=["div.t-content__body", "div[class*='t-content__body']", "article"],
+        title_selectors=["h1"],
+        fetch_network=fetch_network,
+    )
+
+
+def extract_lemonde(url: str, soup: BeautifulSoup, raw_html: str, fetch_network: bool = True) -> Dict[str, Any]:
+    """Le Monde extractor (lemonde.fr)."""
+    return extract_with_selectors(
+        url=url,
+        soup=soup,
+        site_name="Le Monde",
+        body_selectors=["section.article__content", "div.article__content", "article"],
+        title_selectors=["h1.article__title", "h1"],
+    )
+
+
+def extract_spiegel(url: str, soup: BeautifulSoup, raw_html: str, fetch_network: bool = True) -> Dict[str, Any]:
+    """Der Spiegel International extractor (spiegel.de)."""
+    return extract_with_selectors(
+        url=url,
+        soup=soup,
+        site_name="Der Spiegel",
+        body_selectors=["div[data-sara-click-el='body_content']", "div.word-break", "article"],
+        title_selectors=["h1[title]", "h1"],
+    )
+
+
+# ------------------------------------------------------------------------------
+# Batch 5: Tech, Science, Crypto & Digital Culture (Sites 73–82)
+# ------------------------------------------------------------------------------
+
+def extract_engadget(url: str, soup: BeautifulSoup, raw_html: str, fetch_network: bool = True) -> Dict[str, Any]:
+    """Engadget extractor (engadget.com)."""
+    return extract_with_selectors(
+        url=url,
+        soup=soup,
+        site_name="Engadget",
+        body_selectors=["div.caas-body", "article"],
+        title_selectors=["h1"],
+    )
+
+
+def extract_gizmodo(url: str, soup: BeautifulSoup, raw_html: str, fetch_network: bool = True) -> Dict[str, Any]:
+    """Gizmodo extractor (gizmodo.com)."""
+    return extract_with_selectors(
+        url=url,
+        soup=soup,
+        site_name="Gizmodo",
+        body_selectors=["div.entry-content", "article"],
+        title_selectors=["h1"],
+    )
+
+
+def extract_mashable(url: str, soup: BeautifulSoup, raw_html: str, fetch_network: bool = True) -> Dict[str, Any]:
+    """Mashable extractor with JSON-LD articleBody zero-scrape fast path."""
+    return extract_with_selectors(
+        url=url,
+        soup=soup,
+        site_name="Mashable",
+        body_selectors=["section.article-content", "article"],
+        title_selectors=["h1"],
+        check_json_ld_body=True,
+    )
+
+
+def extract_cnet(url: str, soup: BeautifulSoup, raw_html: str, fetch_network: bool = True) -> Dict[str, Any]:
+    """CNET extractor (cnet.com)."""
+    return extract_with_selectors(
+        url=url,
+        soup=soup,
+        site_name="CNET",
+        body_selectors=["div.c-articleCore_body", "article"],
+        title_selectors=["h1[class*='c-head']", "h1"],
+    )
+
+
+def extract_venturebeat(url: str, soup: BeautifulSoup, raw_html: str, fetch_network: bool = True) -> Dict[str, Any]:
+    """VentureBeat extractor (venturebeat.com)."""
+    return extract_with_selectors(
+        url=url,
+        soup=soup,
+        site_name="VentureBeat",
+        body_selectors=["div[class*='article-body']", "div.article-content", "article"],
+        title_selectors=["h1"],
+    )
+
+
+def extract_coindesk(url: str, soup: BeautifulSoup, raw_html: str, fetch_network: bool = True) -> Dict[str, Any]:
+    """CoinDesk extractor (coindesk.com)."""
+    return extract_with_selectors(
+        url=url,
+        soup=soup,
+        site_name="CoinDesk",
+        body_selectors=["div.content-wrapper", "div[data-module-name='article-body']", "article"],
+        title_selectors=["h1.typography__StyledTypography", "h1"],
+    )
+
+
+def extract_cointelegraph(url: str, soup: BeautifulSoup, raw_html: str, fetch_network: bool = True) -> Dict[str, Any]:
+    """CoinTelegraph extractor (cointelegraph.com)."""
+    return extract_with_selectors(
+        url=url,
+        soup=soup,
+        site_name="CoinTelegraph",
+        body_selectors=["div.post-content", "article"],
+        title_selectors=["h1.post__title", "h1"],
+    )
+
+
+def extract_sciencedaily(url: str, soup: BeautifulSoup, raw_html: str, fetch_network: bool = True) -> Dict[str, Any]:
+    """ScienceDaily extractor (sciencedaily.com)."""
+    return extract_with_selectors(
+        url=url,
+        soup=soup,
+        site_name="ScienceDaily",
+        body_selectors=["div#story_text", "div#story_content", "article"],
+        title_selectors=["h1#headline", "h1"],
+    )
+
+
+def extract_physorg(url: str, soup: BeautifulSoup, raw_html: str, fetch_network: bool = True) -> Dict[str, Any]:
+    """Phys.org extractor (phys.org)."""
+    return extract_with_selectors(
+        url=url,
+        soup=soup,
+        site_name="Phys.org",
+        body_selectors=["div.article-main", "article"],
+        title_selectors=["h1"],
+    )
+
+
+def extract_polygon(url: str, soup: BeautifulSoup, raw_html: str, fetch_network: bool = True) -> Dict[str, Any]:
+    """Polygon extractor (polygon.com)."""
+    return extract_with_selectors(
+        url=url,
+        soup=soup,
+        site_name="Polygon",
+        body_selectors=["div.c-entry-content", "article"],
+        title_selectors=["h1.c-page-title", "h1"],
+    )
+
+
+# ------------------------------------------------------------------------------
+# Batch 6: Business, Finance, Markets & Policy (Sites 83–92 & 99–100)
+# ------------------------------------------------------------------------------
+
+def extract_businessinsider(url: str, soup: BeautifulSoup, raw_html: str, fetch_network: bool = True) -> Dict[str, Any]:
+    """Business Insider / Insider extractor (businessinsider.com)."""
+    return extract_with_selectors(
+        url=url,
+        soup=soup,
+        site_name="Business Insider",
+        body_selectors=["div.content-lock-content", "div.post-content", "article"],
+        title_selectors=["h1"],
+    )
+
+
+def extract_marketwatch(url: str, soup: BeautifulSoup, raw_html: str, fetch_network: bool = True) -> Dict[str, Any]:
+    """MarketWatch extractor with Dow Jones public RSS fast path."""
+    return extract_with_rss_fallback(
+        url=url,
+        soup=soup,
+        site_name="MarketWatch",
+        feed_url="https://feeds.content.dowjones.io/public/rss/mw_topstories",
+        body_selectors=["div.article__body", "article"],
+        title_selectors=["h1"],
+        fetch_network=fetch_network,
+    )
+
+
+def extract_barrons(url: str, soup: BeautifulSoup, raw_html: str, fetch_network: bool = True) -> Dict[str, Any]:
+    """Barron's extractor (barrons.com)."""
+    return extract_with_selectors(
+        url=url,
+        soup=soup,
+        site_name="Barron's",
+        body_selectors=["div.article__body", "article"],
+        title_selectors=["h1"],
+    )
+
+
+def extract_fortune(url: str, soup: BeautifulSoup, raw_html: str, fetch_network: bool = True) -> Dict[str, Any]:
+    """Fortune extractor (fortune.com)."""
+    return extract_with_selectors(
+        url=url,
+        soup=soup,
+        site_name="Fortune",
+        body_selectors=["div[class*='articleBody']", "div.articleContent", "article"],
+        title_selectors=["h1"],
+    )
+
+
+def extract_fastcompany(url: str, soup: BeautifulSoup, raw_html: str, fetch_network: bool = True) -> Dict[str, Any]:
+    """Fast Company extractor (fastcompany.com)."""
+    return extract_with_selectors(
+        url=url,
+        soup=soup,
+        site_name="Fast Company",
+        body_selectors=["div[data-component='article-body']", "article"],
+        title_selectors=["h1"],
+    )
+
+
+def extract_inc(url: str, soup: BeautifulSoup, raw_html: str, fetch_network: bool = True) -> Dict[str, Any]:
+    """Inc. Magazine extractor (inc.com)."""
+    return extract_with_selectors(
+        url=url,
+        soup=soup,
+        site_name="Inc. Magazine",
+        body_selectors=["div.article-body", "article"],
+        title_selectors=["h1"],
+    )
+
+
+def extract_spglobal(url: str, soup: BeautifulSoup, raw_html: str, fetch_network: bool = True) -> Dict[str, Any]:
+    """S&P Global extractor (spglobal.com)."""
+    return extract_with_selectors(
+        url=url,
+        soup=soup,
+        site_name="S&P Global",
+        body_selectors=["div.article-content", "div[class*='article-body']", "article"],
+        title_selectors=["h1"],
+    )
+
+
+def extract_thehill(url: str, soup: BeautifulSoup, raw_html: str, fetch_network: bool = True) -> Dict[str, Any]:
+    """The Hill extractor with public RSS feed fast path."""
+    return extract_with_rss_fallback(
+        url=url,
+        soup=soup,
+        site_name="The Hill",
+        feed_url="https://thehill.com/feed/",
+        body_selectors=["div.article__text", "article"],
+        title_selectors=["h1"],
+        fetch_network=fetch_network,
+    )
+
+
+def extract_axios(url: str, soup: BeautifulSoup, raw_html: str, fetch_network: bool = True) -> Dict[str, Any]:
+    """Axios extractor with public RSS feed fast path."""
+    return extract_with_rss_fallback(
+        url=url,
+        soup=soup,
+        site_name="Axios",
+        feed_url="https://www.axios.com/feeds/feed.rss",
+        body_selectors=["div[data-cy='story-body']", "div[class*='story-body']", "article"],
+        title_selectors=["h1"],
+        fetch_network=fetch_network,
+    )
+
+
+def extract_semafor(url: str, soup: BeautifulSoup, raw_html: str, fetch_network: bool = True) -> Dict[str, Any]:
+    """Semafor extractor (semafor.com)."""
+    return extract_with_selectors(
+        url=url,
+        soup=soup,
+        site_name="Semafor",
+        body_selectors=["div[data-testid='story-content']", "article"],
+        title_selectors=["h1"],
+    )
+
+
+def extract_alltop(url: str, soup: BeautifulSoup, raw_html: str, fetch_network: bool = True) -> Dict[str, Any]:
+    """AllTop extractor (alltop.com)."""
+    return extract_with_selectors(
+        url=url,
+        soup=soup,
+        site_name="AllTop",
+        body_selectors=["div.entry-content", "main", "article"],
+        title_selectors=["h1"],
+    )
+
+
+def extract_smartbrief(url: str, soup: BeautifulSoup, raw_html: str, fetch_network: bool = True) -> Dict[str, Any]:
+    """SmartBrief extractor (smartbrief.com)."""
+    return extract_with_selectors(
+        url=url,
+        soup=soup,
+        site_name="SmartBrief",
+        body_selectors=["div.brief-content", "article"],
+        title_selectors=["h1"],
+    )
+
+
 # 6. Central Registries (SITE_ADAPTERS & BROWSER_HINTS)
 # ==============================================================================
 
@@ -1544,6 +2746,93 @@ SITE_ADAPTERS: Dict[str, Callable[[str, BeautifulSoup, str, bool], Dict[str, Any
     "cnbc.com": extract_cnbc,
     "theverge.com": extract_theverge,
     "vox.com": extract_theverge,
+
+# Batch 1: Aggregators, Developer Feeds & Modern Discourse
+    "news.ycombinator.com": extract_hackernews,
+    "flipboard.com": extract_flipboard,
+    "getpocket.com": extract_pocket,
+    "apple.news": extract_applenews,
+    "dev.to": extract_devto,
+    "bsky.app": extract_bluesky,
+    "ghost.org": extract_ghost,
+    "wordpress.org": extract_wordpress,
+
+    # Batch 2: Extended East Asian Outlets
+    "mk.co.kr": extract_mk,
+    "hankyung.com": extract_hankyung,
+    "hani.co.kr": extract_hani,
+    "khan.co.kr": extract_khan,
+    "segye.com": extract_segye,
+    "news1.kr": extract_news1,
+    "newsis.com": extract_newsis,
+    "news.yahoo.co.jp": extract_yahoojp,
+    "asia.nikkei.com": extract_nikkei,
+    "nikkei.com": extract_nikkei,
+    "asahi.com": extract_asahi,
+    "yomiuri.co.jp": extract_yomiuri,
+    "mainichi.jp": extract_mainichi,
+    "english.kyodonews.net": extract_kyodonews,
+    "kyodonews.net": extract_kyodonews,
+    "mt.co.kr": extract_moneytoday,
+    "edaily.co.kr": extract_edaily,
+    "ohmynews.com": extract_ohmynews,
+
+    # Batch 3: Global Tech, Science & In-Depth Journalism
+    "arstechnica.com": extract_arstechnica,
+    "wired.com": extract_wired,
+    "techcrunch.com": extract_techcrunch,
+    "theatlantic.com": extract_theatlantic,
+    "politico.com": extract_politico,
+    "forbes.com": extract_forbes,
+    "economist.com": extract_economist,
+    "propublica.org": extract_propublica,
+    "latimes.com": extract_latimes,
+    "aljazeera.com": extract_aljazeera,
+    "dw.com": extract_dw,
+    "npr.org": extract_npr,
+
+    # Batch 4: Global Breaking News & International Presses
+    "usatoday.com": extract_usatoday,
+    "timesofindia.indiatimes.com": extract_timesofindia,
+    "indiatimes.com": extract_timesofindia,
+    "thehindu.com": extract_thehindu,
+    "smh.com.au": extract_smh,
+    "theage.com.au": extract_smh,
+    "abc.net.au": extract_abc_au,
+    "cbc.ca": extract_cbc,
+    "theglobeandmail.com": extract_globeandmail,
+    "scmp.com": extract_scmp,
+    "straitstimes.com": extract_straitstimes,
+    "france24.com": extract_france24,
+    "lemonde.fr": extract_lemonde,
+    "spiegel.de": extract_spiegel,
+
+    # Batch 5: Tech, Science, Crypto & Digital Culture
+    "engadget.com": extract_engadget,
+    "gizmodo.com": extract_gizmodo,
+    "mashable.com": extract_mashable,
+    "cnet.com": extract_cnet,
+    "venturebeat.com": extract_venturebeat,
+    "coindesk.com": extract_coindesk,
+    "cointelegraph.com": extract_cointelegraph,
+    "sciencedaily.com": extract_sciencedaily,
+    "phys.org": extract_physorg,
+    "polygon.com": extract_polygon,
+
+    # Batch 6: Business, Finance, Markets & Policy
+    "businessinsider.com": extract_businessinsider,
+    "insider.com": extract_businessinsider,
+    "marketwatch.com": extract_marketwatch,
+    "barrons.com": extract_barrons,
+    "fortune.com": extract_fortune,
+    "fastcompany.com": extract_fastcompany,
+    "inc.com": extract_inc,
+    "spglobal.com": extract_spglobal,
+    "thehill.com": extract_thehill,
+    "axios.com": extract_axios,
+    "semafor.com": extract_semafor,
+    "alltop.com": extract_alltop,
+    "smartbrief.com": extract_smartbrief,
 }
 
 
@@ -1792,6 +3081,318 @@ BROWSER_HINTS: Dict[str, Dict[str, Any]] = {
             "#onetrust-accept-btn-handler",
             "button[id*='privacy']",
         ],
+    },
+
+# Batch 1: Aggregators, Developer Feeds & Modern Discourse
+    "news.ycombinator.com": {
+        "wait_for_selector": "table.itemlist, table.fatitem, .titleline",
+        "dismiss_selectors": [],
+    },
+    "flipboard.com": {
+        "wait_for_selector": "article, div[data-testid='article-body']",
+        "dismiss_selectors": [".modal-close", "button[aria-label='Close']"],
+    },
+    "getpocket.com": {
+        "wait_for_selector": "article, .reader-container",
+        "dismiss_selectors": ["button[aria-label='Close']"],
+    },
+    "apple.news": {
+        "wait_for_selector": "article, div.article-content",
+        "dismiss_selectors": [],
+    },
+    "dev.to": {
+        "wait_for_selector": "div#article-body, div.crayons-article__main, article",
+        "dismiss_selectors": ["button[aria-label='Close']"],
+    },
+    "bsky.app": {
+        "wait_for_selector": "div[data-testid*='postText']",
+        "dismiss_selectors": [],
+    },
+    "ghost.org": {
+        "wait_for_selector": "div.gh-content, div.post-content, article",
+        "dismiss_selectors": [],
+    },
+    "wordpress.org": {
+        "wait_for_selector": "div.entry-content, article",
+        "dismiss_selectors": [],
+    },
+
+    # Batch 2: Extended East Asian Outlets
+    "mk.co.kr": {
+        "wait_for_selector": "div.news_cnt_detail_wrap, div#article_body",
+        "dismiss_selectors": [".btn_close", ".layer_close"],
+    },
+    "hankyung.com": {
+        "wait_for_selector": "#articletxt, div.article-body",
+        "dismiss_selectors": [".btn_close"],
+    },
+    "hani.co.kr": {
+        "wait_for_selector": "div.article-text, div.text",
+        "dismiss_selectors": [".close"],
+    },
+    "khan.co.kr": {
+        "wait_for_selector": "div.art_body, p.content_text",
+        "dismiss_selectors": [".btn_close"],
+    },
+    "segye.com": {
+        "wait_for_selector": "#article_txt, div.view_con",
+        "dismiss_selectors": [".btn_close"],
+    },
+    "news1.kr": {
+        "wait_for_selector": "div#articles_detail, div.detail",
+        "dismiss_selectors": [".btn_close"],
+    },
+    "newsis.com": {
+        "wait_for_selector": "article#articleBody, div.viewer",
+        "dismiss_selectors": [".btn_close"],
+    },
+    "news.yahoo.co.jp": {
+        "wait_for_selector": "div.article_body, #uamods-article",
+        "dismiss_selectors": [".close", "button[aria-label='閉じる']"],
+    },
+    "asia.nikkei.com": {
+        "wait_for_selector": "div.c-article_body, article",
+        "dismiss_selectors": ["#onetrust-accept-btn-handler", ".close-btn"],
+    },
+    "nikkei.com": {
+        "wait_for_selector": "div.c-article_body, article",
+        "dismiss_selectors": ["#onetrust-accept-btn-handler", ".close-btn"],
+    },
+    "asahi.com": {
+        "wait_for_selector": "div.ArticleBody, div.nfyDetail",
+        "dismiss_selectors": [".close", "#onetrust-accept-btn-handler"],
+    },
+    "yomiuri.co.jp": {
+        "wait_for_selector": "div.body-text, article",
+        "dismiss_selectors": [".close", "#onetrust-accept-btn-handler"],
+    },
+    "mainichi.jp": {
+        "wait_for_selector": "div.main-text, article",
+        "dismiss_selectors": [".close", "#onetrust-accept-btn-handler"],
+    },
+    "english.kyodonews.net": {
+        "wait_for_selector": "div.article-body, div.p-article-body, article",
+        "dismiss_selectors": ["#onetrust-accept-btn-handler"],
+    },
+    "kyodonews.net": {
+        "wait_for_selector": "div.article-body, div.p-article-body, article",
+        "dismiss_selectors": ["#onetrust-accept-btn-handler"],
+    },
+    "mt.co.kr": {
+        "wait_for_selector": "div#textBody, div.article_body",
+        "dismiss_selectors": [".btn_close"],
+    },
+    "edaily.co.kr": {
+        "wait_for_selector": "div.news_body, article",
+        "dismiss_selectors": [".btn_close"],
+    },
+    "ohmynews.com": {
+        "wait_for_selector": "div.content_box, div.at_content",
+        "dismiss_selectors": [],
+    },
+
+    # Batch 3: Global Tech, Science & In-Depth Journalism
+    "arstechnica.com": {
+        "wait_for_selector": "div.article-content",
+        "dismiss_selectors": ["#onetrust-accept-btn-handler"],
+    },
+    "wired.com": {
+        "wait_for_selector": "div[data-testid='BodyWrapper']",
+        "dismiss_selectors": ["#onetrust-accept-btn-handler"],
+    },
+    "techcrunch.com": {
+        "wait_for_selector": "div.entry-content, div.wp-block-post-content, article",
+        "dismiss_selectors": ["button[name='agree']", "#consent-page button"],
+    },
+    "theatlantic.com": {
+        "wait_for_selector": "section[data-component='ArticleBody'], article",
+        "dismiss_selectors": ["button[data-qa='close-button']", "button.c-modal__close"],
+    },
+    "politico.com": {
+        "wait_for_selector": "div.story-text, div.story-content",
+        "dismiss_selectors": ["#onetrust-accept-btn-handler"],
+    },
+    "forbes.com": {
+        "wait_for_selector": "div.article-body-container, div.body-container",
+        "dismiss_selectors": [".fbs-ad--ad-blocker-modal button", "#onetrust-accept-btn-handler"],
+    },
+    "economist.com": {
+        "wait_for_selector": "div[data-component='article-body'], article",
+        "dismiss_selectors": ["#sp_message_container button", "button[aria-label='Close']"],
+    },
+    "propublica.org": {
+        "wait_for_selector": "div.article-body, div.body-content",
+        "dismiss_selectors": ["#onetrust-accept-btn-handler"],
+    },
+    "latimes.com": {
+        "wait_for_selector": "article, div.page-content, div.story-body",
+        "dismiss_selectors": ["#onetrust-accept-btn-handler"],
+    },
+    "aljazeera.com": {
+        "wait_for_selector": "div.wysiwyg--all-content, div.wysiwyg",
+        "dismiss_selectors": ["#onetrust-accept-btn-handler"],
+    },
+    "dw.com": {
+        "wait_for_selector": "div.rich-text, div.article-content",
+        "dismiss_selectors": ["button#onetrust-accept-btn-handler"],
+    },
+    "npr.org": {
+        "wait_for_selector": "div#storytext, div.storytext",
+        "dismiss_selectors": ["button#onetrust-accept-btn-handler"],
+    },
+
+    # Batch 4: Global Breaking News & International Presses
+    "usatoday.com": {
+        "wait_for_selector": "div.gnt_ar_b, div.story-asset",
+        "dismiss_selectors": ["#onetrust-accept-btn-handler"],
+    },
+    "timesofindia.indiatimes.com": {
+        "wait_for_selector": "div._s30J, div.main-content",
+        "dismiss_selectors": ["#onetrust-accept-btn-handler"],
+    },
+    "indiatimes.com": {
+        "wait_for_selector": "div._s30J, div.main-content",
+        "dismiss_selectors": ["#onetrust-accept-btn-handler"],
+    },
+    "thehindu.com": {
+        "wait_for_selector": "div#schemaDiv, div.articlebodycontent",
+        "dismiss_selectors": [".close", ".tp-close"],
+    },
+    "smh.com.au": {
+        "wait_for_selector": "div[data-testid='article-body'], article",
+        "dismiss_selectors": ["button[data-testid='close-button']"],
+    },
+    "theage.com.au": {
+        "wait_for_selector": "div[data-testid='article-body'], article",
+        "dismiss_selectors": ["button[data-testid='close-button']"],
+    },
+    "abc.net.au": {
+        "wait_for_selector": "div#body, div[data-component='ArticleBody']",
+        "dismiss_selectors": ["#onetrust-accept-btn-handler"],
+    },
+    "cbc.ca": {
+        "wait_for_selector": "div.story, div.storyWrapper",
+        "dismiss_selectors": ["#onetrust-accept-btn-handler"],
+    },
+    "theglobeandmail.com": {
+        "wait_for_selector": "div.c-article-body, div[data-testid='article-body']",
+        "dismiss_selectors": ["#onetrust-accept-btn-handler"],
+    },
+    "scmp.com": {
+        "wait_for_selector": "div.article-body-wrapper, div[class*='articleBody']",
+        "dismiss_selectors": ["#onetrust-accept-btn-handler"],
+    },
+    "straitstimes.com": {
+        "wait_for_selector": "div.text-wrapper, div.story-content",
+        "dismiss_selectors": ["#onetrust-accept-btn-handler"],
+    },
+    "france24.com": {
+        "wait_for_selector": "div.t-content__body, article",
+        "dismiss_selectors": ["#onetrust-accept-btn-handler"],
+    },
+    "lemonde.fr": {
+        "wait_for_selector": "section.article__content, div.article__content",
+        "dismiss_selectors": ["#js-cookie-banner button", ".gdpr-lmd-button"],
+    },
+    "spiegel.de": {
+        "wait_for_selector": "div[data-sara-click-el='body_content'], div.word-break",
+        "dismiss_selectors": ["button[title*='Einverstanden']", "#sp_message_container button"],
+    },
+
+    # Batch 5: Tech, Science, Crypto & Digital Culture
+    "engadget.com": {
+        "wait_for_selector": "div.caas-body, article",
+        "dismiss_selectors": ["#onetrust-accept-btn-handler", "button[name='agree']"],
+    },
+    "gizmodo.com": {
+        "wait_for_selector": "div.entry-content, article",
+        "dismiss_selectors": ["#onetrust-accept-btn-handler"],
+    },
+    "mashable.com": {
+        "wait_for_selector": "section.article-content, article",
+        "dismiss_selectors": ["#onetrust-accept-btn-handler"],
+    },
+    "cnet.com": {
+        "wait_for_selector": "div.c-articleCore_body, article",
+        "dismiss_selectors": ["#onetrust-accept-btn-handler"],
+    },
+    "venturebeat.com": {
+        "wait_for_selector": "div[class*='article-body'], div.article-content",
+        "dismiss_selectors": ["#onetrust-accept-btn-handler"],
+    },
+    "coindesk.com": {
+        "wait_for_selector": "div.content-wrapper, div[data-module-name='article-body']",
+        "dismiss_selectors": ["#onetrust-accept-btn-handler"],
+    },
+    "cointelegraph.com": {
+        "wait_for_selector": "div.post-content, article",
+        "dismiss_selectors": ["#onetrust-accept-btn-handler"],
+    },
+    "sciencedaily.com": {
+        "wait_for_selector": "div#story_text, div#story_content",
+        "dismiss_selectors": [],
+    },
+    "phys.org": {
+        "wait_for_selector": "div.article-main, article",
+        "dismiss_selectors": ["#onetrust-accept-btn-handler"],
+    },
+    "polygon.com": {
+        "wait_for_selector": "div.c-entry-content, article",
+        "dismiss_selectors": ["#onetrust-accept-btn-handler"],
+    },
+
+    # Batch 6: Business, Finance, Markets & Policy
+    "businessinsider.com": {
+        "wait_for_selector": "div.content-lock-content, div.post-content",
+        "dismiss_selectors": ["#onetrust-accept-btn-handler"],
+    },
+    "insider.com": {
+        "wait_for_selector": "div.content-lock-content, div.post-content",
+        "dismiss_selectors": ["#onetrust-accept-btn-handler"],
+    },
+    "marketwatch.com": {
+        "wait_for_selector": "div.article__body, article",
+        "dismiss_selectors": ["#onetrust-accept-btn-handler"],
+    },
+    "barrons.com": {
+        "wait_for_selector": "div.article__body, article",
+        "dismiss_selectors": ["#onetrust-accept-btn-handler"],
+    },
+    "fortune.com": {
+        "wait_for_selector": "div[class*='articleBody'], div.articleContent",
+        "dismiss_selectors": ["#onetrust-accept-btn-handler"],
+    },
+    "fastcompany.com": {
+        "wait_for_selector": "div[data-component='article-body'], article",
+        "dismiss_selectors": ["#onetrust-accept-btn-handler"],
+    },
+    "inc.com": {
+        "wait_for_selector": "div.article-body, article",
+        "dismiss_selectors": ["#onetrust-accept-btn-handler"],
+    },
+    "spglobal.com": {
+        "wait_for_selector": "div.article-content, div[class*='article-body']",
+        "dismiss_selectors": ["#onetrust-accept-btn-handler"],
+    },
+    "thehill.com": {
+        "wait_for_selector": "div.article__text, article",
+        "dismiss_selectors": ["#onetrust-accept-btn-handler"],
+    },
+    "axios.com": {
+        "wait_for_selector": "div[data-cy='story-body'], div[class*='story-body']",
+        "dismiss_selectors": ["#onetrust-accept-btn-handler"],
+    },
+    "semafor.com": {
+        "wait_for_selector": "div[data-testid='story-content'], article",
+        "dismiss_selectors": ["#onetrust-accept-btn-handler"],
+    },
+    "alltop.com": {
+        "wait_for_selector": "div.entry-content, main",
+        "dismiss_selectors": [],
+    },
+    "smartbrief.com": {
+        "wait_for_selector": "div.brief-content, article",
+        "dismiss_selectors": ["#onetrust-accept-btn-handler"],
     },
 }
 
