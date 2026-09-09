@@ -3904,6 +3904,274 @@ def extract_unz(url: str, soup: BeautifulSoup, raw_html: str, fetch_network: boo
         date_selectors=["time", ".date", ".published"],
     )
 
+# ==============================================================================
+# 5E. Sites 201–300 Cohort 1: Science, Biotech, Cyber, Tech Law & Infrastructure
+# ==============================================================================
+
+def extract_nature(url: str, soup: BeautifulSoup, raw_html: str, fetch_network: bool = True) -> Dict[str, Any]:
+    """Nature News extractor with JSON-LD metadata priority."""
+    return extract_with_selectors(
+        url=url,
+        soup=soup,
+        site_name="Nature",
+        body_selectors=["div.c-article-body", "div.article__body", "article"],
+        title_selectors=["h1.c-article-title", "h1"],
+        check_json_ld_body=True,
+    )
+
+
+def extract_scienceorg(url: str, soup: BeautifulSoup, raw_html: str, fetch_network: bool = True) -> Dict[str, Any]:
+    """Science.org news and research extractor."""
+    return extract_with_selectors(
+        url=url,
+        soup=soup,
+        site_name="Science",
+        body_selectors=["div.article__body", "div.core-container", "article"],
+        title_selectors=["h1.article__headline", "h1"],
+    )
+
+
+def extract_thelancet(url: str, soup: BeautifulSoup, raw_html: str, fetch_network: bool = True) -> Dict[str, Any]:
+    """The Lancet medical journal extractor."""
+    return extract_with_selectors(
+        url=url,
+        soup=soup,
+        site_name="The Lancet",
+        body_selectors=["div.article-body", "section.article-body", "article"],
+        title_selectors=["h1.article-header__title", "h1"],
+    )
+
+
+def extract_statnews(url: str, soup: BeautifulSoup, raw_html: str, fetch_network: bool = True) -> Dict[str, Any]:
+    """STAT News biotech and healthcare journalism extractor."""
+    return extract_with_selectors(
+        url=url,
+        soup=soup,
+        site_name="STAT News",
+        body_selectors=["div.article-content", "div.post-content", "article"],
+        title_selectors=["h1.entry-title", "h1"],
+    )
+
+
+def extract_fiercebiotech(url: str, soup: BeautifulSoup, raw_html: str, fetch_network: bool = True) -> Dict[str, Any]:
+    """Fierce Biotech industry news extractor."""
+    return extract_with_selectors(
+        url=url,
+        soup=soup,
+        site_name="Fierce Biotech",
+        body_selectors=["div.field--name-body", "div.node__content", "article"],
+        title_selectors=["h1.page-title", "h1"],
+    )
+
+
+def extract_insideclimatenews(url: str, soup: BeautifulSoup, raw_html: str, fetch_network: bool = True) -> Dict[str, Any]:
+    """Inside Climate News environmental journalism extractor."""
+    return extract_with_selectors(
+        url=url,
+        soup=soup,
+        site_name="Inside Climate News",
+        body_selectors=["div.entry-content", "div.article-body", "article"],
+        title_selectors=["h1.entry-title", "h1"],
+    )
+
+
+def extract_carbonbrief(url: str, soup: BeautifulSoup, raw_html: str, fetch_network: bool = True) -> Dict[str, Any]:
+    """Carbon Brief climate journalism extractor."""
+    return extract_with_selectors(
+        url=url,
+        soup=soup,
+        site_name="Carbon Brief",
+        body_selectors=["div.entry-content", "div.post-content", "article"],
+        title_selectors=["h1.entry-title", "h1"],
+    )
+
+
+def extract_grist(url: str, soup: BeautifulSoup, raw_html: str, fetch_network: bool = True) -> Dict[str, Any]:
+    """Grist environmental journalism extractor."""
+    return extract_with_selectors(
+        url=url,
+        soup=soup,
+        site_name="Grist",
+        body_selectors=["div.article-body", "div.entry-content", "article"],
+        title_selectors=["h1.headline", "h1"],
+    )
+
+
+def extract_e360yale(url: str, soup: BeautifulSoup, raw_html: str, fetch_network: bool = True) -> Dict[str, Any]:
+    """Yale Environment 360 research magazine extractor."""
+    return extract_with_selectors(
+        url=url,
+        soup=soup,
+        site_name="Yale Environment 360",
+        body_selectors=["div.article-content", "div.body-text", "article"],
+        title_selectors=["h1.title", "h1"],
+    )
+
+
+def extract_scientificamerican(url: str, soup: BeautifulSoup, raw_html: str, fetch_network: bool = True) -> Dict[str, Any]:
+    """Scientific American science magazine extractor."""
+    return extract_with_selectors(
+        url=url,
+        soup=soup,
+        site_name="Scientific American",
+        body_selectors=["div.article__body", "div.article-content", "article"],
+        title_selectors=["h1.heading--hed", "h1"],
+    )
+
+
+def extract_popsci(url: str, soup: BeautifulSoup, raw_html: str, fetch_network: bool = True) -> Dict[str, Any]:
+    """Popular Science magazine extractor."""
+    return extract_with_selectors(
+        url=url,
+        soup=soup,
+        site_name="Popular Science",
+        body_selectors=["div.article-content", "div.entry-content", "article"],
+        title_selectors=["h1.entry-title", "h1"],
+    )
+
+
+def extract_cell(url: str, soup: BeautifulSoup, raw_html: str, fetch_network: bool = True) -> Dict[str, Any]:
+    """Cell Press scientific journal extractor."""
+    return extract_with_selectors(
+        url=url,
+        soup=soup,
+        site_name="Cell Press",
+        body_selectors=["div.article-body", "section.article-body", "article"],
+        title_selectors=["h1.article-header__title", "h1"],
+    )
+
+
+def extract_krebsonsecurity(url: str, soup: BeautifulSoup, raw_html: str, fetch_network: bool = True) -> Dict[str, Any]:
+    """Krebs on Security investigative cybersecurity extractor."""
+    return extract_with_selectors(
+        url=url,
+        soup=soup,
+        site_name="Krebs on Security",
+        body_selectors=["div.entry", "div.entry-content", "div.post-content", "article"],
+        title_selectors=["h1.entry-title", "h1"],
+    )
+
+
+def extract_bleepingcomputer(url: str, soup: BeautifulSoup, raw_html: str, fetch_network: bool = True) -> Dict[str, Any]:
+    """BleepingComputer security news extractor."""
+    return extract_with_selectors(
+        url=url,
+        soup=soup,
+        site_name="BleepingComputer",
+        body_selectors=["div.articleBody", "div.article-body", "div.cz-news-story", "article"],
+        title_selectors=["h1.article-title", "h1"],
+    )
+
+
+def extract_darkreading(url: str, soup: BeautifulSoup, raw_html: str, fetch_network: bool = True) -> Dict[str, Any]:
+    """Dark Reading enterprise cybersecurity extractor."""
+    return extract_with_selectors(
+        url=url,
+        soup=soup,
+        site_name="Dark Reading",
+        body_selectors=["div.article-body", "div.ContentModule-Wrapper", "article"],
+        title_selectors=["h1.ContentHeader-Title", "h1"],
+    )
+
+
+def extract_securityweek(url: str, soup: BeautifulSoup, raw_html: str, fetch_network: bool = True) -> Dict[str, Any]:
+    """SecurityWeek cybersecurity news extractor."""
+    return extract_with_selectors(
+        url=url,
+        soup=soup,
+        site_name="SecurityWeek",
+        body_selectors=["div.entry-content", "div.post-content", "article"],
+        title_selectors=["h1.entry-title", "h1"],
+    )
+
+
+def extract_thehackernews(url: str, soup: BeautifulSoup, raw_html: str, fetch_network: bool = True) -> Dict[str, Any]:
+    """The Hacker News information security extractor."""
+    return extract_with_selectors(
+        url=url,
+        soup=soup,
+        site_name="The Hacker News",
+        body_selectors=["div#article-body", "div.article-body", "article"],
+        title_selectors=["h1.story-title", "h1"],
+    )
+
+
+def extract_scotusblog(url: str, soup: BeautifulSoup, raw_html: str, fetch_network: bool = True) -> Dict[str, Any]:
+    """SCOTUSblog Supreme Court and constitutional law extractor."""
+    return extract_with_selectors(
+        url=url,
+        soup=soup,
+        site_name="SCOTUSblog",
+        body_selectors=["div.entry-content", "div.post-content", "article"],
+        title_selectors=["h1.entry-title", "h1"],
+    )
+
+
+def extract_justsecurity(url: str, soup: BeautifulSoup, raw_html: str, fetch_network: bool = True) -> Dict[str, Any]:
+    """Just Security national security law and policy extractor."""
+    return extract_with_selectors(
+        url=url,
+        soup=soup,
+        site_name="Just Security",
+        body_selectors=["div.entry-content", "div.post-content", "article"],
+        title_selectors=["h1.entry-title", "h1"],
+    )
+
+
+def extract_freightwaves(url: str, soup: BeautifulSoup, raw_html: str, fetch_network: bool = True) -> Dict[str, Any]:
+    """FreightWaves supply chain logistics extractor."""
+    return extract_with_selectors(
+        url=url,
+        soup=soup,
+        site_name="FreightWaves",
+        body_selectors=["div.entry-content", "div.post-content", "article"],
+        title_selectors=["h1.entry-title", "h1"],
+    )
+
+
+def extract_aviationweek(url: str, soup: BeautifulSoup, raw_html: str, fetch_network: bool = True) -> Dict[str, Any]:
+    """Aviation Week aerospace and defense industry extractor."""
+    return extract_with_selectors(
+        url=url,
+        soup=soup,
+        site_name="Aviation Week",
+        body_selectors=["div.article-body", "div.article-content", "article"],
+        title_selectors=["h1.article-title", "h1"],
+    )
+
+
+def extract_simpleflying(url: str, soup: BeautifulSoup, raw_html: str, fetch_network: bool = True) -> Dict[str, Any]:
+    """Simple Flying commercial aviation extractor."""
+    return extract_with_selectors(
+        url=url,
+        soup=soup,
+        site_name="Simple Flying",
+        body_selectors=["div.content-block-regular", "div.article-body", "article"],
+        title_selectors=["h1.heading_title", "h1"],
+    )
+
+
+def extract_lawfare(url: str, soup: BeautifulSoup, raw_html: str, fetch_network: bool = True) -> Dict[str, Any]:
+    """Lawfare legal and national security review extractor."""
+    return extract_with_selectors(
+        url=url,
+        soup=soup,
+        site_name="Lawfare",
+        body_selectors=["div.entry-content", "div.post-content", "article"],
+        title_selectors=["h1.entry-title", "h1"],
+    )
+
+
+def extract_theconversation(url: str, soup: BeautifulSoup, raw_html: str, fetch_network: bool = True) -> Dict[str, Any]:
+    """The Conversation academic journalism extractor."""
+    return extract_with_selectors(
+        url=url,
+        soup=soup,
+        site_name="The Conversation",
+        body_selectors=["div[itemprop='articleBody']", "div.article-body", "article"],
+        title_selectors=["h1.instapaper_title", "h1"],
+    )
+
 
 # 6. Central Registries (SITE_ADAPTERS & BROWSER_HINTS)
 # ==============================================================================
@@ -4159,6 +4427,32 @@ SITE_ADAPTERS: Dict[str, Callable[[str, BeautifulSoup, str, bool], Dict[str, Any
     "itmedia.co.jp": extract_itmedia,
     "ascii.jp": extract_ascii,
     "unz.com": extract_unz,
+
+    # Sites 201–300 Cohort 1: Science, Biotech, Cyber, Tech Law & Infrastructure
+    "nature.com": extract_nature,
+    "science.org": extract_scienceorg,
+    "thelancet.com": extract_thelancet,
+    "statnews.com": extract_statnews,
+    "fiercebiotech.com": extract_fiercebiotech,
+    "insideclimatenews.org": extract_insideclimatenews,
+    "carbonbrief.org": extract_carbonbrief,
+    "grist.org": extract_grist,
+    "e360.yale.edu": extract_e360yale,
+    "scientificamerican.com": extract_scientificamerican,
+    "popsci.com": extract_popsci,
+    "cell.com": extract_cell,
+    "krebsonsecurity.com": extract_krebsonsecurity,
+    "bleepingcomputer.com": extract_bleepingcomputer,
+    "darkreading.com": extract_darkreading,
+    "securityweek.com": extract_securityweek,
+    "thehackernews.com": extract_thehackernews,
+    "scotusblog.com": extract_scotusblog,
+    "justsecurity.org": extract_justsecurity,
+    "freightwaves.com": extract_freightwaves,
+    "aviationweek.com": extract_aviationweek,
+    "simpleflying.com": extract_simpleflying,
+    "lawfaremedia.org": extract_lawfare,
+    "theconversation.com": extract_theconversation,
 }
 
 
@@ -5141,6 +5435,104 @@ BROWSER_HINTS: Dict[str, Dict[str, Any]] = {
     },
     "unz.com": {
         "wait_for_selector": "div#contents-holder, div.entry, article",
+        "dismiss_selectors": [],
+    },
+
+    # Sites 201–300 Cohort 1: Science, Biotech, Cyber, Tech Law & Infrastructure
+    "nature.com": {
+        "wait_for_selector": "article, div.c-article-body",
+        "dismiss_selectors": ["#onetrust-accept-btn-handler"],
+    },
+    "science.org": {
+        "wait_for_selector": "div.article__body, article",
+        "dismiss_selectors": ["#onetrust-accept-btn-handler"],
+    },
+    "thelancet.com": {
+        "wait_for_selector": "div.article-body, section.article-body, article",
+        "dismiss_selectors": ["#onetrust-accept-btn-handler"],
+    },
+    "statnews.com": {
+        "wait_for_selector": "div.article-content, article",
+        "dismiss_selectors": ["#onetrust-accept-btn-handler"],
+    },
+    "fiercebiotech.com": {
+        "wait_for_selector": "div.field--name-body, article",
+        "dismiss_selectors": ["#onetrust-accept-btn-handler"],
+    },
+    "insideclimatenews.org": {
+        "wait_for_selector": "div.entry-content, article",
+        "dismiss_selectors": ["#onetrust-accept-btn-handler"],
+    },
+    "carbonbrief.org": {
+        "wait_for_selector": "div.entry-content, article",
+        "dismiss_selectors": ["#onetrust-accept-btn-handler"],
+    },
+    "grist.org": {
+        "wait_for_selector": "div.article-body, article",
+        "dismiss_selectors": ["#onetrust-accept-btn-handler"],
+    },
+    "e360.yale.edu": {
+        "wait_for_selector": "div.article-content, article",
+        "dismiss_selectors": [],
+    },
+    "scientificamerican.com": {
+        "wait_for_selector": "div.article__body, article",
+        "dismiss_selectors": ["#onetrust-accept-btn-handler"],
+    },
+    "popsci.com": {
+        "wait_for_selector": "div.article-content, article",
+        "dismiss_selectors": ["#onetrust-accept-btn-handler"],
+    },
+    "cell.com": {
+        "wait_for_selector": "div.article-body, section.article-body, article",
+        "dismiss_selectors": ["#onetrust-accept-btn-handler"],
+    },
+    "krebsonsecurity.com": {
+        "wait_for_selector": "div.entry, div.entry-content, article",
+        "dismiss_selectors": [],
+    },
+    "bleepingcomputer.com": {
+        "wait_for_selector": "div.articleBody, article",
+        "dismiss_selectors": ["#onetrust-accept-btn-handler"],
+    },
+    "darkreading.com": {
+        "wait_for_selector": "div.article-body, article",
+        "dismiss_selectors": ["#onetrust-accept-btn-handler"],
+    },
+    "securityweek.com": {
+        "wait_for_selector": "div.entry-content, article",
+        "dismiss_selectors": ["#onetrust-accept-btn-handler"],
+    },
+    "thehackernews.com": {
+        "wait_for_selector": "div#article-body, article",
+        "dismiss_selectors": [],
+    },
+    "scotusblog.com": {
+        "wait_for_selector": "div.entry-content, article",
+        "dismiss_selectors": [],
+    },
+    "justsecurity.org": {
+        "wait_for_selector": "div.entry-content, article",
+        "dismiss_selectors": [],
+    },
+    "freightwaves.com": {
+        "wait_for_selector": "div.entry-content, article",
+        "dismiss_selectors": ["#onetrust-accept-btn-handler"],
+    },
+    "aviationweek.com": {
+        "wait_for_selector": "div.article-body, article",
+        "dismiss_selectors": ["#onetrust-accept-btn-handler"],
+    },
+    "simpleflying.com": {
+        "wait_for_selector": "div.content-block-regular, article",
+        "dismiss_selectors": ["#onetrust-accept-btn-handler"],
+    },
+    "lawfaremedia.org": {
+        "wait_for_selector": "div.entry-content, article",
+        "dismiss_selectors": [],
+    },
+    "theconversation.com": {
+        "wait_for_selector": "div[itemprop='articleBody'], article",
         "dismiss_selectors": [],
     },
 }

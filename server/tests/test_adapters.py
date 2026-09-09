@@ -271,6 +271,31 @@ class TestAdaptersRegistry(unittest.TestCase):
         "itmedia.co.jp",
         "ascii.jp",
         "unz.com",
+        # Sites 201–300 Cohort 1: Science, Biotech, Cyber, Tech Law & Infrastructure
+        "nature.com",
+        "science.org",
+        "thelancet.com",
+        "statnews.com",
+        "fiercebiotech.com",
+        "insideclimatenews.org",
+        "carbonbrief.org",
+        "grist.org",
+        "e360.yale.edu",
+        "scientificamerican.com",
+        "popsci.com",
+        "cell.com",
+        "krebsonsecurity.com",
+        "bleepingcomputer.com",
+        "darkreading.com",
+        "securityweek.com",
+        "thehackernews.com",
+        "scotusblog.com",
+        "justsecurity.org",
+        "freightwaves.com",
+        "aviationweek.com",
+        "simpleflying.com",
+        "lawfaremedia.org",
+        "theconversation.com",
     ]
 
     def test_all_top_200_registered(self):
@@ -1560,6 +1585,100 @@ class TestNewPlatformExtractors(unittest.TestCase):
         self.assertEqual(res["title"], "The Hoopla Over D-Day Is A Way To Conceal Who Really Won The War")
         self.assertIn("Soviet histories of the war", res["body_html"])
         self.assertEqual(res["authors"], ["Mike Whitney"])
+
+    def test_extract_nature(self):
+        from server.adapters import extract_nature
+        html = """
+        <html>
+          <head>
+            <title>Structure of the Human Telomerase Holoenzyme at Atomic Resolution</title>
+            <script type="application/ld+json">
+            {
+              "@context": "https://schema.org",
+              "@type": "NewsArticle",
+              "headline": "Structure of the Human Telomerase Holoenzyme at Atomic Resolution",
+              "author": [{"name": "Dr. Sarah Chen"}, {"name": "Prof. David Miller"}],
+              "datePublished": "2026-09-08T18:00:00Z"
+            }
+            </script>
+          </head>
+          <body>
+            <h1 class="c-article-title">Structure of the Human Telomerase Holoenzyme at Atomic Resolution</h1>
+            <div class="c-article-body">
+              <p>Cryo-electron microscopy reconstructions have revealed the catalytic core configuration of human telomerase with unprecedented clarity.</p>
+              <p>These findings provide a structural basis for designing targeted therapeutics against cellular aging and oncological immortalization pathways.</p>
+            </div>
+          </body>
+        </html>
+        """
+        soup = BeautifulSoup(html, "html.parser")
+        res = extract_nature("https://www.nature.com/articles/d41586-026-02941-w", soup, html, fetch_network=False)
+        self.assertEqual(res["title"], "Structure of the Human Telomerase Holoenzyme at Atomic Resolution")
+        self.assertIn("Cryo-electron microscopy", res["body_html"])
+        self.assertEqual(res["authors"], ["Dr. Sarah Chen", "Prof. David Miller"])
+
+    def test_extract_krebsonsecurity(self):
+        from server.adapters import extract_krebsonsecurity
+        html = """
+        <html>
+          <head>
+            <title>Inside the International Ransomware Syndicate Dismantled by Europol</title>
+          </head>
+          <body>
+            <h1 class="entry-title">Inside the International Ransomware Syndicate Dismantled by Europol</h1>
+            <div class="entry">
+              <p>A coordinated law enforcement strike spanning eight countries seized critical command-and-control server infrastructure tied to major financial extortion operations.</p>
+              <p>The criminal enterprise leveraged compromised vendor credentials and zero-day vulnerabilities in enterprise virtual private networks.</p>
+            </div>
+          </body>
+        </html>
+        """
+        soup = BeautifulSoup(html, "html.parser")
+        res = extract_krebsonsecurity("https://krebsonsecurity.com/2026/09/inside-the-syndicate/", soup, html, fetch_network=False)
+        self.assertEqual(res["title"], "Inside the International Ransomware Syndicate Dismantled by Europol")
+        self.assertIn("coordinated law enforcement strike", res["body_html"])
+
+    def test_extract_bleepingcomputer(self):
+        from server.adapters import extract_bleepingcomputer
+        html = """
+        <html>
+          <head>
+            <title>Critical Zero-Day Flaw in Network Hypervisors Exploited in Targeted Attacks</title>
+          </head>
+          <body>
+            <h1 class="article-title">Critical Zero-Day Flaw in Network Hypervisors Exploited in Targeted Attacks</h1>
+            <div class="articleBody">
+              <p>Security researchers have warned of active exploitation targeting memory corruption vulnerabilities in hypervisor virtualization kernels.</p>
+              <p>System administrators are urged to apply vendor emergency out-of-band firmware updates immediately.</p>
+            </div>
+          </body>
+        </html>
+        """
+        soup = BeautifulSoup(html, "html.parser")
+        res = extract_bleepingcomputer("https://www.bleepingcomputer.com/news/security/hypervisor-zero-day/", soup, html, fetch_network=False)
+        self.assertEqual(res["title"], "Critical Zero-Day Flaw in Network Hypervisors Exploited in Targeted Attacks")
+        self.assertIn("hypervisor virtualization kernels", res["body_html"])
+
+    def test_extract_theconversation(self):
+        from server.adapters import extract_theconversation
+        html = """
+        <html>
+          <head>
+            <title>Why Deep Seabed Mining Threatens Unmapped Hydrothermal Vent Ecosystems</title>
+          </head>
+          <body>
+            <h1 class="instapaper_title">Why Deep Seabed Mining Threatens Unmapped Hydrothermal Vent Ecosystems</h1>
+            <div itemprop="articleBody">
+              <p>Oceanographic surveys indicate that benthic biodiversity around abyssal nodules is far more intricate and fragile than previously estimated.</p>
+              <p>Disrupting sediment plumes could permanently alter deep oceanic nutrient cycles across thousands of square kilometers.</p>
+            </div>
+          </body>
+        </html>
+        """
+        soup = BeautifulSoup(html, "html.parser")
+        res = extract_theconversation("https://theconversation.com/seabed-mining-threats-234812", soup, html, fetch_network=False)
+        self.assertEqual(res["title"], "Why Deep Seabed Mining Threatens Unmapped Hydrothermal Vent Ecosystems")
+        self.assertIn("abyssal nodules", res["body_html"])
 
 
 if __name__ == "__main__":
