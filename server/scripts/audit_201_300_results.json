@@ -1,0 +1,3891 @@
+[
+  {
+    "id": 201,
+    "name": "Brookings Institution",
+    "domain": "brookings.edu",
+    "type": "think_tank",
+    "accessible": true,
+    "status_code": 200,
+    "direct_api_available": false,
+    "direct_api_notes": null,
+    "article_url_sampled": "https://www.brookings.edu/articles/#overlay-search",
+    "json_ld": {
+      "found": true,
+      "types": [
+        "NewsArticle"
+      ],
+      "has_headline": true,
+      "has_date": true,
+      "has_author": false,
+      "has_article_body": false
+    },
+    "dom_selectors": {
+      "title_selector": "h1",
+      "body_selector": "main",
+      "author_selector": "[class*='author']",
+      "date_selector": "[class*='date']"
+    },
+    "image_handling": {
+      "lazy_attrs": [],
+      "cdn_host": null,
+      "unresizing_rule": null
+    },
+    "notice_dialogs": {
+      "consent_banner": null
+    },
+    "rendering_model": "SSR (Server-Rendered HTML)",
+    "wait_for_selector": "main",
+    "notes": []
+  },
+  {
+    "id": 202,
+    "name": "CSIS",
+    "domain": "csis.org",
+    "type": "think_tank",
+    "accessible": true,
+    "status_code": 200,
+    "direct_api_available": false,
+    "direct_api_notes": null,
+    "article_url_sampled": "https://www.csis.org/analysis",
+    "json_ld": {
+      "found": false,
+      "types": [],
+      "has_headline": false,
+      "has_date": false,
+      "has_author": false,
+      "has_article_body": false
+    },
+    "dom_selectors": {
+      "title_selector": "h1",
+      "body_selector": "main",
+      "author_selector": null,
+      "date_selector": "[class*='date']"
+    },
+    "image_handling": {
+      "lazy_attrs": [],
+      "cdn_host": null,
+      "unresizing_rule": null
+    },
+    "notice_dialogs": {
+      "consent_banner": null
+    },
+    "rendering_model": "SSR (Server-Rendered HTML)",
+    "wait_for_selector": "main",
+    "notes": [
+      "Could not auto-discover article link from root"
+    ]
+  },
+  {
+    "id": 203,
+    "name": "Carnegie Endowment",
+    "domain": "carnegieendowment.org",
+    "type": "think_tank",
+    "accessible": true,
+    "status_code": 200,
+    "direct_api_available": false,
+    "direct_api_notes": null,
+    "article_url_sampled": "https://carnegieendowment.org/publications/",
+    "json_ld": {
+      "found": false,
+      "types": [],
+      "has_headline": false,
+      "has_date": false,
+      "has_author": false,
+      "has_article_body": false
+    },
+    "dom_selectors": {
+      "title_selector": "h1[class*='headline']",
+      "body_selector": null,
+      "author_selector": null,
+      "date_selector": null
+    },
+    "image_handling": {
+      "lazy_attrs": [
+        "srcset"
+      ],
+      "cdn_host": null,
+      "unresizing_rule": null
+    },
+    "notice_dialogs": {
+      "consent_banner": null
+    },
+    "rendering_model": "SSR (Server-Rendered HTML)",
+    "wait_for_selector": null,
+    "notes": [
+      "Could not auto-discover article link from root"
+    ]
+  },
+  {
+    "id": 204,
+    "name": "RAND Corporation",
+    "domain": "rand.org",
+    "type": "think_tank",
+    "accessible": true,
+    "status_code": 200,
+    "direct_api_available": false,
+    "direct_api_notes": null,
+    "article_url_sampled": "https://www.rand.org/pubs/commentary/2026/09/25-years-after-911-lessons-for-securing-the-homeland.html",
+    "json_ld": {
+      "found": true,
+      "types": [
+        "Article"
+      ],
+      "has_headline": true,
+      "has_date": true,
+      "has_author": true,
+      "has_article_body": false
+    },
+    "dom_selectors": {
+      "title_selector": "article h1",
+      "body_selector": "article",
+      "author_selector": null,
+      "date_selector": "[class*='date']"
+    },
+    "image_handling": {
+      "lazy_attrs": [],
+      "cdn_host": null,
+      "unresizing_rule": null
+    },
+    "notice_dialogs": {
+      "consent_banner": null
+    },
+    "rendering_model": "SSR (Server-Rendered HTML)",
+    "wait_for_selector": "article",
+    "notes": []
+  },
+  {
+    "id": 205,
+    "name": "Chatham House",
+    "domain": "chathamhouse.org",
+    "type": "think_tank",
+    "accessible": false,
+    "status_code": 403,
+    "direct_api_available": false,
+    "direct_api_notes": null,
+    "article_url_sampled": null,
+    "json_ld": {
+      "found": false,
+      "types": [],
+      "has_headline": false,
+      "has_date": false,
+      "has_author": false,
+      "has_article_body": false
+    },
+    "dom_selectors": {
+      "title_selector": null,
+      "body_selector": null,
+      "author_selector": null,
+      "date_selector": null
+    },
+    "image_handling": {
+      "lazy_attrs": [],
+      "cdn_host": null,
+      "unresizing_rule": null
+    },
+    "notice_dialogs": {
+      "consent_banner": null
+    },
+    "rendering_model": "SSR",
+    "wait_for_selector": null,
+    "notes": [
+      "Root returned HTTP status 403"
+    ]
+  },
+  {
+    "id": 206,
+    "name": "Project Syndicate",
+    "domain": "project-syndicate.org",
+    "type": "policy_opinion",
+    "accessible": true,
+    "status_code": 200,
+    "direct_api_available": false,
+    "direct_api_notes": null,
+    "article_url_sampled": "https://www.project-syndicate.org/",
+    "json_ld": {
+      "found": false,
+      "types": [],
+      "has_headline": false,
+      "has_date": false,
+      "has_author": false,
+      "has_article_body": false
+    },
+    "dom_selectors": {
+      "title_selector": "h1",
+      "body_selector": "article",
+      "author_selector": "[class*='author']",
+      "date_selector": "[class*='date']"
+    },
+    "image_handling": {
+      "lazy_attrs": [
+        "srcset"
+      ],
+      "cdn_host": null,
+      "unresizing_rule": null
+    },
+    "notice_dialogs": {
+      "consent_banner": null
+    },
+    "rendering_model": "SSR (Server-Rendered HTML)",
+    "wait_for_selector": "article",
+    "notes": [
+      "Could not auto-discover article link from root"
+    ]
+  },
+  {
+    "id": 207,
+    "name": "Boston Review",
+    "domain": "bostonreview.net",
+    "type": "intellectual_review",
+    "accessible": true,
+    "status_code": 200,
+    "direct_api_available": false,
+    "direct_api_notes": null,
+    "article_url_sampled": "https://www.bostonreview.net/articles/#page-content-wrapper",
+    "json_ld": {
+      "found": false,
+      "types": [],
+      "has_headline": false,
+      "has_date": false,
+      "has_author": false,
+      "has_article_body": false
+    },
+    "dom_selectors": {
+      "title_selector": "h1",
+      "body_selector": "main",
+      "author_selector": "[class*='author']",
+      "date_selector": null
+    },
+    "image_handling": {
+      "lazy_attrs": [
+        "srcset"
+      ],
+      "cdn_host": null,
+      "unresizing_rule": null
+    },
+    "notice_dialogs": {
+      "consent_banner": null
+    },
+    "rendering_model": "SSR (Server-Rendered HTML)",
+    "wait_for_selector": "main",
+    "notes": []
+  },
+  {
+    "id": 208,
+    "name": "London Review of Books",
+    "domain": "lrb.co.uk",
+    "type": "intellectual_review",
+    "accessible": true,
+    "status_code": 200,
+    "direct_api_available": false,
+    "direct_api_notes": null,
+    "article_url_sampled": "https://www.lrb.co.uk/",
+    "json_ld": {
+      "found": true,
+      "types": [
+        "WebSite",
+        "Organization"
+      ],
+      "has_headline": false,
+      "has_date": false,
+      "has_author": false,
+      "has_article_body": false
+    },
+    "dom_selectors": {
+      "title_selector": "h1",
+      "body_selector": "article",
+      "author_selector": null,
+      "date_selector": "[class*='date']"
+    },
+    "image_handling": {
+      "lazy_attrs": [
+        "data-srcset"
+      ],
+      "cdn_host": null,
+      "unresizing_rule": null
+    },
+    "notice_dialogs": {
+      "consent_banner": null
+    },
+    "rendering_model": "SSR (Server-Rendered HTML)",
+    "wait_for_selector": "article",
+    "notes": [
+      "Could not auto-discover article link from root"
+    ]
+  },
+  {
+    "id": 209,
+    "name": "New York Review of Books",
+    "domain": "nybooks.com",
+    "type": "intellectual_review",
+    "accessible": false,
+    "status_code": 404,
+    "direct_api_available": false,
+    "direct_api_notes": null,
+    "article_url_sampled": null,
+    "json_ld": {
+      "found": false,
+      "types": [],
+      "has_headline": false,
+      "has_date": false,
+      "has_author": false,
+      "has_article_body": false
+    },
+    "dom_selectors": {
+      "title_selector": null,
+      "body_selector": null,
+      "author_selector": null,
+      "date_selector": null
+    },
+    "image_handling": {
+      "lazy_attrs": [],
+      "cdn_host": null,
+      "unresizing_rule": null
+    },
+    "notice_dialogs": {
+      "consent_banner": null
+    },
+    "rendering_model": "SSR",
+    "wait_for_selector": null,
+    "notes": [
+      "Root returned HTTP status 404"
+    ]
+  },
+  {
+    "id": 210,
+    "name": "The Conversation",
+    "domain": "theconversation.com",
+    "type": "academic_journalism",
+    "accessible": true,
+    "status_code": 200,
+    "direct_api_available": true,
+    "direct_api_notes": "The Conversation exposes open Creative Commons XML and RSS feeds",
+    "article_url_sampled": "https://theconversation.com/us",
+    "json_ld": {
+      "found": false,
+      "types": [],
+      "has_headline": false,
+      "has_date": false,
+      "has_author": false,
+      "has_article_body": false
+    },
+    "dom_selectors": {
+      "title_selector": "h1",
+      "body_selector": "main",
+      "author_selector": null,
+      "date_selector": null
+    },
+    "image_handling": {
+      "lazy_attrs": [
+        "srcset"
+      ],
+      "cdn_host": "cdn.theconversation.com",
+      "unresizing_rule": null
+    },
+    "notice_dialogs": {
+      "consent_banner": null
+    },
+    "rendering_model": "SSR + Client Hydration (Next.js/Nuxt/SPA)",
+    "wait_for_selector": "main",
+    "notes": [
+      "Could not auto-discover article link from root"
+    ]
+  },
+  {
+    "id": 211,
+    "name": "Aeon Magazine",
+    "domain": "aeon.co",
+    "type": "philosophy_essays",
+    "accessible": true,
+    "status_code": 200,
+    "direct_api_available": false,
+    "direct_api_notes": null,
+    "article_url_sampled": "https://aeon.co/essays/popular",
+    "json_ld": {
+      "found": true,
+      "types": [
+        "NewsMediaOrganization",
+        "WebSite"
+      ],
+      "has_headline": false,
+      "has_date": false,
+      "has_author": false,
+      "has_article_body": false
+    },
+    "dom_selectors": {
+      "title_selector": "h1",
+      "body_selector": "main",
+      "author_selector": null,
+      "date_selector": null
+    },
+    "image_handling": {
+      "lazy_attrs": [
+        "srcset"
+      ],
+      "cdn_host": "images.aeonmedia.co",
+      "unresizing_rule": null
+    },
+    "notice_dialogs": {
+      "consent_banner": null
+    },
+    "rendering_model": "SSR (Server-Rendered HTML)",
+    "wait_for_selector": "main",
+    "notes": []
+  },
+  {
+    "id": 212,
+    "name": "Lawfare",
+    "domain": "lawfaremedia.org",
+    "type": "legal_national_security",
+    "accessible": true,
+    "status_code": 200,
+    "direct_api_available": false,
+    "direct_api_notes": null,
+    "article_url_sampled": "https://www.lawfaremedia.org/article/rulemaking-by-memo--why-cmmc-suspension-deserves-review",
+    "json_ld": {
+      "found": false,
+      "types": [],
+      "has_headline": false,
+      "has_date": false,
+      "has_author": false,
+      "has_article_body": false
+    },
+    "dom_selectors": {
+      "title_selector": "h1[class*='title']",
+      "body_selector": "article",
+      "author_selector": "[class*='author']",
+      "date_selector": "[class*='date']"
+    },
+    "image_handling": {
+      "lazy_attrs": [
+        "data-src"
+      ],
+      "cdn_host": null,
+      "unresizing_rule": null
+    },
+    "notice_dialogs": {
+      "consent_banner": null
+    },
+    "rendering_model": "SSR (Server-Rendered HTML)",
+    "wait_for_selector": "article",
+    "notes": []
+  },
+  {
+    "id": 213,
+    "name": "Nature News",
+    "domain": "nature.com",
+    "type": "science_journal",
+    "accessible": true,
+    "status_code": 200,
+    "direct_api_available": false,
+    "direct_api_notes": null,
+    "article_url_sampled": "https://www.nature.com/articles/d41586-026-02835-4",
+    "json_ld": {
+      "found": true,
+      "types": [
+        "WebPage"
+      ],
+      "has_headline": false,
+      "has_date": false,
+      "has_author": false,
+      "has_article_body": false
+    },
+    "dom_selectors": {
+      "title_selector": "h1[class*='title']",
+      "body_selector": "article",
+      "author_selector": "[class*='author']",
+      "date_selector": "time[datetime]"
+    },
+    "image_handling": {
+      "lazy_attrs": [],
+      "cdn_host": "media.springernature.com",
+      "unresizing_rule": null
+    },
+    "notice_dialogs": {
+      "consent_banner": null
+    },
+    "rendering_model": "SSR (Server-Rendered HTML)",
+    "wait_for_selector": "article",
+    "notes": []
+  },
+  {
+    "id": 214,
+    "name": "Science.org News",
+    "domain": "science.org",
+    "type": "science_journal",
+    "accessible": false,
+    "status_code": 403,
+    "direct_api_available": false,
+    "direct_api_notes": null,
+    "article_url_sampled": null,
+    "json_ld": {
+      "found": false,
+      "types": [],
+      "has_headline": false,
+      "has_date": false,
+      "has_author": false,
+      "has_article_body": false
+    },
+    "dom_selectors": {
+      "title_selector": null,
+      "body_selector": null,
+      "author_selector": null,
+      "date_selector": null
+    },
+    "image_handling": {
+      "lazy_attrs": [],
+      "cdn_host": null,
+      "unresizing_rule": null
+    },
+    "notice_dialogs": {
+      "consent_banner": null
+    },
+    "rendering_model": "SSR",
+    "wait_for_selector": null,
+    "notes": [
+      "Root returned HTTP status 403"
+    ]
+  },
+  {
+    "id": 215,
+    "name": "The Lancet",
+    "domain": "thelancet.com",
+    "type": "medical_journal",
+    "accessible": false,
+    "status_code": 403,
+    "direct_api_available": false,
+    "direct_api_notes": null,
+    "article_url_sampled": null,
+    "json_ld": {
+      "found": false,
+      "types": [],
+      "has_headline": false,
+      "has_date": false,
+      "has_author": false,
+      "has_article_body": false
+    },
+    "dom_selectors": {
+      "title_selector": null,
+      "body_selector": null,
+      "author_selector": null,
+      "date_selector": null
+    },
+    "image_handling": {
+      "lazy_attrs": [],
+      "cdn_host": null,
+      "unresizing_rule": null
+    },
+    "notice_dialogs": {
+      "consent_banner": null
+    },
+    "rendering_model": "SSR",
+    "wait_for_selector": null,
+    "notes": [
+      "Root returned HTTP status 403"
+    ]
+  },
+  {
+    "id": 216,
+    "name": "STAT News",
+    "domain": "statnews.com",
+    "type": "biotech_health",
+    "accessible": true,
+    "status_code": 200,
+    "direct_api_available": false,
+    "direct_api_notes": null,
+    "article_url_sampled": "https://www.statnews.com/2023/09/12/new-weight-loss-drug-tracker-novo-nordisk-eli-lilly/",
+    "json_ld": {
+      "found": false,
+      "types": [],
+      "has_headline": false,
+      "has_date": false,
+      "has_author": false,
+      "has_article_body": false
+    },
+    "dom_selectors": {
+      "title_selector": "h1[class*='title']",
+      "body_selector": "article",
+      "author_selector": null,
+      "date_selector": "[class*='date']"
+    },
+    "image_handling": {
+      "lazy_attrs": [
+        "srcset"
+      ],
+      "cdn_host": null,
+      "unresizing_rule": null
+    },
+    "notice_dialogs": {
+      "consent_banner": null
+    },
+    "rendering_model": "SSR (Server-Rendered HTML)",
+    "wait_for_selector": "article",
+    "notes": []
+  },
+  {
+    "id": 217,
+    "name": "Fierce Biotech",
+    "domain": "fiercebiotech.com",
+    "type": "biotech_industry",
+    "accessible": true,
+    "status_code": 200,
+    "direct_api_available": false,
+    "direct_api_notes": null,
+    "article_url_sampled": "https://www.fiercebiotech.com/",
+    "json_ld": {
+      "found": true,
+      "types": [
+        "ItemList",
+        "WebSite"
+      ],
+      "has_headline": false,
+      "has_date": false,
+      "has_author": false,
+      "has_article_body": false
+    },
+    "dom_selectors": {
+      "title_selector": null,
+      "body_selector": "main",
+      "author_selector": "[class*='byline']",
+      "date_selector": "[class*='date']"
+    },
+    "image_handling": {
+      "lazy_attrs": [
+        "srcset"
+      ],
+      "cdn_host": null,
+      "unresizing_rule": null
+    },
+    "notice_dialogs": {
+      "consent_banner": null
+    },
+    "rendering_model": "SSR (Server-Rendered HTML)",
+    "wait_for_selector": "main",
+    "notes": [
+      "Could not auto-discover article link from root"
+    ]
+  },
+  {
+    "id": 218,
+    "name": "Inside Climate News",
+    "domain": "insideclimatenews.org",
+    "type": "climate_journalism",
+    "accessible": true,
+    "status_code": 200,
+    "direct_api_available": false,
+    "direct_api_notes": null,
+    "article_url_sampled": "https://insideclimatenews.org/news/09092026/new-york-indoor-heat-stress/",
+    "json_ld": {
+      "found": false,
+      "types": [],
+      "has_headline": false,
+      "has_date": false,
+      "has_author": false,
+      "has_article_body": false
+    },
+    "dom_selectors": {
+      "title_selector": "h1[class*='title']",
+      "body_selector": "div.entry-content",
+      "author_selector": "[class*='byline']",
+      "date_selector": "time[datetime]"
+    },
+    "image_handling": {
+      "lazy_attrs": [
+        "srcset"
+      ],
+      "cdn_host": null,
+      "unresizing_rule": null
+    },
+    "notice_dialogs": {
+      "consent_banner": null
+    },
+    "rendering_model": "SSR (Server-Rendered HTML)",
+    "wait_for_selector": "div.entry-content",
+    "notes": []
+  },
+  {
+    "id": 219,
+    "name": "Carbon Brief",
+    "domain": "carbonbrief.org",
+    "type": "climate_journalism",
+    "accessible": true,
+    "status_code": 200,
+    "direct_api_available": false,
+    "direct_api_notes": null,
+    "article_url_sampled": "https://www.carbonbrief.org/",
+    "json_ld": {
+      "found": false,
+      "types": [],
+      "has_headline": false,
+      "has_date": false,
+      "has_author": false,
+      "has_article_body": false
+    },
+    "dom_selectors": {
+      "title_selector": null,
+      "body_selector": "main",
+      "author_selector": null,
+      "date_selector": "[class*='date']"
+    },
+    "image_handling": {
+      "lazy_attrs": [
+        "srcset"
+      ],
+      "cdn_host": null,
+      "unresizing_rule": null
+    },
+    "notice_dialogs": {
+      "consent_banner": null
+    },
+    "rendering_model": "SSR (Server-Rendered HTML)",
+    "wait_for_selector": "main",
+    "notes": [
+      "Could not auto-discover article link from root"
+    ]
+  },
+  {
+    "id": 220,
+    "name": "Grist",
+    "domain": "grist.org",
+    "type": "climate_journalism",
+    "accessible": true,
+    "status_code": 200,
+    "direct_api_available": false,
+    "direct_api_notes": null,
+    "article_url_sampled": "https://grist.org/articles/",
+    "json_ld": {
+      "found": true,
+      "types": [
+        "WebPage"
+      ],
+      "has_headline": true,
+      "has_date": true,
+      "has_author": true,
+      "has_article_body": false
+    },
+    "dom_selectors": {
+      "title_selector": "h1[class*='title']",
+      "body_selector": "main",
+      "author_selector": "[class*='byline']",
+      "date_selector": null
+    },
+    "image_handling": {
+      "lazy_attrs": [
+        "data-src",
+        "srcset"
+      ],
+      "cdn_host": null,
+      "unresizing_rule": null
+    },
+    "notice_dialogs": {
+      "consent_banner": null
+    },
+    "rendering_model": "SSR (Server-Rendered HTML)",
+    "wait_for_selector": "main",
+    "notes": []
+  },
+  {
+    "id": 221,
+    "name": "Yale Environment 360",
+    "domain": "e360.yale.edu",
+    "type": "environmental_journal",
+    "accessible": true,
+    "status_code": 200,
+    "direct_api_available": false,
+    "direct_api_notes": null,
+    "article_url_sampled": "https://e360.yale.edu/",
+    "json_ld": {
+      "found": false,
+      "types": [],
+      "has_headline": false,
+      "has_date": false,
+      "has_author": false,
+      "has_article_body": false
+    },
+    "dom_selectors": {
+      "title_selector": "h1[class*='title']",
+      "body_selector": "main",
+      "author_selector": "[class*='author']",
+      "date_selector": null
+    },
+    "image_handling": {
+      "lazy_attrs": [
+        "srcset"
+      ],
+      "cdn_host": "yale-threesixty.transforms.svdcdn.com",
+      "unresizing_rule": null
+    },
+    "notice_dialogs": {
+      "consent_banner": null
+    },
+    "rendering_model": "SSR (Server-Rendered HTML)",
+    "wait_for_selector": "main",
+    "notes": [
+      "Could not auto-discover article link from root"
+    ]
+  },
+  {
+    "id": 222,
+    "name": "Scientific American",
+    "domain": "scientificamerican.com",
+    "type": "science_magazine",
+    "accessible": true,
+    "status_code": 200,
+    "direct_api_available": false,
+    "direct_api_notes": null,
+    "article_url_sampled": "https://www.scientificamerican.com/article/spacexais-colossus-data-center-is-fueling-a-massive-backlash/",
+    "json_ld": {
+      "found": true,
+      "types": [
+        "NewsArticle",
+        "NewsMediaOrganization"
+      ],
+      "has_headline": true,
+      "has_date": true,
+      "has_author": true,
+      "has_article_body": false
+    },
+    "dom_selectors": {
+      "title_selector": "article h1",
+      "body_selector": "article",
+      "author_selector": "[class*='author']",
+      "date_selector": "[class*='date']"
+    },
+    "image_handling": {
+      "lazy_attrs": [
+        "srcset"
+      ],
+      "cdn_host": null,
+      "unresizing_rule": null
+    },
+    "notice_dialogs": {
+      "consent_banner": null
+    },
+    "rendering_model": "SSR (Server-Rendered HTML)",
+    "wait_for_selector": "article",
+    "notes": []
+  },
+  {
+    "id": 223,
+    "name": "Popular Science",
+    "domain": "popsci.com",
+    "type": "science_magazine",
+    "accessible": true,
+    "status_code": 200,
+    "direct_api_available": false,
+    "direct_api_notes": null,
+    "article_url_sampled": "https://www.popsci.com/",
+    "json_ld": {
+      "found": false,
+      "types": [],
+      "has_headline": false,
+      "has_date": false,
+      "has_author": false,
+      "has_article_body": false
+    },
+    "dom_selectors": {
+      "title_selector": "h1",
+      "body_selector": "div.entry-content",
+      "author_selector": "[class*='author']",
+      "date_selector": null
+    },
+    "image_handling": {
+      "lazy_attrs": [
+        "srcset"
+      ],
+      "cdn_host": null,
+      "unresizing_rule": null
+    },
+    "notice_dialogs": {
+      "consent_banner": null
+    },
+    "rendering_model": "SSR (Server-Rendered HTML)",
+    "wait_for_selector": "div.entry-content",
+    "notes": [
+      "Could not auto-discover article link from root"
+    ]
+  },
+  {
+    "id": 224,
+    "name": "Cell Press",
+    "domain": "cell.com",
+    "type": "scientific_journal",
+    "accessible": false,
+    "status_code": 403,
+    "direct_api_available": false,
+    "direct_api_notes": null,
+    "article_url_sampled": null,
+    "json_ld": {
+      "found": false,
+      "types": [],
+      "has_headline": false,
+      "has_date": false,
+      "has_author": false,
+      "has_article_body": false
+    },
+    "dom_selectors": {
+      "title_selector": null,
+      "body_selector": null,
+      "author_selector": null,
+      "date_selector": null
+    },
+    "image_handling": {
+      "lazy_attrs": [],
+      "cdn_host": null,
+      "unresizing_rule": null
+    },
+    "notice_dialogs": {
+      "consent_banner": null
+    },
+    "rendering_model": "SSR",
+    "wait_for_selector": null,
+    "notes": [
+      "Root returned HTTP status 403"
+    ]
+  },
+  {
+    "id": 225,
+    "name": "ICIJ",
+    "domain": "icij.org",
+    "type": "investigative_consortium",
+    "accessible": false,
+    "status_code": 405,
+    "direct_api_available": false,
+    "direct_api_notes": null,
+    "article_url_sampled": null,
+    "json_ld": {
+      "found": false,
+      "types": [],
+      "has_headline": false,
+      "has_date": false,
+      "has_author": false,
+      "has_article_body": false
+    },
+    "dom_selectors": {
+      "title_selector": null,
+      "body_selector": null,
+      "author_selector": null,
+      "date_selector": null
+    },
+    "image_handling": {
+      "lazy_attrs": [],
+      "cdn_host": null,
+      "unresizing_rule": null
+    },
+    "notice_dialogs": {
+      "consent_banner": null
+    },
+    "rendering_model": "SSR",
+    "wait_for_selector": null,
+    "notes": [
+      "Root returned HTTP status 405"
+    ]
+  },
+  {
+    "id": 226,
+    "name": "OCCRP",
+    "domain": "occrp.org",
+    "type": "investigative_consortium",
+    "accessible": true,
+    "status_code": 200,
+    "direct_api_available": false,
+    "direct_api_notes": null,
+    "article_url_sampled": "https://www.occrp.org/en/investigation/a-kidney-transplant-ignored-advice-and-a-presidents-surprise-choice-to-run-a-160-billion-pacific-island-mine",
+    "json_ld": {
+      "found": false,
+      "types": [],
+      "has_headline": false,
+      "has_date": false,
+      "has_author": false,
+      "has_article_body": false
+    },
+    "dom_selectors": {
+      "title_selector": "h1[class*='title']",
+      "body_selector": "div.article-content",
+      "author_selector": null,
+      "date_selector": "[class*='date']"
+    },
+    "image_handling": {
+      "lazy_attrs": [],
+      "cdn_host": null,
+      "unresizing_rule": null
+    },
+    "notice_dialogs": {
+      "consent_banner": null
+    },
+    "rendering_model": "SSR (Server-Rendered HTML)",
+    "wait_for_selector": "div.article-content",
+    "notes": []
+  },
+  {
+    "id": 227,
+    "name": "GIJN",
+    "domain": "gijn.org",
+    "type": "investigative_network",
+    "accessible": false,
+    "status_code": 403,
+    "direct_api_available": false,
+    "direct_api_notes": null,
+    "article_url_sampled": null,
+    "json_ld": {
+      "found": false,
+      "types": [],
+      "has_headline": false,
+      "has_date": false,
+      "has_author": false,
+      "has_article_body": false
+    },
+    "dom_selectors": {
+      "title_selector": null,
+      "body_selector": null,
+      "author_selector": null,
+      "date_selector": null
+    },
+    "image_handling": {
+      "lazy_attrs": [],
+      "cdn_host": null,
+      "unresizing_rule": null
+    },
+    "notice_dialogs": {
+      "consent_banner": null
+    },
+    "rendering_model": "SSR",
+    "wait_for_selector": null,
+    "notes": [
+      "Root returned HTTP status 403"
+    ]
+  },
+  {
+    "id": 228,
+    "name": "Center for Public Integrity",
+    "domain": "publicintegrity.org",
+    "type": "investigative_watchdog",
+    "accessible": true,
+    "status_code": 200,
+    "direct_api_available": false,
+    "direct_api_notes": null,
+    "article_url_sampled": "https://publicintegrity.org/",
+    "json_ld": {
+      "found": true,
+      "types": [
+        "WebPage"
+      ],
+      "has_headline": true,
+      "has_date": true,
+      "has_author": true,
+      "has_article_body": false
+    },
+    "dom_selectors": {
+      "title_selector": null,
+      "body_selector": "div.entry-content",
+      "author_selector": "[class*='author']",
+      "date_selector": null
+    },
+    "image_handling": {
+      "lazy_attrs": [
+        "srcset"
+      ],
+      "cdn_host": null,
+      "unresizing_rule": null
+    },
+    "notice_dialogs": {
+      "consent_banner": null
+    },
+    "rendering_model": "SSR (Server-Rendered HTML)",
+    "wait_for_selector": "div.entry-content",
+    "notes": [
+      "Could not auto-discover article link from root"
+    ]
+  },
+  {
+    "id": 229,
+    "name": "The Marshall Project",
+    "domain": "themarshallproject.org",
+    "type": "criminal_justice",
+    "accessible": true,
+    "status_code": 200,
+    "direct_api_available": false,
+    "direct_api_notes": null,
+    "article_url_sampled": "https://www.themarshallproject.org/2021/04/12/the-language-project",
+    "json_ld": {
+      "found": true,
+      "types": [
+        "NewsArticle"
+      ],
+      "has_headline": true,
+      "has_date": true,
+      "has_author": false,
+      "has_article_body": false
+    },
+    "dom_selectors": {
+      "title_selector": "h1",
+      "body_selector": "article",
+      "author_selector": "[class*='byline']",
+      "date_selector": null
+    },
+    "image_handling": {
+      "lazy_attrs": [
+        "srcset"
+      ],
+      "cdn_host": null,
+      "unresizing_rule": null
+    },
+    "notice_dialogs": {
+      "consent_banner": null
+    },
+    "rendering_model": "SSR (Server-Rendered HTML)",
+    "wait_for_selector": "article",
+    "notes": []
+  },
+  {
+    "id": 230,
+    "name": "Chalkbeat",
+    "domain": "chalkbeat.org",
+    "type": "education_journalism",
+    "accessible": true,
+    "status_code": 200,
+    "direct_api_available": false,
+    "direct_api_notes": null,
+    "article_url_sampled": "https://www.chalkbeat.org/2026/09/09/school-vaccination-rates-reveal-measles-outbreak-risks/",
+    "json_ld": {
+      "found": true,
+      "types": [
+        "NewsArticle"
+      ],
+      "has_headline": true,
+      "has_date": true,
+      "has_author": true,
+      "has_article_body": false
+    },
+    "dom_selectors": {
+      "title_selector": "h1[class*='headline']",
+      "body_selector": "article",
+      "author_selector": "[class*='author']",
+      "date_selector": "[class*='date']"
+    },
+    "image_handling": {
+      "lazy_attrs": [
+        "srcset"
+      ],
+      "cdn_host": null,
+      "unresizing_rule": null
+    },
+    "notice_dialogs": {
+      "consent_banner": null
+    },
+    "rendering_model": "SSR (Server-Rendered HTML)",
+    "wait_for_selector": "article",
+    "notes": []
+  },
+  {
+    "id": 231,
+    "name": "Texas Tribune",
+    "domain": "texastribune.org",
+    "type": "nonprofit_state_news",
+    "accessible": true,
+    "status_code": 200,
+    "direct_api_available": false,
+    "direct_api_notes": null,
+    "article_url_sampled": "https://give.texastribune.org/campaign/814363/donate?c_src=website&c_src2=donatebutton",
+    "json_ld": {
+      "found": false,
+      "types": [],
+      "has_headline": false,
+      "has_date": false,
+      "has_author": false,
+      "has_article_body": false
+    },
+    "dom_selectors": {
+      "title_selector": "h1",
+      "body_selector": "main",
+      "author_selector": null,
+      "date_selector": null
+    },
+    "image_handling": {
+      "lazy_attrs": [
+        "srcset"
+      ],
+      "cdn_host": null,
+      "unresizing_rule": null
+    },
+    "notice_dialogs": {
+      "consent_banner": null
+    },
+    "rendering_model": "SSR + Client Hydration (Next.js/Nuxt/SPA)",
+    "wait_for_selector": "main",
+    "notes": []
+  },
+  {
+    "id": 232,
+    "name": "CalMatters",
+    "domain": "calmatters.org",
+    "type": "nonprofit_state_news",
+    "accessible": true,
+    "status_code": 200,
+    "direct_api_available": false,
+    "direct_api_notes": null,
+    "article_url_sampled": "https://give.calmatters.org/campaign/564470/donate?c_src=website&c_src2=stickynav",
+    "json_ld": {
+      "found": false,
+      "types": [],
+      "has_headline": false,
+      "has_date": false,
+      "has_author": false,
+      "has_article_body": false
+    },
+    "dom_selectors": {
+      "title_selector": "h1",
+      "body_selector": "main",
+      "author_selector": null,
+      "date_selector": null
+    },
+    "image_handling": {
+      "lazy_attrs": [
+        "srcset"
+      ],
+      "cdn_host": null,
+      "unresizing_rule": null
+    },
+    "notice_dialogs": {
+      "consent_banner": null
+    },
+    "rendering_model": "SSR + Client Hydration (Next.js/Nuxt/SPA)",
+    "wait_for_selector": "main",
+    "notes": []
+  },
+  {
+    "id": 233,
+    "name": "OpenSecrets",
+    "domain": "opensecrets.org",
+    "type": "campaign_finance_watchdog",
+    "accessible": false,
+    "status_code": 403,
+    "direct_api_available": false,
+    "direct_api_notes": null,
+    "article_url_sampled": null,
+    "json_ld": {
+      "found": false,
+      "types": [],
+      "has_headline": false,
+      "has_date": false,
+      "has_author": false,
+      "has_article_body": false
+    },
+    "dom_selectors": {
+      "title_selector": null,
+      "body_selector": null,
+      "author_selector": null,
+      "date_selector": null
+    },
+    "image_handling": {
+      "lazy_attrs": [],
+      "cdn_host": null,
+      "unresizing_rule": null
+    },
+    "notice_dialogs": {
+      "consent_banner": null
+    },
+    "rendering_model": "SSR",
+    "wait_for_selector": null,
+    "notes": [
+      "Root returned HTTP status 403"
+    ]
+  },
+  {
+    "id": 234,
+    "name": "Reveal News (CIR)",
+    "domain": "revealnews.org",
+    "type": "investigative_reporting",
+    "accessible": false,
+    "status_code": 404,
+    "direct_api_available": false,
+    "direct_api_notes": null,
+    "article_url_sampled": null,
+    "json_ld": {
+      "found": false,
+      "types": [],
+      "has_headline": false,
+      "has_date": false,
+      "has_author": false,
+      "has_article_body": false
+    },
+    "dom_selectors": {
+      "title_selector": null,
+      "body_selector": null,
+      "author_selector": null,
+      "date_selector": null
+    },
+    "image_handling": {
+      "lazy_attrs": [],
+      "cdn_host": null,
+      "unresizing_rule": null
+    },
+    "notice_dialogs": {
+      "consent_banner": null
+    },
+    "rendering_model": "SSR",
+    "wait_for_selector": null,
+    "notes": [
+      "Root returned HTTP status 404"
+    ]
+  },
+  {
+    "id": 235,
+    "name": "Krebs on Security",
+    "domain": "krebsonsecurity.com",
+    "type": "cybersecurity_investigation",
+    "accessible": true,
+    "status_code": 200,
+    "direct_api_available": true,
+    "direct_api_notes": "WordPress VIP RSS (/feed/) and REST API (/wp-json/wp/v2/posts) active",
+    "article_url_sampled": "https://krebsonsecurity.com/2026/09/microsoft-plugs-nearly-1000-security-holes/",
+    "json_ld": {
+      "found": false,
+      "types": [],
+      "has_headline": false,
+      "has_date": false,
+      "has_author": false,
+      "has_article_body": false
+    },
+    "dom_selectors": {
+      "title_selector": "h1[class*='title']",
+      "body_selector": "div.entry-content",
+      "author_selector": "[class*='author']",
+      "date_selector": "time[datetime]"
+    },
+    "image_handling": {
+      "lazy_attrs": [
+        "srcset"
+      ],
+      "cdn_host": null,
+      "unresizing_rule": null
+    },
+    "notice_dialogs": {
+      "consent_banner": null
+    },
+    "rendering_model": "SSR (Server-Rendered HTML)",
+    "wait_for_selector": "div.entry-content",
+    "notes": []
+  },
+  {
+    "id": 236,
+    "name": "BleepingComputer",
+    "domain": "bleepingcomputer.com",
+    "type": "cybersecurity_news",
+    "accessible": true,
+    "status_code": 200,
+    "direct_api_available": true,
+    "direct_api_notes": "BleepingComputer exposes RSS: /feed/",
+    "article_url_sampled": "https://www.bleepingcomputer.com/news/microsoft/microsoft-september-2026-patch-tuesday-fixes-966-flaws-2-zero-days/",
+    "json_ld": {
+      "found": true,
+      "types": [
+        "NewsArticle"
+      ],
+      "has_headline": true,
+      "has_date": true,
+      "has_author": true,
+      "has_article_body": false
+    },
+    "dom_selectors": {
+      "title_selector": "article h1",
+      "body_selector": "div.article-body",
+      "author_selector": "[class*='author']",
+      "date_selector": "[class*='date']"
+    },
+    "image_handling": {
+      "lazy_attrs": [
+        "data-src"
+      ],
+      "cdn_host": null,
+      "unresizing_rule": null
+    },
+    "notice_dialogs": {
+      "consent_banner": null
+    },
+    "rendering_model": "SSR (Server-Rendered HTML)",
+    "wait_for_selector": "div.article-body",
+    "notes": []
+  },
+  {
+    "id": 237,
+    "name": "Dark Reading",
+    "domain": "darkreading.com",
+    "type": "cybersecurity_news",
+    "accessible": false,
+    "status_code": 403,
+    "direct_api_available": false,
+    "direct_api_notes": null,
+    "article_url_sampled": null,
+    "json_ld": {
+      "found": false,
+      "types": [],
+      "has_headline": false,
+      "has_date": false,
+      "has_author": false,
+      "has_article_body": false
+    },
+    "dom_selectors": {
+      "title_selector": null,
+      "body_selector": null,
+      "author_selector": null,
+      "date_selector": null
+    },
+    "image_handling": {
+      "lazy_attrs": [],
+      "cdn_host": null,
+      "unresizing_rule": null
+    },
+    "notice_dialogs": {
+      "consent_banner": null
+    },
+    "rendering_model": "SSR",
+    "wait_for_selector": null,
+    "notes": [
+      "Root returned HTTP status 403"
+    ]
+  },
+  {
+    "id": 238,
+    "name": "SecurityWeek",
+    "domain": "securityweek.com",
+    "type": "cybersecurity_news",
+    "accessible": true,
+    "status_code": 200,
+    "direct_api_available": false,
+    "direct_api_notes": null,
+    "article_url_sampled": "https://www.securityweek.com/partys-over-for-crypto-scammers-who-went-on-a-spending-spree-after-a-240-million-bitcoin-theft/",
+    "json_ld": {
+      "found": false,
+      "types": [],
+      "has_headline": false,
+      "has_date": false,
+      "has_author": false,
+      "has_article_body": false
+    },
+    "dom_selectors": {
+      "title_selector": "h1[class*='title']",
+      "body_selector": "article",
+      "author_selector": "[class*='byline']",
+      "date_selector": "time[datetime]"
+    },
+    "image_handling": {
+      "lazy_attrs": [
+        "srcset"
+      ],
+      "cdn_host": null,
+      "unresizing_rule": null
+    },
+    "notice_dialogs": {
+      "consent_banner": null
+    },
+    "rendering_model": "SSR (Server-Rendered HTML)",
+    "wait_for_selector": "article",
+    "notes": []
+  },
+  {
+    "id": 239,
+    "name": "The Hacker News",
+    "domain": "thehackernews.com",
+    "type": "cybersecurity_news",
+    "accessible": true,
+    "status_code": 200,
+    "direct_api_available": false,
+    "direct_api_notes": null,
+    "article_url_sampled": "https://thehackernews.com/2026/09/infostealer-logs-expose-replayable-ai.html",
+    "json_ld": {
+      "found": true,
+      "types": [
+        "BreadcrumbList",
+        "Organization"
+      ],
+      "has_headline": false,
+      "has_date": false,
+      "has_author": false,
+      "has_article_body": false
+    },
+    "dom_selectors": {
+      "title_selector": "h1[class*='title']",
+      "body_selector": "main",
+      "author_selector": "[class*='author']",
+      "date_selector": "[class*='date']"
+    },
+    "image_handling": {
+      "lazy_attrs": [
+        "data-src"
+      ],
+      "cdn_host": null,
+      "unresizing_rule": null
+    },
+    "notice_dialogs": {
+      "consent_banner": null
+    },
+    "rendering_model": "SSR (Server-Rendered HTML)",
+    "wait_for_selector": "main",
+    "notes": []
+  },
+  {
+    "id": 240,
+    "name": "SCOTUSblog",
+    "domain": "scotusblog.com",
+    "type": "legal_journalism",
+    "accessible": true,
+    "status_code": 200,
+    "direct_api_available": true,
+    "direct_api_notes": "SCOTUSblog exposes clean RSS: /feed/",
+    "article_url_sampled": "https://www.scotusblog.com/news/",
+    "json_ld": {
+      "found": false,
+      "types": [],
+      "has_headline": false,
+      "has_date": false,
+      "has_author": false,
+      "has_article_body": false
+    },
+    "dom_selectors": {
+      "title_selector": "h1",
+      "body_selector": "main",
+      "author_selector": null,
+      "date_selector": null
+    },
+    "image_handling": {
+      "lazy_attrs": [],
+      "cdn_host": null,
+      "unresizing_rule": null
+    },
+    "notice_dialogs": {
+      "consent_banner": null
+    },
+    "rendering_model": "SSR (Server-Rendered HTML)",
+    "wait_for_selector": "main",
+    "notes": []
+  },
+  {
+    "id": 241,
+    "name": "Just Security",
+    "domain": "justsecurity.org",
+    "type": "national_security_law",
+    "accessible": true,
+    "status_code": 200,
+    "direct_api_available": false,
+    "direct_api_notes": null,
+    "article_url_sampled": "https://www.justsecurity.org/114556/collection-israel-iran-conflict/",
+    "json_ld": {
+      "found": false,
+      "types": [],
+      "has_headline": false,
+      "has_date": false,
+      "has_author": false,
+      "has_article_body": false
+    },
+    "dom_selectors": {
+      "title_selector": "h1",
+      "body_selector": "main",
+      "author_selector": "[class*='author']",
+      "date_selector": "[class*='date']"
+    },
+    "image_handling": {
+      "lazy_attrs": [
+        "srcset"
+      ],
+      "cdn_host": null,
+      "unresizing_rule": null
+    },
+    "notice_dialogs": {
+      "consent_banner": null
+    },
+    "rendering_model": "SSR (Server-Rendered HTML)",
+    "wait_for_selector": "main",
+    "notes": []
+  },
+  {
+    "id": 242,
+    "name": "FreightWaves",
+    "domain": "freightwaves.com",
+    "type": "supply_chain_logistics",
+    "accessible": true,
+    "status_code": 200,
+    "direct_api_available": false,
+    "direct_api_notes": null,
+    "article_url_sampled": "https://www.freightwaves.com/news/why-every-american-should-care-that-diesel-prices-are-surging-across-the-country",
+    "json_ld": {
+      "found": true,
+      "types": [
+        "NewsArticle",
+        "BreadcrumbList"
+      ],
+      "has_headline": true,
+      "has_date": true,
+      "has_author": true,
+      "has_article_body": false
+    },
+    "dom_selectors": {
+      "title_selector": "h1[class*='title']",
+      "body_selector": "div.entry-content",
+      "author_selector": "[class*='author']",
+      "date_selector": "time[datetime]"
+    },
+    "image_handling": {
+      "lazy_attrs": [],
+      "cdn_host": null,
+      "unresizing_rule": null
+    },
+    "notice_dialogs": {
+      "consent_banner": null
+    },
+    "rendering_model": "SSR (Server-Rendered HTML)",
+    "wait_for_selector": "div.entry-content",
+    "notes": []
+  },
+  {
+    "id": 243,
+    "name": "Aviation Week",
+    "domain": "aviationweek.com",
+    "type": "aerospace_defense",
+    "accessible": true,
+    "status_code": 200,
+    "direct_api_available": false,
+    "direct_api_notes": null,
+    "article_url_sampled": "https://aviationweek.com/taxonomy/term/132271",
+    "json_ld": {
+      "found": false,
+      "types": [],
+      "has_headline": false,
+      "has_date": false,
+      "has_author": false,
+      "has_article_body": false
+    },
+    "dom_selectors": {
+      "title_selector": "h1",
+      "body_selector": "main",
+      "author_selector": "[class*='author']",
+      "date_selector": "time[datetime]"
+    },
+    "image_handling": {
+      "lazy_attrs": [
+        "data-src"
+      ],
+      "cdn_host": null,
+      "unresizing_rule": null
+    },
+    "notice_dialogs": {
+      "consent_banner": null
+    },
+    "rendering_model": "SSR (Server-Rendered HTML)",
+    "wait_for_selector": "main",
+    "notes": []
+  },
+  {
+    "id": 244,
+    "name": "Simple Flying",
+    "domain": "simpleflying.com",
+    "type": "aviation_news",
+    "accessible": false,
+    "status_code": null,
+    "direct_api_available": false,
+    "direct_api_notes": null,
+    "article_url_sampled": null,
+    "json_ld": {
+      "found": false,
+      "types": [],
+      "has_headline": false,
+      "has_date": false,
+      "has_author": false,
+      "has_article_body": false
+    },
+    "dom_selectors": {
+      "title_selector": null,
+      "body_selector": null,
+      "author_selector": null,
+      "date_selector": null
+    },
+    "image_handling": {
+      "lazy_attrs": [],
+      "cdn_host": null,
+      "unresizing_rule": null
+    },
+    "notice_dialogs": {
+      "consent_banner": null
+    },
+    "rendering_model": "SSR",
+    "wait_for_selector": null,
+    "notes": [
+      "Root fetch error: Server disconnected without sending a response."
+    ]
+  },
+  {
+    "id": 245,
+    "name": "Dagens Nyheter",
+    "domain": "dn.se",
+    "type": "nordic_newspaper",
+    "accessible": true,
+    "status_code": 200,
+    "direct_api_available": false,
+    "direct_api_notes": null,
+    "article_url_sampled": "https://www.dn.se/",
+    "json_ld": {
+      "found": true,
+      "types": [
+        "NewsMediaOrganization"
+      ],
+      "has_headline": false,
+      "has_date": false,
+      "has_author": false,
+      "has_article_body": false
+    },
+    "dom_selectors": {
+      "title_selector": "h1",
+      "body_selector": "main",
+      "author_selector": "[class*='byline']",
+      "date_selector": "[class*='date']"
+    },
+    "image_handling": {
+      "lazy_attrs": [
+        "srcset"
+      ],
+      "cdn_host": null,
+      "unresizing_rule": null
+    },
+    "notice_dialogs": {
+      "consent_banner": null
+    },
+    "rendering_model": "SSR (Server-Rendered HTML)",
+    "wait_for_selector": "main",
+    "notes": [
+      "Could not auto-discover article link from root"
+    ]
+  },
+  {
+    "id": 246,
+    "name": "Svenska Dagbladet",
+    "domain": "svd.se",
+    "type": "nordic_newspaper",
+    "accessible": false,
+    "status_code": 403,
+    "direct_api_available": false,
+    "direct_api_notes": null,
+    "article_url_sampled": null,
+    "json_ld": {
+      "found": false,
+      "types": [],
+      "has_headline": false,
+      "has_date": false,
+      "has_author": false,
+      "has_article_body": false
+    },
+    "dom_selectors": {
+      "title_selector": null,
+      "body_selector": null,
+      "author_selector": null,
+      "date_selector": null
+    },
+    "image_handling": {
+      "lazy_attrs": [],
+      "cdn_host": null,
+      "unresizing_rule": null
+    },
+    "notice_dialogs": {
+      "consent_banner": null
+    },
+    "rendering_model": "SSR",
+    "wait_for_selector": null,
+    "notes": [
+      "Root returned HTTP status 403"
+    ]
+  },
+  {
+    "id": 247,
+    "name": "Helsingin Sanomat",
+    "domain": "hs.fi",
+    "type": "nordic_newspaper",
+    "accessible": true,
+    "status_code": 200,
+    "direct_api_available": false,
+    "direct_api_notes": null,
+    "article_url_sampled": "https://www.hs.fi/",
+    "json_ld": {
+      "found": false,
+      "types": [],
+      "has_headline": false,
+      "has_date": false,
+      "has_author": false,
+      "has_article_body": false
+    },
+    "dom_selectors": {
+      "title_selector": "h1",
+      "body_selector": "article",
+      "author_selector": null,
+      "date_selector": "[class*='date']"
+    },
+    "image_handling": {
+      "lazy_attrs": [],
+      "cdn_host": null,
+      "unresizing_rule": null
+    },
+    "notice_dialogs": {
+      "consent_banner": null
+    },
+    "rendering_model": "SSR + Client Hydration (Next.js/Nuxt/SPA)",
+    "wait_for_selector": "article",
+    "notes": [
+      "Could not auto-discover article link from root"
+    ]
+  },
+  {
+    "id": 248,
+    "name": "Aftenposten",
+    "domain": "aftenposten.no",
+    "type": "nordic_newspaper",
+    "accessible": false,
+    "status_code": 403,
+    "direct_api_available": false,
+    "direct_api_notes": null,
+    "article_url_sampled": null,
+    "json_ld": {
+      "found": false,
+      "types": [],
+      "has_headline": false,
+      "has_date": false,
+      "has_author": false,
+      "has_article_body": false
+    },
+    "dom_selectors": {
+      "title_selector": null,
+      "body_selector": null,
+      "author_selector": null,
+      "date_selector": null
+    },
+    "image_handling": {
+      "lazy_attrs": [],
+      "cdn_host": null,
+      "unresizing_rule": null
+    },
+    "notice_dialogs": {
+      "consent_banner": null
+    },
+    "rendering_model": "SSR",
+    "wait_for_selector": null,
+    "notes": [
+      "Root returned HTTP status 403"
+    ]
+  },
+  {
+    "id": 249,
+    "name": "Politiken",
+    "domain": "politiken.dk",
+    "type": "nordic_newspaper",
+    "accessible": true,
+    "status_code": 200,
+    "direct_api_available": false,
+    "direct_api_notes": null,
+    "article_url_sampled": "https://politiken.dk/",
+    "json_ld": {
+      "found": false,
+      "types": [],
+      "has_headline": false,
+      "has_date": false,
+      "has_author": false,
+      "has_article_body": false
+    },
+    "dom_selectors": {
+      "title_selector": "article h1",
+      "body_selector": "article",
+      "author_selector": null,
+      "date_selector": "[class*='time']"
+    },
+    "image_handling": {
+      "lazy_attrs": [
+        "srcset"
+      ],
+      "cdn_host": "mediacdn.prenly.com",
+      "unresizing_rule": null
+    },
+    "notice_dialogs": {
+      "consent_banner": null
+    },
+    "rendering_model": "SSR (Server-Rendered HTML)",
+    "wait_for_selector": "article",
+    "notes": [
+      "Could not auto-discover article link from root"
+    ]
+  },
+  {
+    "id": 250,
+    "name": "Gazeta Wyborcza",
+    "domain": "wyborcza.pl",
+    "type": "eastern_european_newspaper",
+    "accessible": true,
+    "status_code": 200,
+    "direct_api_available": false,
+    "direct_api_notes": null,
+    "article_url_sampled": "https://autorzy.wyborcza.pl/autor/631053f6af1b5c405707bd6d/Beata-Maciejewska#s=S.others-K.C-B.2-L.3.glowka",
+    "json_ld": {
+      "found": true,
+      "types": [
+        "CollectionPage",
+        "NewsMediaOrganization"
+      ],
+      "has_headline": false,
+      "has_date": false,
+      "has_author": true,
+      "has_article_body": false
+    },
+    "dom_selectors": {
+      "title_selector": "h1",
+      "body_selector": "article",
+      "author_selector": "[class*='author']",
+      "date_selector": "time[datetime]"
+    },
+    "image_handling": {
+      "lazy_attrs": [
+        "srcset"
+      ],
+      "cdn_host": null,
+      "unresizing_rule": null
+    },
+    "notice_dialogs": {
+      "consent_banner": null
+    },
+    "rendering_model": "SSR (Server-Rendered HTML)",
+    "wait_for_selector": "article",
+    "notes": []
+  },
+  {
+    "id": 251,
+    "name": "Denník N",
+    "domain": "dennikn.sk",
+    "type": "eastern_european_newspaper",
+    "accessible": false,
+    "status_code": 403,
+    "direct_api_available": false,
+    "direct_api_notes": null,
+    "article_url_sampled": null,
+    "json_ld": {
+      "found": false,
+      "types": [],
+      "has_headline": false,
+      "has_date": false,
+      "has_author": false,
+      "has_article_body": false
+    },
+    "dom_selectors": {
+      "title_selector": null,
+      "body_selector": null,
+      "author_selector": null,
+      "date_selector": null
+    },
+    "image_handling": {
+      "lazy_attrs": [],
+      "cdn_host": null,
+      "unresizing_rule": null
+    },
+    "notice_dialogs": {
+      "consent_banner": null
+    },
+    "rendering_model": "SSR",
+    "wait_for_selector": null,
+    "notes": [
+      "Root returned HTTP status 403"
+    ]
+  },
+  {
+    "id": 252,
+    "name": "Telex",
+    "domain": "telex.hu",
+    "type": "eastern_european_newspaper",
+    "accessible": true,
+    "status_code": 200,
+    "direct_api_available": false,
+    "direct_api_notes": null,
+    "article_url_sampled": "https://telex.hu/english/2026/09/04/andras-schiff-performs-in-hungary-after-sixteen-year-hiatus-and-a-change-in-government",
+    "json_ld": {
+      "found": true,
+      "types": [
+        "NewsArticle"
+      ],
+      "has_headline": true,
+      "has_date": true,
+      "has_author": true,
+      "has_article_body": false
+    },
+    "dom_selectors": {
+      "title_selector": "h1",
+      "body_selector": "main",
+      "author_selector": "[class*='author']",
+      "date_selector": "[class*='date']"
+    },
+    "image_handling": {
+      "lazy_attrs": [
+        "srcset"
+      ],
+      "cdn_host": null,
+      "unresizing_rule": null
+    },
+    "notice_dialogs": {
+      "consent_banner": null
+    },
+    "rendering_model": "SSR + Client Hydration (Next.js/Nuxt/SPA)",
+    "wait_for_selector": "main",
+    "notes": []
+  },
+  {
+    "id": 253,
+    "name": "Novaya Gazeta Europe",
+    "domain": "novayagazeta.eu",
+    "type": "russian_independent_exile",
+    "accessible": true,
+    "status_code": 200,
+    "direct_api_available": false,
+    "direct_api_notes": null,
+    "article_url_sampled": "https://novayagazeta.eu/en/articles/2026/09/09/germany-could-share-data-on-draft-age-ukrainian-men-with-kyiv-foreign-minister-suggests-en-news",
+    "json_ld": {
+      "found": true,
+      "types": [
+        "NewsArticle"
+      ],
+      "has_headline": true,
+      "has_date": true,
+      "has_author": true,
+      "has_article_body": false
+    },
+    "dom_selectors": {
+      "title_selector": "article h1",
+      "body_selector": "article",
+      "author_selector": null,
+      "date_selector": "time[datetime]"
+    },
+    "image_handling": {
+      "lazy_attrs": [
+        "srcset"
+      ],
+      "cdn_host": "img.novayagazeta.eu",
+      "unresizing_rule": null
+    },
+    "notice_dialogs": {
+      "consent_banner": null
+    },
+    "rendering_model": "SSR (Server-Rendered HTML)",
+    "wait_for_selector": "article",
+    "notes": []
+  },
+  {
+    "id": 254,
+    "name": "Eurasianet",
+    "domain": "eurasianet.org",
+    "type": "central_asia_caucasus",
+    "accessible": false,
+    "status_code": 403,
+    "direct_api_available": false,
+    "direct_api_notes": null,
+    "article_url_sampled": null,
+    "json_ld": {
+      "found": false,
+      "types": [],
+      "has_headline": false,
+      "has_date": false,
+      "has_author": false,
+      "has_article_body": false
+    },
+    "dom_selectors": {
+      "title_selector": null,
+      "body_selector": null,
+      "author_selector": null,
+      "date_selector": null
+    },
+    "image_handling": {
+      "lazy_attrs": [],
+      "cdn_host": null,
+      "unresizing_rule": null
+    },
+    "notice_dialogs": {
+      "consent_banner": null
+    },
+    "rendering_model": "SSR",
+    "wait_for_selector": null,
+    "notes": [
+      "Root returned HTTP status 403"
+    ]
+  },
+  {
+    "id": 255,
+    "name": "The Wire (India)",
+    "domain": "thewire.in",
+    "type": "indian_independent",
+    "accessible": true,
+    "status_code": 200,
+    "direct_api_available": false,
+    "direct_api_notes": null,
+    "article_url_sampled": "https://thewire.in/",
+    "json_ld": {
+      "found": false,
+      "types": [],
+      "has_headline": false,
+      "has_date": false,
+      "has_author": false,
+      "has_article_body": false
+    },
+    "dom_selectors": {
+      "title_selector": null,
+      "body_selector": null,
+      "author_selector": null,
+      "date_selector": null
+    },
+    "image_handling": {
+      "lazy_attrs": [],
+      "cdn_host": null,
+      "unresizing_rule": null
+    },
+    "notice_dialogs": {
+      "consent_banner": null
+    },
+    "rendering_model": "SSR (Server-Rendered HTML)",
+    "wait_for_selector": null,
+    "notes": [
+      "Could not auto-discover article link from root"
+    ]
+  },
+  {
+    "id": 256,
+    "name": "Scroll.in",
+    "domain": "scroll.in",
+    "type": "indian_digital_news",
+    "accessible": true,
+    "status_code": 200,
+    "direct_api_available": false,
+    "direct_api_notes": null,
+    "article_url_sampled": "https://scroll.in/latest/1095560/hc-summons-journalist-sudhir-chaudhary-for-allegedly-defamatory-broadcast-during-youth-protests",
+    "json_ld": {
+      "found": true,
+      "types": [
+        "NewsArticle",
+        "Organization",
+        "WebSite",
+        "BreadcrumbList"
+      ],
+      "has_headline": true,
+      "has_date": true,
+      "has_author": true,
+      "has_article_body": false
+    },
+    "dom_selectors": {
+      "title_selector": "article h1",
+      "body_selector": "div.article-body",
+      "author_selector": "[class*='author']",
+      "date_selector": "time[datetime]"
+    },
+    "image_handling": {
+      "lazy_attrs": [],
+      "cdn_host": "sc0.blr1.cdn.digitaloceanspaces.com",
+      "unresizing_rule": null
+    },
+    "notice_dialogs": {
+      "consent_banner": null
+    },
+    "rendering_model": "SSR (Server-Rendered HTML)",
+    "wait_for_selector": "div.article-body",
+    "notes": []
+  },
+  {
+    "id": 257,
+    "name": "The Print",
+    "domain": "theprint.in",
+    "type": "indian_digital_news",
+    "accessible": true,
+    "status_code": 200,
+    "direct_api_available": false,
+    "direct_api_notes": null,
+    "article_url_sampled": "https://theprint.in/india/satya-niketan-building-fell-after-wall-removed-to-make-space-for-shop-arrested-contractor-tells-cops/3038338/",
+    "json_ld": {
+      "found": true,
+      "types": [
+        "NewsArticle",
+        "NewsMediaOrganization",
+        "SiteNavigationElement",
+        "BreadcrumbList"
+      ],
+      "has_headline": true,
+      "has_date": true,
+      "has_author": true,
+      "has_article_body": false
+    },
+    "dom_selectors": {
+      "title_selector": "h1[class*='title']",
+      "body_selector": "article",
+      "author_selector": "[class*='author']",
+      "date_selector": "time[datetime]"
+    },
+    "image_handling": {
+      "lazy_attrs": [
+        "srcset"
+      ],
+      "cdn_host": null,
+      "unresizing_rule": null
+    },
+    "notice_dialogs": {
+      "consent_banner": null
+    },
+    "rendering_model": "SSR (Server-Rendered HTML)",
+    "wait_for_selector": "article",
+    "notes": []
+  },
+  {
+    "id": 258,
+    "name": "Livemint",
+    "domain": "livemint.com",
+    "type": "indian_financial_daily",
+    "accessible": true,
+    "status_code": 200,
+    "direct_api_available": false,
+    "direct_api_notes": null,
+    "article_url_sampled": "https://www.livemint.com/news/india",
+    "json_ld": {
+      "found": true,
+      "types": [
+        "BreadcrumbList",
+        "WebPage",
+        "NewsMediaOrganization",
+        "SiteNavigationElement",
+        "ItemList"
+      ],
+      "has_headline": false,
+      "has_date": false,
+      "has_author": false,
+      "has_article_body": false
+    },
+    "dom_selectors": {
+      "title_selector": "h1",
+      "body_selector": null,
+      "author_selector": null,
+      "date_selector": "[class*='date']"
+    },
+    "image_handling": {
+      "lazy_attrs": [],
+      "cdn_host": null,
+      "unresizing_rule": null
+    },
+    "notice_dialogs": {
+      "consent_banner": null
+    },
+    "rendering_model": "SSR + Client Hydration (Next.js/Nuxt/SPA)",
+    "wait_for_selector": "article, main",
+    "notes": []
+  },
+  {
+    "id": 259,
+    "name": "Business Standard",
+    "domain": "business-standard.com",
+    "type": "indian_financial_daily",
+    "accessible": true,
+    "status_code": 200,
+    "direct_api_available": false,
+    "direct_api_notes": null,
+    "article_url_sampled": "https://www.business-standard.com/markets/news/net-sip-inflows-surge-to-record-2-trillion-in-fy26-despite-closures-126090901370_1.html",
+    "json_ld": {
+      "found": true,
+      "types": [
+        "NewsMediaOrganization",
+        "WebPage",
+        "SiteNavigationElement",
+        "BreadcrumbList",
+        "NewsArticle"
+      ],
+      "has_headline": true,
+      "has_date": true,
+      "has_author": true,
+      "has_article_body": true
+    },
+    "dom_selectors": {
+      "title_selector": "article h1",
+      "body_selector": "article",
+      "author_selector": null,
+      "date_selector": "[class*='time']"
+    },
+    "image_handling": {
+      "lazy_attrs": [
+        "data-src"
+      ],
+      "cdn_host": "bsmedia.business-standard.com",
+      "unresizing_rule": null
+    },
+    "notice_dialogs": {
+      "consent_banner": null
+    },
+    "rendering_model": "SSR + Client Hydration (Next.js/Nuxt/SPA)",
+    "wait_for_selector": "article",
+    "notes": []
+  },
+  {
+    "id": 260,
+    "name": "Dawn",
+    "domain": "dawn.com",
+    "type": "pakistani_newspaper",
+    "accessible": true,
+    "status_code": 200,
+    "direct_api_available": false,
+    "direct_api_notes": null,
+    "article_url_sampled": "https://www.dawn.com/news/1984584/tracking-ihl-violations-in-the-us-israel-war-on-iran",
+    "json_ld": {
+      "found": true,
+      "types": [
+        "BreadcrumbList",
+        "NewsArticle"
+      ],
+      "has_headline": true,
+      "has_date": true,
+      "has_author": true,
+      "has_article_body": false
+    },
+    "dom_selectors": {
+      "title_selector": null,
+      "body_selector": "article",
+      "author_selector": "[class*='author']",
+      "date_selector": "time[datetime]"
+    },
+    "image_handling": {
+      "lazy_attrs": [
+        "srcset"
+      ],
+      "cdn_host": null,
+      "unresizing_rule": null
+    },
+    "notice_dialogs": {
+      "consent_banner": null
+    },
+    "rendering_model": "SSR (Server-Rendered HTML)",
+    "wait_for_selector": "article",
+    "notes": []
+  },
+  {
+    "id": 261,
+    "name": "The Daily Star",
+    "domain": "thedailystar.net",
+    "type": "bangladesh_newspaper",
+    "accessible": true,
+    "status_code": 200,
+    "direct_api_available": false,
+    "direct_api_notes": null,
+    "article_url_sampled": "https://www.thedailystar.net/star-multimedia/news/bangladeshs-hilsa-really-disappearing-4267726",
+    "json_ld": {
+      "found": false,
+      "types": [],
+      "has_headline": false,
+      "has_date": false,
+      "has_author": false,
+      "has_article_body": false
+    },
+    "dom_selectors": {
+      "title_selector": "article h1",
+      "body_selector": "article",
+      "author_selector": null,
+      "date_selector": null
+    },
+    "image_handling": {
+      "lazy_attrs": [],
+      "cdn_host": null,
+      "unresizing_rule": null
+    },
+    "notice_dialogs": {
+      "consent_banner": null
+    },
+    "rendering_model": "SSR (Server-Rendered HTML)",
+    "wait_for_selector": "article",
+    "notes": []
+  },
+  {
+    "id": 262,
+    "name": "Jakarta Post",
+    "domain": "thejakartapost.com",
+    "type": "indonesian_newspaper",
+    "accessible": true,
+    "status_code": 200,
+    "direct_api_available": false,
+    "direct_api_notes": null,
+    "article_url_sampled": "https://www.thejakartapost.com/indonesia/2026/09/05/mass-poisonings-cast-doubt-on-free-meals-reforms",
+    "json_ld": {
+      "found": true,
+      "types": [
+        "NewsArticle"
+      ],
+      "has_headline": true,
+      "has_date": true,
+      "has_author": true,
+      "has_article_body": false
+    },
+    "dom_selectors": {
+      "title_selector": "h1[class*='title']",
+      "body_selector": null,
+      "author_selector": null,
+      "date_selector": "[class*='time']"
+    },
+    "image_handling": {
+      "lazy_attrs": [
+        "data-src"
+      ],
+      "cdn_host": "img.jakpost.net",
+      "unresizing_rule": null
+    },
+    "notice_dialogs": {
+      "consent_banner": null
+    },
+    "rendering_model": "SSR (Server-Rendered HTML)",
+    "wait_for_selector": null,
+    "notes": []
+  },
+  {
+    "id": 263,
+    "name": "Bangkok Post",
+    "domain": "bangkokpost.com",
+    "type": "thai_newspaper",
+    "accessible": true,
+    "status_code": 200,
+    "direct_api_available": false,
+    "direct_api_notes": null,
+    "article_url_sampled": "https://www.bangkokpost.com/thailand/politics/3316755/opposition-mp-ice-turns-up-heat-on-bhumjaithai",
+    "json_ld": {
+      "found": true,
+      "types": [
+        "WebSite",
+        "Organization",
+        "NewsArticle",
+        "BreadcrumbList"
+      ],
+      "has_headline": true,
+      "has_date": true,
+      "has_author": true,
+      "has_article_body": true
+    },
+    "dom_selectors": {
+      "title_selector": "article h1",
+      "body_selector": "div.article-content",
+      "author_selector": null,
+      "date_selector": null
+    },
+    "image_handling": {
+      "lazy_attrs": [],
+      "cdn_host": null,
+      "unresizing_rule": null
+    },
+    "notice_dialogs": {
+      "consent_banner": null
+    },
+    "rendering_model": "SSR (Server-Rendered HTML)",
+    "wait_for_selector": "div.article-content",
+    "notes": []
+  },
+  {
+    "id": 264,
+    "name": "Rappler",
+    "domain": "rappler.com",
+    "type": "philippine_investigative",
+    "accessible": true,
+    "status_code": 200,
+    "direct_api_available": false,
+    "direct_api_notes": null,
+    "article_url_sampled": "https://www.rappler.com/tachyon/2024/09/Rappler-National-Privacy-Commission-Certificate-2024-2025.png?resize=1772%2C1248&zoom=1",
+    "json_ld": {
+      "found": false,
+      "types": [],
+      "has_headline": false,
+      "has_date": false,
+      "has_author": false,
+      "has_article_body": false
+    },
+    "dom_selectors": {
+      "title_selector": null,
+      "body_selector": null,
+      "author_selector": null,
+      "date_selector": null
+    },
+    "image_handling": {
+      "lazy_attrs": [],
+      "cdn_host": null,
+      "unresizing_rule": null
+    },
+    "notice_dialogs": {
+      "consent_banner": null
+    },
+    "rendering_model": "SSR (Server-Rendered HTML)",
+    "wait_for_selector": null,
+    "notes": []
+  },
+  {
+    "id": 265,
+    "name": "VNExpress International",
+    "domain": "e.vnexpress.net",
+    "type": "vietnamese_newspaper",
+    "accessible": true,
+    "status_code": 200,
+    "direct_api_available": false,
+    "direct_api_notes": null,
+    "article_url_sampled": "https://e.vnexpress.net/news/news",
+    "json_ld": {
+      "found": true,
+      "types": [
+        "WebSite",
+        "BreadcrumbList"
+      ],
+      "has_headline": false,
+      "has_date": false,
+      "has_author": false,
+      "has_article_body": false
+    },
+    "dom_selectors": {
+      "title_selector": null,
+      "body_selector": null,
+      "author_selector": null,
+      "date_selector": null
+    },
+    "image_handling": {
+      "lazy_attrs": [
+        "data-original"
+      ],
+      "cdn_host": "s.vnecdn.net",
+      "unresizing_rule": null
+    },
+    "notice_dialogs": {
+      "consent_banner": null
+    },
+    "rendering_model": "SSR (Server-Rendered HTML)",
+    "wait_for_selector": null,
+    "notes": []
+  },
+  {
+    "id": 266,
+    "name": "Caixin Global",
+    "domain": "caixinglobal.com",
+    "type": "chinese_financial_journalism",
+    "accessible": true,
+    "status_code": 200,
+    "direct_api_available": false,
+    "direct_api_notes": null,
+    "article_url_sampled": "https://www.caixinglobal.com/news/",
+    "json_ld": {
+      "found": false,
+      "types": [],
+      "has_headline": false,
+      "has_date": false,
+      "has_author": false,
+      "has_article_body": false
+    },
+    "dom_selectors": {
+      "title_selector": null,
+      "body_selector": null,
+      "author_selector": "[class*='author']",
+      "date_selector": "[class*='date']"
+    },
+    "image_handling": {
+      "lazy_attrs": [],
+      "cdn_host": "img.caixin.com",
+      "unresizing_rule": null
+    },
+    "notice_dialogs": {
+      "consent_banner": null
+    },
+    "rendering_model": "SSR (Server-Rendered HTML)",
+    "wait_for_selector": null,
+    "notes": []
+  },
+  {
+    "id": 267,
+    "name": "Reforma",
+    "domain": "reforma.com",
+    "type": "mexican_newspaper",
+    "accessible": false,
+    "status_code": 403,
+    "direct_api_available": false,
+    "direct_api_notes": null,
+    "article_url_sampled": null,
+    "json_ld": {
+      "found": false,
+      "types": [],
+      "has_headline": false,
+      "has_date": false,
+      "has_author": false,
+      "has_article_body": false
+    },
+    "dom_selectors": {
+      "title_selector": null,
+      "body_selector": null,
+      "author_selector": null,
+      "date_selector": null
+    },
+    "image_handling": {
+      "lazy_attrs": [],
+      "cdn_host": null,
+      "unresizing_rule": null
+    },
+    "notice_dialogs": {
+      "consent_banner": null
+    },
+    "rendering_model": "SSR",
+    "wait_for_selector": null,
+    "notes": [
+      "Root returned HTTP status 403"
+    ]
+  },
+  {
+    "id": 268,
+    "name": "El Universal Mexico",
+    "domain": "eluniversal.com.mx",
+    "type": "mexican_newspaper",
+    "accessible": true,
+    "status_code": 200,
+    "direct_api_available": false,
+    "direct_api_notes": null,
+    "article_url_sampled": "https://www.eluniversal.com.mx/cartera/inflacion-sube-a-326-en-agosto-alza-llega-tras-4-meses-de-desaceleracion/",
+    "json_ld": {
+      "found": true,
+      "types": [
+        "BreadcrumbList",
+        "NewsArticle"
+      ],
+      "has_headline": true,
+      "has_date": true,
+      "has_author": true,
+      "has_article_body": false
+    },
+    "dom_selectors": {
+      "title_selector": "h1[class*='title']",
+      "body_selector": null,
+      "author_selector": "[class*='author']",
+      "date_selector": "[class*='date']"
+    },
+    "image_handling": {
+      "lazy_attrs": [],
+      "cdn_host": null,
+      "unresizing_rule": null
+    },
+    "notice_dialogs": {
+      "consent_banner": null
+    },
+    "rendering_model": "SSR (Server-Rendered HTML)",
+    "wait_for_selector": null,
+    "notes": []
+  },
+  {
+    "id": 269,
+    "name": "Animal Político",
+    "domain": "animalpolitico.com",
+    "type": "mexican_investigative",
+    "accessible": true,
+    "status_code": 200,
+    "direct_api_available": false,
+    "direct_api_notes": null,
+    "article_url_sampled": "https://animalpolitico.com/",
+    "json_ld": {
+      "found": false,
+      "types": [],
+      "has_headline": false,
+      "has_date": false,
+      "has_author": false,
+      "has_article_body": false
+    },
+    "dom_selectors": {
+      "title_selector": "h1",
+      "body_selector": null,
+      "author_selector": null,
+      "date_selector": null
+    },
+    "image_handling": {
+      "lazy_attrs": [],
+      "cdn_host": null,
+      "unresizing_rule": null
+    },
+    "notice_dialogs": {
+      "consent_banner": null
+    },
+    "rendering_model": "SSR (Server-Rendered HTML)",
+    "wait_for_selector": null,
+    "notes": [
+      "Could not auto-discover article link from root"
+    ]
+  },
+  {
+    "id": 270,
+    "name": "El Tiempo Colombia",
+    "domain": "eltiempo.com",
+    "type": "colombian_newspaper",
+    "accessible": false,
+    "status_code": 403,
+    "direct_api_available": false,
+    "direct_api_notes": null,
+    "article_url_sampled": null,
+    "json_ld": {
+      "found": false,
+      "types": [],
+      "has_headline": false,
+      "has_date": false,
+      "has_author": false,
+      "has_article_body": false
+    },
+    "dom_selectors": {
+      "title_selector": null,
+      "body_selector": null,
+      "author_selector": null,
+      "date_selector": null
+    },
+    "image_handling": {
+      "lazy_attrs": [],
+      "cdn_host": null,
+      "unresizing_rule": null
+    },
+    "notice_dialogs": {
+      "consent_banner": null
+    },
+    "rendering_model": "SSR",
+    "wait_for_selector": null,
+    "notes": [
+      "Root returned HTTP status 403"
+    ]
+  },
+  {
+    "id": 271,
+    "name": "El Espectador",
+    "domain": "elespectador.com",
+    "type": "colombian_newspaper",
+    "accessible": true,
+    "status_code": 200,
+    "direct_api_available": false,
+    "direct_api_notes": null,
+    "article_url_sampled": "https://www.elespectador.com/",
+    "json_ld": {
+      "found": false,
+      "types": [],
+      "has_headline": false,
+      "has_date": false,
+      "has_author": false,
+      "has_article_body": false
+    },
+    "dom_selectors": {
+      "title_selector": "h1",
+      "body_selector": "div.entry-content",
+      "author_selector": "[class*='author']",
+      "date_selector": "[class*='date']"
+    },
+    "image_handling": {
+      "lazy_attrs": [],
+      "cdn_host": null,
+      "unresizing_rule": null
+    },
+    "notice_dialogs": {
+      "consent_banner": null
+    },
+    "rendering_model": "SSR (Server-Rendered HTML)",
+    "wait_for_selector": "div.entry-content",
+    "notes": [
+      "Could not auto-discover article link from root"
+    ]
+  },
+  {
+    "id": 272,
+    "name": "La Nación Argentina",
+    "domain": "lanacion.com.ar",
+    "type": "argentine_newspaper",
+    "accessible": true,
+    "status_code": 200,
+    "direct_api_available": false,
+    "direct_api_notes": null,
+    "article_url_sampled": "https://www.lanacion.com.ar/propiedades/casas-y-departamentos/credito-hipotecario-la-alianza-entre-una-desarrolladora-y-un-banco-para-financiar-hasta-el-80-a-20-nid09092026/",
+    "json_ld": {
+      "found": true,
+      "types": [
+        "NewsArticle",
+        "NewsMediaOrganization",
+        "WebSite",
+        "BreadcrumbList"
+      ],
+      "has_headline": true,
+      "has_date": true,
+      "has_author": true,
+      "has_article_body": true
+    },
+    "dom_selectors": {
+      "title_selector": "h1[class*='title']",
+      "body_selector": "main",
+      "author_selector": "[class*='author']",
+      "date_selector": "time[datetime]"
+    },
+    "image_handling": {
+      "lazy_attrs": [
+        "srcset"
+      ],
+      "cdn_host": null,
+      "unresizing_rule": null
+    },
+    "notice_dialogs": {
+      "consent_banner": null
+    },
+    "rendering_model": "SSR (Server-Rendered HTML)",
+    "wait_for_selector": "main",
+    "notes": []
+  },
+  {
+    "id": 273,
+    "name": "El Mercurio Chile",
+    "domain": "emol.com",
+    "type": "chilean_newspaper",
+    "accessible": true,
+    "status_code": 200,
+    "direct_api_available": false,
+    "direct_api_notes": null,
+    "article_url_sampled": "https://www.emol.com/noticias/Nacional/2026/09/06/1210714/programacion-segunda-semana-septiembre-emoltv.html",
+    "json_ld": {
+      "found": false,
+      "types": [],
+      "has_headline": false,
+      "has_date": false,
+      "has_author": false,
+      "has_article_body": false
+    },
+    "dom_selectors": {
+      "title_selector": "h1",
+      "body_selector": null,
+      "author_selector": null,
+      "date_selector": null
+    },
+    "image_handling": {
+      "lazy_attrs": [],
+      "cdn_host": null,
+      "unresizing_rule": null
+    },
+    "notice_dialogs": {
+      "consent_banner": null
+    },
+    "rendering_model": "SSR (Server-Rendered HTML)",
+    "wait_for_selector": null,
+    "notes": []
+  },
+  {
+    "id": 274,
+    "name": "El Comercio Peru",
+    "domain": "elcomercio.pe",
+    "type": "peruvian_newspaper",
+    "accessible": true,
+    "status_code": 200,
+    "direct_api_available": false,
+    "direct_api_notes": null,
+    "article_url_sampled": "https://elcomercio.pe/lima/personajes/operacion-chavin-de-huantar-la-ejecucion-fue-impecable-y-se-trato-de-un-acto-de-unidad-nacional-a-28-anos-de-la-operacion-chavin-de-huantar-hablan-sus-protagonistas-noticia/",
+    "json_ld": {
+      "found": true,
+      "types": [
+        "Organization",
+        "NewsMediaOrganization",
+        "NewsArticle",
+        "ItemList",
+        "BreadcrumbList"
+      ],
+      "has_headline": true,
+      "has_date": true,
+      "has_author": true,
+      "has_article_body": true
+    },
+    "dom_selectors": {
+      "title_selector": "h1",
+      "body_selector": null,
+      "author_selector": "[class*='author']",
+      "date_selector": "time[datetime]"
+    },
+    "image_handling": {
+      "lazy_attrs": [
+        "data-src"
+      ],
+      "cdn_host": "cdna.elcomercio.pe",
+      "unresizing_rule": null
+    },
+    "notice_dialogs": {
+      "consent_banner": null
+    },
+    "rendering_model": "SSR (Server-Rendered HTML)",
+    "wait_for_selector": null,
+    "notes": []
+  },
+  {
+    "id": 275,
+    "name": "O Globo",
+    "domain": "oglobo.globo.com",
+    "type": "brazilian_newspaper",
+    "accessible": true,
+    "status_code": 200,
+    "direct_api_available": false,
+    "direct_api_notes": null,
+    "article_url_sampled": "https://oglobo.globo.com/blogs/lauro-jardim/post/2026/09/por-que-fachin-cancelou-sessao-do-plenario-do-stf-em-meio-a-guerra-de-decisoes.ghtml",
+    "json_ld": {
+      "found": false,
+      "types": [],
+      "has_headline": false,
+      "has_date": false,
+      "has_author": false,
+      "has_article_body": false
+    },
+    "dom_selectors": {
+      "title_selector": "h1[class*='title']",
+      "body_selector": "article",
+      "author_selector": null,
+      "date_selector": "time[datetime]"
+    },
+    "image_handling": {
+      "lazy_attrs": [],
+      "cdn_host": "s2.glbimg.com",
+      "unresizing_rule": null
+    },
+    "notice_dialogs": {
+      "consent_banner": null
+    },
+    "rendering_model": "SSR (Server-Rendered HTML)",
+    "wait_for_selector": "article",
+    "notes": []
+  },
+  {
+    "id": 276,
+    "name": "Página 12",
+    "domain": "pagina12.com.ar",
+    "type": "argentine_newspaper",
+    "accessible": true,
+    "status_code": 200,
+    "direct_api_available": false,
+    "direct_api_notes": null,
+    "article_url_sampled": "https://www.pagina12.com.ar/2026/09/09/dolar-blue-dolar-hoy-a-cuanto-cotizan-el-miercoles-9-de-septiembre-de-2026/",
+    "json_ld": {
+      "found": true,
+      "types": [
+        "Organization",
+        "BreadcrumbList",
+        "LiveBlogPosting"
+      ],
+      "has_headline": true,
+      "has_date": false,
+      "has_author": true,
+      "has_article_body": false
+    },
+    "dom_selectors": {
+      "title_selector": "h1",
+      "body_selector": "main",
+      "author_selector": "[class*='author']",
+      "date_selector": "time[datetime]"
+    },
+    "image_handling": {
+      "lazy_attrs": [],
+      "cdn_host": null,
+      "unresizing_rule": null
+    },
+    "notice_dialogs": {
+      "consent_banner": null
+    },
+    "rendering_model": "SSR (Server-Rendered HTML)",
+    "wait_for_selector": "main",
+    "notes": []
+  },
+  {
+    "id": 277,
+    "name": "News24 South Africa",
+    "domain": "news24.com",
+    "type": "south_african_news",
+    "accessible": true,
+    "status_code": 200,
+    "direct_api_available": false,
+    "direct_api_notes": null,
+    "article_url_sampled": "https://www.news24.com/news24/southafrica/news/contact-news24s-public-editor-with-reader-complaints-20180212",
+    "json_ld": {
+      "found": true,
+      "types": [
+        "BreadcrumbList",
+        "NewsArticle"
+      ],
+      "has_headline": true,
+      "has_date": true,
+      "has_author": true,
+      "has_article_body": false
+    },
+    "dom_selectors": {
+      "title_selector": "h1[class*='title']",
+      "body_selector": "div.article__body",
+      "author_selector": null,
+      "date_selector": "[class*='date']"
+    },
+    "image_handling": {
+      "lazy_attrs": [],
+      "cdn_host": "cdn.24.co.za",
+      "unresizing_rule": null
+    },
+    "notice_dialogs": {
+      "consent_banner": null
+    },
+    "rendering_model": "SSR (Server-Rendered HTML)",
+    "wait_for_selector": "div.article__body",
+    "notes": []
+  },
+  {
+    "id": 278,
+    "name": "Mail & Guardian",
+    "domain": "mg.co.za",
+    "type": "south_african_investigative",
+    "accessible": true,
+    "status_code": 200,
+    "direct_api_available": false,
+    "direct_api_notes": null,
+    "article_url_sampled": "https://mg.co.za/news/",
+    "json_ld": {
+      "found": true,
+      "types": [
+        "NewsArticle",
+        "BreadcrumbList"
+      ],
+      "has_headline": true,
+      "has_date": true,
+      "has_author": true,
+      "has_article_body": false
+    },
+    "dom_selectors": {
+      "title_selector": null,
+      "body_selector": null,
+      "author_selector": "[class*='byline']",
+      "date_selector": "time[datetime]"
+    },
+    "image_handling": {
+      "lazy_attrs": [
+        "srcset"
+      ],
+      "cdn_host": null,
+      "unresizing_rule": null
+    },
+    "notice_dialogs": {
+      "consent_banner": null
+    },
+    "rendering_model": "SSR (Server-Rendered HTML)",
+    "wait_for_selector": null,
+    "notes": []
+  },
+  {
+    "id": 279,
+    "name": "Premium Times Nigeria",
+    "domain": "premiumtimesng.com",
+    "type": "nigerian_investigative",
+    "accessible": true,
+    "status_code": 200,
+    "direct_api_available": false,
+    "direct_api_notes": null,
+    "article_url_sampled": "https://www.premiumtimesng.com/investigationspecial-reports/907430-special-report-why-young-nigerians-are-losing-faith-in-elections.html",
+    "json_ld": {
+      "found": false,
+      "types": [],
+      "has_headline": false,
+      "has_date": false,
+      "has_author": false,
+      "has_article_body": false
+    },
+    "dom_selectors": {
+      "title_selector": "h1[class*='title']",
+      "body_selector": "div.entry-content",
+      "author_selector": "[class*='author']",
+      "date_selector": "[class*='date']"
+    },
+    "image_handling": {
+      "lazy_attrs": [
+        "srcset",
+        "data-src"
+      ],
+      "cdn_host": "media.premiumtimesng.com",
+      "unresizing_rule": null
+    },
+    "notice_dialogs": {
+      "consent_banner": null
+    },
+    "rendering_model": "SSR (Server-Rendered HTML)",
+    "wait_for_selector": "div.entry-content",
+    "notes": []
+  },
+  {
+    "id": 280,
+    "name": "Daily Nation Kenya",
+    "domain": "nation.africa",
+    "type": "east_african_daily",
+    "accessible": true,
+    "status_code": 200,
+    "direct_api_available": false,
+    "direct_api_notes": null,
+    "article_url_sampled": "https://nation.africa/kenya/news/live",
+    "json_ld": {
+      "found": true,
+      "types": [
+        "Organization",
+        "WebPage",
+        "BreadcrumbList"
+      ],
+      "has_headline": false,
+      "has_date": false,
+      "has_author": false,
+      "has_article_body": false
+    },
+    "dom_selectors": {
+      "title_selector": null,
+      "body_selector": null,
+      "author_selector": null,
+      "date_selector": "time[datetime]"
+    },
+    "image_handling": {
+      "lazy_attrs": [],
+      "cdn_host": null,
+      "unresizing_rule": null
+    },
+    "notice_dialogs": {
+      "consent_banner": null
+    },
+    "rendering_model": "SSR (Server-Rendered HTML)",
+    "wait_for_selector": null,
+    "notes": []
+  },
+  {
+    "id": 281,
+    "name": "The Africa Report",
+    "domain": "theafricareport.com",
+    "type": "pan_african_politics",
+    "accessible": false,
+    "status_code": 403,
+    "direct_api_available": false,
+    "direct_api_notes": null,
+    "article_url_sampled": null,
+    "json_ld": {
+      "found": false,
+      "types": [],
+      "has_headline": false,
+      "has_date": false,
+      "has_author": false,
+      "has_article_body": false
+    },
+    "dom_selectors": {
+      "title_selector": null,
+      "body_selector": null,
+      "author_selector": null,
+      "date_selector": null
+    },
+    "image_handling": {
+      "lazy_attrs": [],
+      "cdn_host": null,
+      "unresizing_rule": null
+    },
+    "notice_dialogs": {
+      "consent_banner": null
+    },
+    "rendering_model": "SSR",
+    "wait_for_selector": null,
+    "notes": [
+      "Root returned HTTP status 403"
+    ]
+  },
+  {
+    "id": 282,
+    "name": "Ahram Online",
+    "domain": "english.ahram.org.eg",
+    "type": "egyptian_newspaper",
+    "accessible": true,
+    "status_code": 200,
+    "direct_api_available": false,
+    "direct_api_notes": null,
+    "article_url_sampled": "https://english.ahram.org.eg/NewsContent/50/1203/576262/AlAhram-Weekly/World/Towards-a-wider-energy-war-with-Iran.aspx",
+    "json_ld": {
+      "found": false,
+      "types": [],
+      "has_headline": false,
+      "has_date": false,
+      "has_author": false,
+      "has_article_body": false
+    },
+    "dom_selectors": {
+      "title_selector": null,
+      "body_selector": null,
+      "author_selector": null,
+      "date_selector": null
+    },
+    "image_handling": {
+      "lazy_attrs": [],
+      "cdn_host": null,
+      "unresizing_rule": null
+    },
+    "notice_dialogs": {
+      "consent_banner": null
+    },
+    "rendering_model": "SSR (Server-Rendered HTML)",
+    "wait_for_selector": null,
+    "notes": []
+  },
+  {
+    "id": 283,
+    "name": "L'Orient Today",
+    "domain": "today.lorientlejour.com",
+    "type": "lebanese_independent",
+    "accessible": false,
+    "status_code": 403,
+    "direct_api_available": false,
+    "direct_api_notes": null,
+    "article_url_sampled": null,
+    "json_ld": {
+      "found": false,
+      "types": [],
+      "has_headline": false,
+      "has_date": false,
+      "has_author": false,
+      "has_article_body": false
+    },
+    "dom_selectors": {
+      "title_selector": null,
+      "body_selector": null,
+      "author_selector": null,
+      "date_selector": null
+    },
+    "image_handling": {
+      "lazy_attrs": [],
+      "cdn_host": null,
+      "unresizing_rule": null
+    },
+    "notice_dialogs": {
+      "consent_banner": null
+    },
+    "rendering_model": "SSR",
+    "wait_for_selector": null,
+    "notes": [
+      "Root returned HTTP status 403"
+    ]
+  },
+  {
+    "id": 284,
+    "name": "Asharq Al-Awsat",
+    "domain": "english.aawsat.com",
+    "type": "pan_arab_newspaper",
+    "accessible": true,
+    "status_code": 200,
+    "direct_api_available": false,
+    "direct_api_notes": null,
+    "article_url_sampled": "https://english.aawsat.com/node/105306",
+    "json_ld": {
+      "found": false,
+      "types": [],
+      "has_headline": false,
+      "has_date": false,
+      "has_author": false,
+      "has_article_body": false
+    },
+    "dom_selectors": {
+      "title_selector": null,
+      "body_selector": null,
+      "author_selector": null,
+      "date_selector": "[class*='date']"
+    },
+    "image_handling": {
+      "lazy_attrs": [],
+      "cdn_host": null,
+      "unresizing_rule": null
+    },
+    "notice_dialogs": {
+      "consent_banner": null
+    },
+    "rendering_model": "SSR (Server-Rendered HTML)",
+    "wait_for_selector": null,
+    "notes": []
+  },
+  {
+    "id": 285,
+    "name": "The Spectator",
+    "domain": "spectator.co.uk",
+    "type": "conservative_weekly",
+    "accessible": true,
+    "status_code": 200,
+    "direct_api_available": false,
+    "direct_api_notes": null,
+    "article_url_sampled": "https://www.spectator.co.uk/",
+    "json_ld": {
+      "found": true,
+      "types": [
+        "WebPage"
+      ],
+      "has_headline": true,
+      "has_date": true,
+      "has_author": true,
+      "has_article_body": false
+    },
+    "dom_selectors": {
+      "title_selector": null,
+      "body_selector": "main",
+      "author_selector": "[class*='author']",
+      "date_selector": null
+    },
+    "image_handling": {
+      "lazy_attrs": [
+        "srcset"
+      ],
+      "cdn_host": null,
+      "unresizing_rule": null
+    },
+    "notice_dialogs": {
+      "consent_banner": null
+    },
+    "rendering_model": "SSR (Server-Rendered HTML)",
+    "wait_for_selector": "main",
+    "notes": [
+      "Could not auto-discover article link from root"
+    ]
+  },
+  {
+    "id": 286,
+    "name": "New Statesman",
+    "domain": "newstatesman.com",
+    "type": "progressive_weekly",
+    "accessible": false,
+    "status_code": 403,
+    "direct_api_available": false,
+    "direct_api_notes": null,
+    "article_url_sampled": null,
+    "json_ld": {
+      "found": false,
+      "types": [],
+      "has_headline": false,
+      "has_date": false,
+      "has_author": false,
+      "has_article_body": false
+    },
+    "dom_selectors": {
+      "title_selector": null,
+      "body_selector": null,
+      "author_selector": null,
+      "date_selector": null
+    },
+    "image_handling": {
+      "lazy_attrs": [],
+      "cdn_host": null,
+      "unresizing_rule": null
+    },
+    "notice_dialogs": {
+      "consent_banner": null
+    },
+    "rendering_model": "SSR",
+    "wait_for_selector": null,
+    "notes": [
+      "Root returned HTTP status 403"
+    ]
+  },
+  {
+    "id": 287,
+    "name": "Prospect Magazine",
+    "domain": "prospectmagazine.co.uk",
+    "type": "current_affairs",
+    "accessible": true,
+    "status_code": 200,
+    "direct_api_available": false,
+    "direct_api_notes": null,
+    "article_url_sampled": "https://www.prospectmagazine.co.uk/",
+    "json_ld": {
+      "found": false,
+      "types": [],
+      "has_headline": false,
+      "has_date": false,
+      "has_author": false,
+      "has_article_body": false
+    },
+    "dom_selectors": {
+      "title_selector": "h1",
+      "body_selector": null,
+      "author_selector": "[class*='author']",
+      "date_selector": null
+    },
+    "image_handling": {
+      "lazy_attrs": [],
+      "cdn_host": "media.prospectmagazine.co.uk",
+      "unresizing_rule": null
+    },
+    "notice_dialogs": {
+      "consent_banner": null
+    },
+    "rendering_model": "SSR (Server-Rendered HTML)",
+    "wait_for_selector": null,
+    "notes": [
+      "Could not auto-discover article link from root"
+    ]
+  },
+  {
+    "id": 288,
+    "name": "UnHerd",
+    "domain": "unherd.com",
+    "type": "independent_opinion",
+    "accessible": true,
+    "status_code": 200,
+    "direct_api_available": false,
+    "direct_api_notes": null,
+    "article_url_sampled": "https://unherd.com/2026/09/inside-afghanistans-terror-schools/",
+    "json_ld": {
+      "found": true,
+      "types": [
+        "NewsArticle"
+      ],
+      "has_headline": true,
+      "has_date": true,
+      "has_author": true,
+      "has_article_body": false
+    },
+    "dom_selectors": {
+      "title_selector": "h1[class*='headline']",
+      "body_selector": "div.article-body",
+      "author_selector": "[rel='author']",
+      "date_selector": "[class*='time']"
+    },
+    "image_handling": {
+      "lazy_attrs": [],
+      "cdn_host": null,
+      "unresizing_rule": null
+    },
+    "notice_dialogs": {
+      "consent_banner": null
+    },
+    "rendering_model": "SSR (Server-Rendered HTML)",
+    "wait_for_selector": "div.article-body",
+    "notes": []
+  },
+  {
+    "id": 289,
+    "name": "Jacobin",
+    "domain": "jacobin.com",
+    "type": "socialist_political_review",
+    "accessible": true,
+    "status_code": 200,
+    "direct_api_available": false,
+    "direct_api_notes": null,
+    "article_url_sampled": "https://jacobin.com/2026/09/data-centers-opposition-socialists-tech",
+    "json_ld": {
+      "found": false,
+      "types": [],
+      "has_headline": false,
+      "has_date": false,
+      "has_author": false,
+      "has_article_body": false
+    },
+    "dom_selectors": {
+      "title_selector": "h1[class*='title']",
+      "body_selector": "article",
+      "author_selector": "[class*='author']",
+      "date_selector": "time[datetime]"
+    },
+    "image_handling": {
+      "lazy_attrs": [],
+      "cdn_host": "media.jacobin.com",
+      "unresizing_rule": null
+    },
+    "notice_dialogs": {
+      "consent_banner": null
+    },
+    "rendering_model": "SSR (Server-Rendered HTML)",
+    "wait_for_selector": "article",
+    "notes": []
+  },
+  {
+    "id": 290,
+    "name": "Reason",
+    "domain": "reason.com",
+    "type": "libertarian_monthly",
+    "accessible": true,
+    "status_code": 200,
+    "direct_api_available": false,
+    "direct_api_notes": null,
+    "article_url_sampled": "https://reason.com/2026/09/09/why-conservative-republicans-are-worried-about-license-plate-cameras/",
+    "json_ld": {
+      "found": true,
+      "types": [
+        "NewsArticle"
+      ],
+      "has_headline": true,
+      "has_date": true,
+      "has_author": true,
+      "has_article_body": false
+    },
+    "dom_selectors": {
+      "title_selector": "h1[class*='title']",
+      "body_selector": "div.article-body",
+      "author_selector": "[class*='author']",
+      "date_selector": "time[datetime]"
+    },
+    "image_handling": {
+      "lazy_attrs": [],
+      "cdn_host": null,
+      "unresizing_rule": null
+    },
+    "notice_dialogs": {
+      "consent_banner": null
+    },
+    "rendering_model": "SSR (Server-Rendered HTML)",
+    "wait_for_selector": "div.article-body",
+    "notes": []
+  },
+  {
+    "id": 291,
+    "name": "Pitchfork",
+    "domain": "pitchfork.com",
+    "type": "music_culture",
+    "accessible": true,
+    "status_code": 200,
+    "direct_api_available": false,
+    "direct_api_notes": null,
+    "article_url_sampled": "https://pitchfork.com/news/",
+    "json_ld": {
+      "found": true,
+      "types": [
+        "ItemList"
+      ],
+      "has_headline": false,
+      "has_date": false,
+      "has_author": false,
+      "has_article_body": false
+    },
+    "dom_selectors": {
+      "title_selector": null,
+      "body_selector": "main",
+      "author_selector": "[class*='byline']",
+      "date_selector": "[class*='date']"
+    },
+    "image_handling": {
+      "lazy_attrs": [
+        "data-src"
+      ],
+      "cdn_host": "media.pitchfork.com",
+      "unresizing_rule": null
+    },
+    "notice_dialogs": {
+      "consent_banner": null
+    },
+    "rendering_model": "SSR (Server-Rendered HTML)",
+    "wait_for_selector": "main",
+    "notes": []
+  },
+  {
+    "id": 292,
+    "name": "NME",
+    "domain": "nme.com",
+    "type": "music_pop_culture",
+    "accessible": true,
+    "status_code": 200,
+    "direct_api_available": false,
+    "direct_api_notes": null,
+    "article_url_sampled": "https://www.nme.com/news/tv/noel-clarke-charged-with-sexual-offences-including-sexual-assault-voyeurism-and-exposure-3967960",
+    "json_ld": {
+      "found": false,
+      "types": [],
+      "has_headline": false,
+      "has_date": false,
+      "has_author": false,
+      "has_article_body": false
+    },
+    "dom_selectors": {
+      "title_selector": "article h1",
+      "body_selector": "article",
+      "author_selector": null,
+      "date_selector": "time[datetime]"
+    },
+    "image_handling": {
+      "lazy_attrs": [
+        "srcset"
+      ],
+      "cdn_host": null,
+      "unresizing_rule": null
+    },
+    "notice_dialogs": {
+      "consent_banner": null
+    },
+    "rendering_model": "SSR (Server-Rendered HTML)",
+    "wait_for_selector": "article",
+    "notes": []
+  },
+  {
+    "id": 293,
+    "name": "Sankei Shimbun",
+    "domain": "sankei.com",
+    "type": "japanese_national_paper",
+    "accessible": true,
+    "status_code": 200,
+    "direct_api_available": false,
+    "direct_api_notes": null,
+    "article_url_sampled": "https://www.sankei.com/article/20260909-MQY6BXVHA5LV7DWNN2FZEE5DRA/",
+    "json_ld": {
+      "found": true,
+      "types": [
+        "NewsArticle",
+        "BreadcrumbList"
+      ],
+      "has_headline": true,
+      "has_date": true,
+      "has_author": true,
+      "has_article_body": false
+    },
+    "dom_selectors": {
+      "title_selector": "h1[class*='headline']",
+      "body_selector": "div.article-body",
+      "author_selector": null,
+      "date_selector": "time[datetime]"
+    },
+    "image_handling": {
+      "lazy_attrs": [],
+      "cdn_host": null,
+      "unresizing_rule": null
+    },
+    "notice_dialogs": {
+      "consent_banner": null
+    },
+    "rendering_model": "SSR (Server-Rendered HTML)",
+    "wait_for_selector": "div.article-body",
+    "notes": []
+  },
+  {
+    "id": 294,
+    "name": "Tokyo Shimbun",
+    "domain": "tokyo-np.co.jp",
+    "type": "japanese_metro_daily",
+    "accessible": true,
+    "status_code": 200,
+    "direct_api_available": false,
+    "direct_api_notes": null,
+    "article_url_sampled": "https://www.tokyo-np.co.jp/article/512649?ref=top_attention",
+    "json_ld": {
+      "found": true,
+      "types": [
+        "NewsArticle"
+      ],
+      "has_headline": true,
+      "has_date": true,
+      "has_author": true,
+      "has_article_body": false
+    },
+    "dom_selectors": {
+      "title_selector": "h1",
+      "body_selector": "main",
+      "author_selector": null,
+      "date_selector": null
+    },
+    "image_handling": {
+      "lazy_attrs": [],
+      "cdn_host": null,
+      "unresizing_rule": null
+    },
+    "notice_dialogs": {
+      "consent_banner": null
+    },
+    "rendering_model": "SSR (Server-Rendered HTML)",
+    "wait_for_selector": "main",
+    "notes": []
+  },
+  {
+    "id": 295,
+    "name": "Nishinippon Shimbun",
+    "domain": "nishinippon.co.jp",
+    "type": "japanese_regional_daily",
+    "accessible": true,
+    "status_code": 200,
+    "direct_api_available": false,
+    "direct_api_notes": null,
+    "article_url_sampled": "https://www.nishinippon.co.jp/item/1535904/",
+    "json_ld": {
+      "found": false,
+      "types": [],
+      "has_headline": false,
+      "has_date": false,
+      "has_author": false,
+      "has_article_body": false
+    },
+    "dom_selectors": {
+      "title_selector": "article h1",
+      "body_selector": "article",
+      "author_selector": null,
+      "date_selector": "time[datetime]"
+    },
+    "image_handling": {
+      "lazy_attrs": [],
+      "cdn_host": null,
+      "unresizing_rule": null
+    },
+    "notice_dialogs": {
+      "consent_banner": null
+    },
+    "rendering_model": "SSR (Server-Rendered HTML)",
+    "wait_for_selector": "article",
+    "notes": []
+  },
+  {
+    "id": 296,
+    "name": "Kookmin Ilbo",
+    "domain": "kmib.co.kr",
+    "type": "korean_major_daily",
+    "accessible": true,
+    "status_code": 200,
+    "direct_api_available": false,
+    "direct_api_notes": null,
+    "article_url_sampled": "https://www.kmib.co.kr/article/listing.asp?sid1=all",
+    "json_ld": {
+      "found": false,
+      "types": [],
+      "has_headline": false,
+      "has_date": false,
+      "has_author": false,
+      "has_article_body": false
+    },
+    "dom_selectors": {
+      "title_selector": null,
+      "body_selector": null,
+      "author_selector": null,
+      "date_selector": "[class*='date']"
+    },
+    "image_handling": {
+      "lazy_attrs": [],
+      "cdn_host": null,
+      "unresizing_rule": null
+    },
+    "notice_dialogs": {
+      "consent_banner": null
+    },
+    "rendering_model": "SSR (Server-Rendered HTML)",
+    "wait_for_selector": null,
+    "notes": []
+  },
+  {
+    "id": 297,
+    "name": "Munhwa Ilbo",
+    "domain": "munhwa.com",
+    "type": "korean_evening_daily",
+    "accessible": true,
+    "status_code": 200,
+    "direct_api_available": false,
+    "direct_api_notes": null,
+    "article_url_sampled": "https://www.munhwa.com/article/11615720",
+    "json_ld": {
+      "found": true,
+      "types": [
+        "NewsArticle"
+      ],
+      "has_headline": true,
+      "has_date": true,
+      "has_author": true,
+      "has_article_body": false
+    },
+    "dom_selectors": {
+      "title_selector": "h1[class*='title']",
+      "body_selector": "div.article-content",
+      "author_selector": "[class*='byline']",
+      "date_selector": "[class*='date']"
+    },
+    "image_handling": {
+      "lazy_attrs": [
+        "data-src"
+      ],
+      "cdn_host": "wimg.munhwa.com",
+      "unresizing_rule": null
+    },
+    "notice_dialogs": {
+      "consent_banner": null
+    },
+    "rendering_model": "SSR (Server-Rendered HTML)",
+    "wait_for_selector": "div.article-content",
+    "notes": []
+  },
+  {
+    "id": 298,
+    "name": "Seoul Shinmun",
+    "domain": "seoul.co.kr",
+    "type": "korean_oldest_daily",
+    "accessible": true,
+    "status_code": 200,
+    "direct_api_available": false,
+    "direct_api_notes": null,
+    "article_url_sampled": "https://go.seoul.co.kr/news/newsList.php?section=policy_admin",
+    "json_ld": {
+      "found": false,
+      "types": [],
+      "has_headline": false,
+      "has_date": false,
+      "has_author": false,
+      "has_article_body": false
+    },
+    "dom_selectors": {
+      "title_selector": null,
+      "body_selector": null,
+      "author_selector": null,
+      "date_selector": null
+    },
+    "image_handling": {
+      "lazy_attrs": [],
+      "cdn_host": null,
+      "unresizing_rule": null
+    },
+    "notice_dialogs": {
+      "consent_banner": null
+    },
+    "rendering_model": "SSR (Server-Rendered HTML)",
+    "wait_for_selector": null,
+    "notes": []
+  },
+  {
+    "id": 299,
+    "name": "Financial News Korea",
+    "domain": "fnnews.com",
+    "type": "korean_financial_daily",
+    "accessible": true,
+    "status_code": 200,
+    "direct_api_available": false,
+    "direct_api_notes": null,
+    "article_url_sampled": "https://www.fnnews.com/news/202609092309235355",
+    "json_ld": {
+      "found": false,
+      "types": [],
+      "has_headline": false,
+      "has_date": false,
+      "has_author": false,
+      "has_article_body": false
+    },
+    "dom_selectors": {
+      "title_selector": "h1[class*='title']",
+      "body_selector": "article",
+      "author_selector": ".reporter",
+      "date_selector": "time[datetime]"
+    },
+    "image_handling": {
+      "lazy_attrs": [],
+      "cdn_host": null,
+      "unresizing_rule": null
+    },
+    "notice_dialogs": {
+      "consent_banner": null
+    },
+    "rendering_model": "SSR (Server-Rendered HTML)",
+    "wait_for_selector": "article",
+    "notes": []
+  },
+  {
+    "id": 300,
+    "name": "ZDNet Korea",
+    "domain": "zdnet.co.kr",
+    "type": "korean_enterprise_tech",
+    "accessible": true,
+    "status_code": 200,
+    "direct_api_available": false,
+    "direct_api_notes": null,
+    "article_url_sampled": "https://zdnet.co.kr/news/?lstcode=0000&page=1",
+    "json_ld": {
+      "found": false,
+      "types": [],
+      "has_headline": false,
+      "has_date": false,
+      "has_author": false,
+      "has_article_body": false
+    },
+    "dom_selectors": {
+      "title_selector": null,
+      "body_selector": null,
+      "author_selector": "[class*='byline']",
+      "date_selector": null
+    },
+    "image_handling": {
+      "lazy_attrs": [
+        "data-src"
+      ],
+      "cdn_host": null,
+      "unresizing_rule": null
+    },
+    "notice_dialogs": {
+      "consent_banner": null
+    },
+    "rendering_model": "SSR (Server-Rendered HTML)",
+    "wait_for_selector": null,
+    "notes": []
+  }
+]
