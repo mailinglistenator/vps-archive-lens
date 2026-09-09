@@ -7,6 +7,7 @@ import logging
 import re
 import socket
 import ipaddress
+import html
 import shutil
 import subprocess
 from datetime import datetime, timezone, timedelta
@@ -1858,7 +1859,36 @@ def dashboard(request: Request, response: Response, token: str = Query(None)):
     current_username_js = json.dumps(current_user.username)
 
     if is_admin:
-        admin_section_html = """
+        rendered_rows = []
+        for u in user_manager.list_users():
+            is_me = u.username.lower() == current_user.username.lower()
+            role_badge = (
+                '<span style="background: #1e3a8a; color: #93c5fd; padding: 2px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: 700;">ADMIN</span>'
+                if u.role == "admin"
+                else '<span style="background: #334155; color: #cbd5e1; padding: 2px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: 600;">USER</span>'
+            )
+            masked_token = (u.token[:6] + "..." + u.token[-4:]) if u.token and len(u.token) > 10 else (u.token or "")
+            action_btn = (
+                '<span style="color: var(--text-muted); font-size: 0.8rem; font-style: italic;">(Current)</span>'
+                if is_me
+                else f'<button class="action-btn action-delete" onclick="revokeUser(\'{html.escape(u.username)}\')">🗑️ Revoke</button>'
+            )
+            created_str = u.created_at[:10] if u.created_at else "--"
+            rendered_rows.append(f"""
+              <tr style="border-bottom: 1px solid var(--border);">
+                <td style="padding: 10px 14px; font-weight: 600; color: #f8fafc;">{html.escape(u.username)}</td>
+                <td style="padding: 10px 14px;">{role_badge}</td>
+                <td style="padding: 10px 14px; font-family: monospace; font-size: 0.85rem; color: #10b981;">
+                  <span title="{html.escape(u.token)}">{html.escape(masked_token)}</span>
+                  <button class="action-btn" style="margin-left: 6px; padding: 2px 6px; font-size: 0.75rem;" onclick="navigator.clipboard.writeText('{html.escape(u.token)}').then(()=>alert('Token copied!'))">📋</button>
+                </td>
+                <td style="padding: 10px 14px; color: var(--text-muted); font-size: 0.82rem;">{created_str}</td>
+                <td style="padding: 10px 14px;">{action_btn}</td>
+              </tr>
+            """)
+        user_rows_html = "".join(rendered_rows) if rendered_rows else '<tr><td colspan="5" style="padding: 20px; text-align: center; color: var(--text-muted);">No users found.</td></tr>'
+
+        admin_section_html = f"""
           <!-- Admin User Management Card -->
           <div class="hub-card">
             <h3 style="color: #cbd5e1; margin-top: 0; margin-bottom: 8px;">👥 Manage Users & Friends</h3>
@@ -1898,7 +1928,7 @@ def dashboard(request: Request, response: Response, token: str = Query(None)):
                 </tr>
               </thead>
               <tbody id="usersTableBody">
-                <tr><td colspan="5" style="padding: 20px; text-align: center; color: var(--text-muted);">Loading users...</td></tr>
+                {user_rows_html}
               </tbody>
             </table>
           </div>
@@ -2427,6 +2457,16 @@ def dashboard(request: Request, response: Response, token: str = Query(None)):
         function logoutUser() {{
           document.cookie = "lens_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
           window.location.href = "/";
+        }}
+
+        function escapeHtml(str) {{
+          if (str === null || str === undefined) return '';
+          return String(str)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#039;');
         }}
 
         async function loadUsersList() {{
