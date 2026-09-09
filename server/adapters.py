@@ -347,7 +347,7 @@ def extract_msn(url: str, soup: BeautifulSoup, raw_html: str, fetch_network: boo
     Uses assets.msn.com/content/view/v2/Detail/{locale}/{id} endpoint when available,
     falling back to Web Component / article DOM parsing.
     """
-    match = re.search(r"/ar-([a-zA-Z0-9]+)", url)
+    match = re.search(r"/(?:ar|ss|vi)-([a-zA-Z0-9]+)", url) or re.search(r"/([a-zA-Z0-9]{8,})", url)
     if match and fetch_network:
         article_id = match.group(1)
         loc_match = re.search(r"msn\.com/([a-z]{2}-[a-z]{2})/", url.lower())
@@ -360,12 +360,46 @@ def extract_msn(url: str, soup: BeautifulSoup, raw_html: str, fetch_network: boo
                 if resp.status_code == 200:
                     data = resp.json()
                     title = clean_text(data.get("title", ""))
+
+                    # Map image resources
+                    img_map = {}
+                    for res in data.get("imageResources", []):
+                        if isinstance(res, dict) and res.get("cmsId") and res.get("url"):
+                            img_map[res["cmsId"]] = res["url"]
+
                     body = data.get("body", "") or data.get("subline", "")
-                    if body and not body.startswith("<p>"):
-                        body_html = text_to_semantic_html(body)
-                    else:
+                    if body:
+                        # Replace MSN cmsId placeholders with real image URLs
+                        for cms_id, u in img_map.items():
+                            body = re.sub(r'<img[^>]*data-document-id="' + re.escape(cms_id) + r'"[^>]*>', f'<img src="{u}" />', body)
+                            body = body.replace(f'data-document-id="{cms_id}"', f'src="{u}"')
                         body_soup = BeautifulSoup(body, "html.parser")
                         body_html = sanitize_element_to_html(body_soup)
+                    elif data.get("slides"):
+                        slides_parts = []
+                        for s in data["slides"]:
+                            stitle = s.get("title", "")
+                            sbody = s.get("body", "")
+                            simg = s.get("image", {})
+                            simg_url = simg.get("url", "") if isinstance(simg, dict) else ""
+                            scaption = simg.get("caption", "") if isinstance(simg, dict) else ""
+                            part = ['<div class="slide-item">']
+                            if simg_url:
+                                part.append(f'<img src="{simg_url}" />')
+                            if stitle:
+                                part.append(f'<h3>{html.escape(stitle)}</h3>')
+                            if sbody:
+                                part.append(sbody)
+                            elif scaption:
+                                part.append(scaption)
+                            part.append('</div>')
+                            slides_parts.append("\n".join(part))
+                        slides_soup = BeautifulSoup("\n".join(slides_parts), "html.parser")
+                        body_html = sanitize_element_to_html(slides_soup)
+                    elif data.get("abstract"):
+                        body_html = f"<p>{html.escape(data['abstract'])}</p>"
+                    else:
+                        body_html = ""
 
                     authors = []
                     for prov in data.get("provider", []) if isinstance(data.get("provider"), list) else [data.get("provider")]:
@@ -376,7 +410,9 @@ def extract_msn(url: str, soup: BeautifulSoup, raw_html: str, fetch_network: boo
                             authors.append(clean_text(auth["name"]))
 
                     img_url = ""
-                    if data.get("image") and isinstance(data["image"], dict):
+                    if data.get("imageResources") and isinstance(data["imageResources"], list) and len(data["imageResources"]) > 0:
+                        img_url = data["imageResources"][0].get("url", "")
+                    elif data.get("image") and isinstance(data["image"], dict):
                         img_url = data["image"].get("url", "")
 
                     return {
@@ -385,7 +421,7 @@ def extract_msn(url: str, soup: BeautifulSoup, raw_html: str, fetch_network: boo
                         "authors": authors,
                         "published_date": data.get("publishedDateTime", ""),
                         "hero_image_url": img_url,
-                        "canonical_url": data.get("canonicalUrl", url),
+                        "canonical_url": data.get("sourceHref") or data.get("canonicalUrl", url),
                         "site_name": "MSN News",
                     }
         except Exception as e:
