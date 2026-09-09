@@ -19,7 +19,7 @@ from fastapi import FastAPI, Request, HTTPException, Query, Depends, Response
 from fastapi.responses import HTMLResponse, JSONResponse, FileResponse, RedirectResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from typing import Optional
+from typing import Optional, List
 from playwright.async_api import async_playwright
 from bs4 import BeautifulSoup
 import trafilatura
@@ -27,16 +27,20 @@ import markdown
 from dotenv import load_dotenv
 
 load_dotenv(Path(__file__).parent / ".env")
+load_dotenv(Path(__file__).resolve().parent.parent / ".env")
+
+from server.users import UserManager, UserRecord
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 logger = logging.getLogger("archiver")
 
 PORT = int(os.getenv("PORT", "8888"))
 API_TOKEN = os.getenv("API_TOKEN", "")
-STORAGE_DIR = Path(os.getenv("STORAGE_DIR", "/home/hermes/personal-archiver/snapshots"))
-IMAGE_CACHE_DIR = STORAGE_DIR / "image_cache"
-MEDIA_STORAGE_DIR = Path(os.getenv("MEDIA_STORAGE_DIR", "/home/hermes/personal-archiver/videos"))
-COOKIES_FILE = Path(os.getenv("YOUTUBE_COOKIES_PATH", "/home/hermes/personal-archiver/cookies.txt"))
+DEFAULT_BASE_DIR = Path("/home/hermes/personal-archiver") if Path("/home/hermes/personal-archiver").exists() else Path(".")
+STORAGE_DIR = Path(os.getenv("STORAGE_DIR", str(DEFAULT_BASE_DIR / "snapshots"))).resolve()
+IMAGE_CACHE_DIR = (STORAGE_DIR / "image_cache").resolve()
+MEDIA_STORAGE_DIR = Path(os.getenv("MEDIA_STORAGE_DIR", str(DEFAULT_BASE_DIR / "videos"))).resolve()
+COOKIES_FILE = Path(os.getenv("YOUTUBE_COOKIES_PATH", str(DEFAULT_BASE_DIR / "cookies.txt"))).resolve()
 BASE_URL = os.getenv("BASE_URL", "http://localhost:8888").rstrip("/")
 MAX_IMAGE_SIZE = int(os.getenv("MAX_IMAGE_SIZE_BYTES", str(20 * 1024 * 1024)))  # 20MB limit
 MAX_CONCURRENT_ARCHIVES = int(os.getenv("MAX_CONCURRENT_ARCHIVES", "2"))
@@ -53,6 +57,8 @@ def get_archive_semaphore() -> asyncio.Semaphore:
 STORAGE_DIR.mkdir(parents=True, exist_ok=True)
 IMAGE_CACHE_DIR.mkdir(parents=True, exist_ok=True)
 MEDIA_STORAGE_DIR.mkdir(parents=True, exist_ok=True)
+
+user_manager = UserManager(storage_dir=STORAGE_DIR)
 
 app = FastAPI(title="Personal Web Archiver", version="1.0.0")
 
@@ -148,31 +154,39 @@ class SafeRedirectHandler(urllib.request.HTTPRedirectHandler):
         validate_url_safety(newurl)
         return super().redirect_request(req, fp, code, msg, headers, newurl)
 
-def set_auth_cookie_if_valid(response: Response, token: Optional[str]):
-    if token and API_TOKEN and token.strip() == API_TOKEN:
+def set_auth_cookie_if_valid(response: Response, token: Optional[str]) -> Optional[UserRecord]:
+    if not token:
+        return None
+    user = user_manager.authenticate(token)
+    if user and user.token:
         response.set_cookie(
             key="lens_token",
-            value=token.strip(),
+            value=user.token,
             max_age=2592000,
             httponly=True,
             samesite="lax",
             secure=False
         )
+    return user
 
-def verify_token(req: Request, token: str = Query(None)):
+def verify_token(req: Request, token: str = Query(None)) -> UserRecord:
     auth_header = req.headers.get("Authorization")
+    x_api_token = req.headers.get("X-API-Token")
     cookie_token = req.cookies.get("lens_token")
     provided_token = None
     if auth_header and auth_header.startswith("Bearer "):
         provided_token = auth_header.split(" ", 1)[1].strip()
+    elif x_api_token:
+        provided_token = x_api_token.strip()
     elif token:
         provided_token = token.strip()
     elif cookie_token:
         provided_token = cookie_token.strip()
     
-    if API_TOKEN and provided_token != API_TOKEN:
+    user = user_manager.authenticate(provided_token)
+    if not user:
         raise HTTPException(status_code=401, detail="Unauthorized: Invalid or missing API token")
-    return True
+    return user
 
 # Cache recent captures in memory for 10 minutes to avoid duplicate work
 recent_cache = {}
@@ -213,7 +227,7 @@ def is_blocked_response(status_code: int, html: str) -> bool:
     ]
     return any(sig in lowered for sig in block_signatures)
 
-def sanitize_and_save_snapshot(raw_html: str, resolved_url: str, target_url: str, now: datetime = None) -> dict:
+def sanitize_and_save_snapshot(raw_html: str, resolved_url: str, target_url: str, now: datetime = None, created_by: str = "admin", title: str = "") -> dict:
     if now is None:
         now = datetime.now(timezone.utc)
     url_hash = hashlib.sha256(target_url.encode()).hexdigest()[:16]
@@ -429,18 +443,31 @@ def sanitize_and_save_snapshot(raw_html: str, resolved_url: str, target_url: str
 
     logger.info(f"Snapshot successfully saved: {filepath} ({len(final_html)} bytes)")
 
+    page_title_elem = soup.find("title")
+    final_title = title or (page_title_elem.get_text(strip=True) if page_title_elem else target_url)
+
     meta = {
         "id": snapshot_id,
+        "snapshot_id": snapshot_id,
         "url": target_url,
+        "title": final_title,
         "filename": f"{snapshot_id}.html",
         "created_at": now.isoformat(),
+        "created_by": created_by or "admin",
         "view_url": f"{BASE_URL}/view/{snapshot_id}",
         "reader_url": f"{BASE_URL}/reader/{snapshot_id}"
     }
-    recent_cache[target_url] = meta
+    meta_path = STORAGE_DIR / f"{snapshot_id}.meta.json"
+    try:
+        with open(meta_path, "w", encoding="utf-8") as f_meta:
+            json.dump(meta, f_meta, indent=2)
+    except Exception as e:
+        logger.warning(f"Could not write snapshot meta: {e}")
+
+    recent_cache[(target_url, meta.get("created_by", "admin").lower())] = meta
     return meta
 
-async def capture_page(target_url: str) -> dict:
+async def capture_page(target_url: str, created_by: str = "admin") -> dict:
     validate_url_safety(target_url)
 
     url_hash = hashlib.sha256(target_url.encode()).hexdigest()[:16]
@@ -541,15 +568,18 @@ async def capture_page(target_url: str) -> dict:
             )
         raise HTTPException(status_code=502, detail="Failed to fetch page: All bypass profiles were blocked by the destination server.")
 
-    return sanitize_and_save_snapshot(raw_html, resolved_url, target_url, now)
+    return sanitize_and_save_snapshot(raw_html, resolved_url, target_url, now, created_by=created_by)
 
 async def prune_old_snapshots(days: int = 90):
     try:
         now_ts = time.time()
         max_age_secs = days * 86400
         for f in STORAGE_DIR.glob("*.html"):
-            if now_ts - f.stat().st_mtime > max_age_secs:
-                f.unlink(missing_ok=True)
+            if not f.stem.endswith("_reader"):
+                if now_ts - f.stat().st_mtime > max_age_secs:
+                    f.unlink(missing_ok=True)
+                    (STORAGE_DIR / f"{f.stem}.meta.json").unlink(missing_ok=True)
+                    (STORAGE_DIR / f"{f.stem}_reader.html").unlink(missing_ok=True)
     except Exception as e:
         logger.warning(f"Snapshot pruning failed: {e}")
 
@@ -560,12 +590,12 @@ class PushArchiveRequest(BaseModel):
 
 @app.post("/archive/push")
 async def push_archive(data: PushArchiveRequest, request: Request, response: Response, token: str = Query(None)):
-    verify_token(request, token)
-    set_auth_cookie_if_valid(response, token)
+    user = verify_token(request, token)
+    set_auth_cookie_if_valid(response, token or user.token)
     if not data.html or not data.url:
         raise HTTPException(status_code=400, detail="Missing target URL or HTML payload")
     
-    meta = sanitize_and_save_snapshot(data.html, data.url, data.url)
+    meta = sanitize_and_save_snapshot(data.html, data.url, data.url, created_by=user.username, title=data.title or "")
     asyncio.create_task(prune_old_snapshots())
     return meta
 
@@ -582,15 +612,16 @@ def health():
 @app.get("/archive", response_class=HTMLResponse)
 async def archive_web_view(request: Request, response: Response, url: str = Query(...), token: str = Query(None)):
     """Browser entrypoint: Shows instant responsive loading page while unpaywalling."""
-    verify_token(request, token)
+    user = verify_token(request, token)
     
-    # Check if we already have this URL cached recently (within 5 mins)
-    if url in recent_cache:
-        redirect_resp = RedirectResponse(recent_cache[url]["view_url"])
-        set_auth_cookie_if_valid(redirect_resp, token)
+    # Check if we already have this URL cached recently (within 5 mins) for this user
+    cache_key = (url, user.username.lower())
+    if cache_key in recent_cache:
+        redirect_resp = RedirectResponse(recent_cache[cache_key]["view_url"])
+        set_auth_cookie_if_valid(redirect_resp, token or user.token)
         return redirect_resp
 
-    set_auth_cookie_if_valid(response, token)
+    set_auth_cookie_if_valid(response, token or user.token)
 
     token_param = f"&token={token}" if token else ""
     url_json = json.dumps(url)
@@ -702,8 +733,8 @@ async def archive_web_view(request: Request, response: Response, url: str = Quer
 @app.post("/api/archive")
 async def api_archive(request: Request, response: Response, url: str = Query(None), token: str = Query(None)):
     """API endpoint to trigger an archive job."""
-    verify_token(request, token)
-    set_auth_cookie_if_valid(response, token)
+    user = verify_token(request, token)
+    set_auth_cookie_if_valid(response, token or user.token)
     
     target_url = url
     if not target_url:
@@ -716,11 +747,12 @@ async def api_archive(request: Request, response: Response, url: str = Query(Non
     if not target_url:
         raise HTTPException(status_code=400, detail="Missing target URL parameter")
 
-    if target_url in recent_cache:
-        return recent_cache[target_url]
+    cache_key = (target_url, user.username.lower())
+    if cache_key in recent_cache:
+        return recent_cache[cache_key]
 
     try:
-        meta = await capture_page(target_url)
+        meta = await capture_page(target_url, created_by=user.username)
         return meta
     except HTTPException:
         raise
@@ -1739,7 +1771,7 @@ def sanitize_filename(name: str) -> str:
 
 @app.post("/api/media/download")
 async def api_media_download(req: Request, payload: MediaDownloadRequest, token: str = Query(None)):
-    verify_token(req, token)
+    user = verify_token(req, token)
     url = payload.url.strip()
     if not url:
         raise HTTPException(status_code=400, detail="Missing URL")
@@ -1855,6 +1887,7 @@ async def api_media_download(req: Request, payload: MediaDownloadRequest, token:
         "size_mb": size_mb,
         "media_type": media_type,
         "thumbnail": thumbnail,
+        "created_by": user.username,
         "created_at": datetime.now(timezone.utc).isoformat()
     }
 
@@ -1872,12 +1905,14 @@ async def api_media_download(req: Request, payload: MediaDownloadRequest, token:
 @app.get("/api/media/stream/{media_id}")
 @app.head("/api/media/stream/{media_id}")
 async def api_media_stream(media_id: str, request: Request, token: str = Query(None)):
-    verify_token(request, token)
+    user = verify_token(request, token)
     meta_file = MEDIA_STORAGE_DIR / f"{media_id}.json"
     if not meta_file.exists():
         raise HTTPException(status_code=404, detail="Media not found")
     with open(meta_file, "r", encoding="utf-8") as f:
         meta = json.load(f)
+    if user.role != "admin" and meta.get("created_by", "").lower() != user.username.lower():
+        raise HTTPException(status_code=403, detail="Forbidden: Access to this media file is restricted.")
     media_file = MEDIA_STORAGE_DIR / meta["filename"]
     if not media_file.exists():
         raise HTTPException(status_code=404, detail="Media file missing from storage")
@@ -1886,12 +1921,14 @@ async def api_media_stream(media_id: str, request: Request, token: str = Query(N
 @app.get("/api/media/download/{media_id}")
 @app.head("/api/media/download/{media_id}")
 async def api_media_file_download(media_id: str, request: Request, token: str = Query(None)):
-    verify_token(request, token)
+    user = verify_token(request, token)
     meta_file = MEDIA_STORAGE_DIR / f"{media_id}.json"
     if not meta_file.exists():
         raise HTTPException(status_code=404, detail="Media not found")
     with open(meta_file, "r", encoding="utf-8") as f:
         meta = json.load(f)
+    if user.role != "admin" and meta.get("created_by", "").lower() != user.username.lower():
+        raise HTTPException(status_code=403, detail="Forbidden: Access to this media file is restricted.")
     media_file = MEDIA_STORAGE_DIR / meta["filename"]
     if not media_file.exists():
         raise HTTPException(status_code=404, detail="Media file missing from storage")
@@ -1906,13 +1943,16 @@ async def api_media_file_download(media_id: str, request: Request, token: str = 
 
 @app.get("/api/media/list")
 async def api_media_list(request: Request, token: str = Query(None)):
-    verify_token(request, token)
+    user = verify_token(request, token)
     items = []
     for meta_file in sorted(MEDIA_STORAGE_DIR.glob("*.json"), key=lambda p: p.stat().st_mtime, reverse=True):
         try:
             with open(meta_file, "r", encoding="utf-8") as f:
                 data = json.load(f)
             if (MEDIA_STORAGE_DIR / data["filename"]).exists():
+                # Server-side user segregation: non-admin users only see their own media
+                if user.role != "admin" and data.get("created_by", "").lower() != user.username.lower():
+                    continue
                 items.append(data)
         except Exception:
             continue
@@ -1929,27 +1969,6 @@ async def api_media_list(request: Request, token: str = Query(None)):
 
     return {"items": items, "disk": disk_info}
 
-@app.delete("/api/media/{media_id}")
-async def api_media_delete(media_id: str, request: Request, token: str = Query(None)):
-    verify_token(request, token)
-    meta_file = MEDIA_STORAGE_DIR / f"{media_id}.json"
-    if meta_file.exists():
-        try:
-            with open(meta_file, "r", encoding="utf-8") as f:
-                meta = json.load(f)
-            media_file = MEDIA_STORAGE_DIR / meta.get("filename", "")
-            if media_file.exists():
-                media_file.unlink()
-        except Exception:
-            pass
-        meta_file.unlink()
-    for c in MEDIA_STORAGE_DIR.glob(f"{media_id}.*"):
-        try:
-            c.unlink()
-        except Exception:
-            pass
-    return {"status": "deleted", "id": media_id}
-
 @app.get("/api/media/cookies")
 async def api_media_cookies_status(request: Request, token: str = Query(None)):
     verify_token(request, token)
@@ -1959,7 +1978,9 @@ async def api_media_cookies_status(request: Request, token: str = Query(None)):
 
 @app.post("/api/media/cookies")
 async def api_media_cookies_upload(request: Request, token: str = Query(None)):
-    verify_token(request, token)
+    user = verify_token(request, token)
+    if user.role != "admin":
+        raise HTTPException(status_code=403, detail="Forbidden: Admin role required to update system cookies.")
     body = await request.body()
     if not body:
         raise HTTPException(status_code=400, detail="Empty cookies data")
@@ -1970,27 +1991,303 @@ async def api_media_cookies_upload(request: Request, token: str = Query(None)):
 
 @app.delete("/api/media/cookies")
 async def api_media_cookies_delete(request: Request, token: str = Query(None)):
-    verify_token(request, token)
+    user = verify_token(request, token)
+    if user.role != "admin":
+        raise HTTPException(status_code=403, detail="Forbidden: Admin role required to delete system cookies.")
     if COOKIES_FILE.exists():
         COOKIES_FILE.unlink()
     return {"status": "deleted"}
 
+@app.delete("/api/media/{media_id}")
+async def api_media_delete(media_id: str, request: Request, token: str = Query(None)):
+    user = verify_token(request, token)
+    meta_file = MEDIA_STORAGE_DIR / f"{media_id}.json"
+    if not meta_file.exists():
+        raise HTTPException(status_code=404, detail="Media not found")
+    try:
+        with open(meta_file, "r", encoding="utf-8") as f:
+            meta = json.load(f)
+    except Exception:
+        meta = {}
+    if user.role != "admin" and meta.get("created_by", "").lower() != user.username.lower():
+        raise HTTPException(status_code=403, detail="Forbidden: You can only delete media you downloaded.")
+
+    media_file = MEDIA_STORAGE_DIR / meta.get("filename", "")
+    if media_file.exists():
+        try:
+            media_file.unlink()
+        except Exception:
+            pass
+    try:
+        meta_file.unlink()
+    except Exception:
+        pass
+    for c in MEDIA_STORAGE_DIR.glob(f"{media_id}.*"):
+        try:
+            c.unlink()
+        except Exception:
+            pass
+    return {"status": "deleted", "id": media_id}
+
+class AddUserRequest(BaseModel):
+    username: str
+    role: str = "user"
+    token: Optional[str] = None
+
+@app.get("/api/admin/users")
+def api_admin_list_users(request: Request, token: str = Query(None)):
+    user = verify_token(request, token)
+    if user.role != "admin":
+        raise HTTPException(status_code=403, detail="Forbidden: Admin role required.")
+    return [u.to_dict() for u in user_manager.list_users()]
+
+@app.post("/api/admin/users")
+def api_admin_add_user(payload: AddUserRequest, request: Request, token: str = Query(None)):
+    user = verify_token(request, token)
+    if user.role != "admin":
+        raise HTTPException(status_code=403, detail="Forbidden: Admin role required.")
+    try:
+        new_user = user_manager.add_user(payload.username, role=payload.role, custom_token=payload.token)
+        return new_user.to_dict()
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+@app.delete("/api/admin/users/{target_username}")
+def api_admin_revoke_user(target_username: str, request: Request, token: str = Query(None)):
+    user = verify_token(request, token)
+    if user.role != "admin":
+        raise HTTPException(status_code=403, detail="Forbidden: Admin role required.")
+    if target_username.lower() == user.username.lower():
+        raise HTTPException(status_code=400, detail="Cannot revoke your own active account.")
+    success = user_manager.revoke_user(target_username)
+    if not success:
+        raise HTTPException(status_code=404, detail="User not found.")
+    return {"status": "revoked", "username": target_username}
+
+def render_login_page(error: str = "") -> HTMLResponse:
+    err_html = f'<div style="background: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.3); color: #f87171; padding: 10px 14px; border-radius: 8px; font-size: 0.88rem; margin-bottom: 16px;">{error}</div>' if error else ""
+    html = f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Login - VPS Archive Lens</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    body {{ background: #0b1120; color: #f8fafc; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; padding: 20px; }}
+    .login-card {{ background: #1e293b; border: 1px solid #334155; border-radius: 12px; padding: 36px; max-width: 420px; width: 100%; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }}
+    h2 {{ margin: 0 0 8px 0; color: #38bdf8; font-size: 1.4rem; display: flex; align-items: center; gap: 8px; }}
+    p {{ margin: 0 0 20px 0; color: #94a3b8; font-size: 0.9rem; line-height: 1.5; }}
+    input[type="password"], input[type="text"] {{ width: 100%; box-sizing: border-box; padding: 12px 14px; background: #0b1120; border: 1px solid #334155; border-radius: 8px; color: #f8fafc; font-size: 0.95rem; margin-bottom: 16px; outline: none; }}
+    input:focus {{ border-color: #38bdf8; }}
+    button {{ width: 100%; padding: 12px; background: #38bdf8; color: #042f2e; border: none; border-radius: 8px; font-size: 0.95rem; font-weight: 700; cursor: pointer; transition: background 0.15s ease; }}
+    button:hover {{ background: #0284c7; color: white; }}
+  </style>
+</head>
+<body>
+  <div class="login-card">
+    <h2>⚡ VPS Archive Lens</h2>
+    <p>Please enter your access token to enter the dashboard.</p>
+    {err_html}
+    <form method="GET" action="/list">
+      <input type="password" name="token" placeholder="Enter your secret access token..." required autofocus>
+      <button type="submit">Unlock Dashboard →</button>
+    </form>
+  </div>
+</body>
+</html>
+"""
+    return HTMLResponse(content=html, status_code=401 if error else 200)
+
 @app.get("/", response_class=HTMLResponse)
 @app.get("/list", response_class=HTMLResponse)
-def dashboard(token: str = Query(None)):
-    files = sorted([f for f in STORAGE_DIR.glob("*.html") if not f.stem.endswith("_reader")], key=lambda f: f.stat().st_mtime, reverse=True)[:40]
-    token_str = token or API_TOKEN
+def dashboard(request: Request, response: Response, token: str = Query(None)):
+    current_user = None
+    try:
+        current_user = verify_token(request, token)
+        set_auth_cookie_if_valid(response, token or current_user.token)
+    except HTTPException:
+        if not user_manager.list_users():
+            current_user = UserRecord(username="anonymous", token="", role="admin")
+        else:
+            return render_login_page("Invalid access token. Please check your key and try again.") if token else render_login_page()
+
+    all_html_files = sorted(
+        [f for f in STORAGE_DIR.glob("*.html") if not f.stem.endswith("_reader")],
+        key=lambda f: f.stat().st_mtime,
+        reverse=True
+    )
+    token_str = current_user.token or token or ""
     token_param = f"?token={token_str}" if token_str else ""
     token_js = json.dumps(token_str)
+    is_admin = current_user.role == "admin"
+    is_admin_js = "true" if is_admin else "false"
+    current_username_js = json.dumps(current_user.username)
+
+    if is_admin:
+        admin_section_html = """
+          <!-- Admin User Management Card -->
+          <div class="hub-card">
+            <h3 style="color: #cbd5e1; margin-top: 0; margin-bottom: 8px;">👥 Manage Users & Friends</h3>
+            <p style="font-size: 0.88rem; color: var(--text-muted); margin-bottom: 16px;">
+              Create individual tokens for your friends or secondary devices. They will be able to push snapshots, stream/download media, and view paywall bypasses.
+            </p>
+
+            <!-- Add User Form -->
+            <div style="display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 16px;">
+              <input type="text" id="newUsernameInput" placeholder="Friend's name (e.g. alice, bob)" style="flex: 2; min-width: 140px;">
+              <select id="newUserRoleInput" style="padding: 12px 14px; background: #0b1120; border: 1px solid var(--border); border-radius: 8px; color: var(--text); outline: none; font-size: 0.95rem;">
+                <option value="user" selected>Role: User</option>
+                <option value="admin">Role: Admin</option>
+              </select>
+              <input type="text" id="newTokenInput" placeholder="Custom token (leave blank to auto-generate)" style="flex: 3; min-width: 200px;">
+              <button class="btn-primary" onclick="createNewUser()">➕ Add User</button>
+            </div>
+
+            <!-- New User Invite Box (displays when a user is added) -->
+            <div id="newUserInviteBox" style="display: none; background: #064e3b; border: 1px solid #059669; border-radius: 8px; padding: 14px; margin-bottom: 16px;">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                <span style="font-weight: 700; color: #a7f3d0; font-size: 0.9rem;">🎉 User Created! Send this invite to your friend:</span>
+                <button class="action-btn" onclick="copyInviteSnippet()" style="background: #065f46; color: #ecfdf5; border-color: #34d399;">📋 Copy Invite</button>
+              </div>
+              <pre id="inviteSnippetPre" style="background: #022c22; color: #6ee7b7; padding: 12px; border-radius: 6px; font-size: 0.82rem; margin: 0; white-space: pre-wrap; font-family: monospace;"></pre>
+            </div>
+
+            <!-- Users Table -->
+            <table>
+              <thead>
+                <tr>
+                  <th>Username</th>
+                  <th>Role</th>
+                  <th>API Token</th>
+                  <th>Created</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody id="usersTableBody">
+                <tr><td colspan="5" style="padding: 20px; text-align: center; color: var(--text-muted);">Loading users...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        """
+        snapshots_header_html = f"""
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+            <h3 style="color: #cbd5e1; margin: 0;">Recent Snapshots</h3>
+            <div style="display: flex; gap: 8px;">
+              <button class="action-btn active" id="filterAllBtn" onclick="filterSnapshots('all')">All</button>
+              <button class="action-btn" id="filterMineBtn" onclick="filterSnapshots('{current_user.username}')">Mine ({current_user.username})</button>
+            </div>
+          </div>
+        """
+        snapshots_thead_html = """
+              <tr>
+                <th>Snapshot ID</th>
+                <th>User</th>
+                <th>Timestamp</th>
+                <th>Size</th>
+                <th>Action</th>
+              </tr>
+        """
+        cookies_section_html = """
+            <!-- YouTube Cookies Bypass Drawer -->
+            <div style="margin-top: 14px; border-top: 1px solid var(--border); padding-top: 12px;">
+              <div style="display: flex; justify-content: space-between; align-items: center; cursor: pointer;" onclick="toggleCookiesSection()">
+                <span style="font-size: 0.88rem; color: #cbd5e1; font-weight: 600; display: flex; align-items: center; gap: 8px;">
+                  🍪 YouTube Bot Bypass (Cookies) 
+                  <span id="cookiesStatusPill" style="font-size: 0.72rem; padding: 2px 8px; border-radius: 4px; background: #334155; color: #94a3b8; font-weight: 500;">Checking...</span>
+                </span>
+                <span id="cookiesChevron" style="font-size: 0.8rem; color: var(--text-muted);">▼</span>
+              </div>
+              
+              <div id="cookiesDrawer" style="display: none; margin-top: 12px; background: #0f172a; padding: 14px; border-radius: 8px; border: 1px solid var(--border);">
+                <p style="margin: 0 0 10px 0; font-size: 0.83rem; color: var(--text-muted); line-height: 1.4;">
+                  Some official Vevo music videos or age-gated YouTube videos block datacenter IPs unless authenticated.
+                  Drop your <code>cookies.txt</code> here once to bypass this permanently:
+                </p>
+                <ol style="margin: 0 0 12px 18px; font-size: 0.82rem; color: #94a3b8; padding: 0; line-height: 1.4;">
+                  <li>Install the free extension <b>Get cookies.txt LOCALLY</b> (in Chrome, Brave, or Firefox).</li>
+                  <li>Open <a href="https://youtube.com" target="_blank" style="color: #38bdf8;">youtube.com</a>, click the extension icon ➔ <b>Export</b>.</li>
+                  <li>Select or drop the exported <code>cookies.txt</code> file below:</li>
+                </ol>
+                <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+                  <input type="file" id="cookiesFileInput" accept=".txt" style="font-size: 0.85rem; color: #cbd5e1;">
+                  <button class="btn-primary" onclick="uploadCookiesFile()" style="padding: 6px 14px; font-size: 0.85rem;">Save Cookies</button>
+                  <button class="action-btn action-delete" id="deleteCookiesBtn" onclick="deleteCookies()" style="display: none;">Remove Cookies</button>
+                </div>
+                <div id="cookiesUploadResult" style="margin-top: 8px; font-size: 0.82rem;"></div>
+              </div>
+            </div>
+        """
+    else:
+        admin_section_html = """
+          <div class="hub-card" style="text-align: center; color: var(--text-muted); font-size: 0.88rem;">
+            🔒 User management is restricted to administrators. Contact your VPS admin to invite additional users.
+          </div>
+        """
+        snapshots_header_html = f"""
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+            <h3 style="color: #cbd5e1; margin: 0;">My Saved Articles</h3>
+            <span style="font-size: 0.83rem; color: #10b981; display: flex; align-items: center; gap: 5px;">🔒 Private to your account</span>
+          </div>
+        """
+        snapshots_thead_html = """
+              <tr>
+                <th>Snapshot ID</th>
+                <th>Timestamp</th>
+                <th>Size</th>
+                <th>Action</th>
+              </tr>
+        """
+        cookies_section_html = """
+            <div style="margin-top: 14px; border-top: 1px solid var(--border); padding-top: 10px; font-size: 0.82rem; color: var(--text-muted); display: flex; align-items: center; gap: 6px;">
+              🍪 YouTube Bot Bypass: <span id="cookiesStatusPill" style="font-size: 0.72rem; padding: 2px 8px; border-radius: 4px; background: #334155; color: #94a3b8; font-weight: 500;">Checking...</span> (Active across server)
+            </div>
+        """
     
-    rows = []
-    for f in files:
-        mtime = datetime.fromtimestamp(f.stat().st_mtime, tz=timezone.utc).strftime("%Y-%m-%d %H:%M")
-        size_kb = round(f.stat().st_size / 1024, 1)
+    snapshot_items = []
+    for f in all_html_files:
         name = f.stem
+        meta_f = STORAGE_DIR / f"{name}.meta.json"
+        created_by = "admin"
+        snap_title = name
+        if meta_f.is_file():
+            try:
+                with open(meta_f, "r", encoding="utf-8") as mf:
+                    mdata = json.load(mf)
+                    created_by = mdata.get("created_by") or "admin"
+                    snap_title = mdata.get("title") or name
+            except Exception:
+                pass
+
+        # Strict Server-Side User Segregation:
+        # Non-admin users ONLY receive snapshots they created!
+        if not is_admin and created_by.lower() != current_user.username.lower():
+            continue
+
+        snapshot_items.append({
+            "name": name,
+            "created_by": created_by,
+            "title": snap_title,
+            "mtime": datetime.fromtimestamp(f.stat().st_mtime, tz=timezone.utc).strftime("%Y-%m-%d %H:%M"),
+            "size_kb": round(f.stat().st_size / 1024, 1)
+        })
+        if len(snapshot_items) >= 50:
+            break
+
+    rows = []
+    for item in snapshot_items:
+        name = item["name"]
+        snap_title = item["title"]
+        created_by = item["created_by"]
+        mtime = item["mtime"]
+        size_kb = item["size_kb"]
+
+        user_badge = f'<span style="background: rgba(56, 189, 248, 0.15); color: #38bdf8; padding: 2px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: 600;">{created_by}</span>'
+        user_td = f'<td style="padding: 12px 14px;">{user_badge}</td>' if is_admin else ''
+
         rows.append(f"""
-        <tr style="border-bottom: 1px solid #334155;">
-          <td style="padding: 12px 14px;"><a href="/reader/{name}{token_param}" target="_blank" style="color: #38bdf8; text-decoration: none; font-weight: 500;">{name}</a></td>
+        <tr style="border-bottom: 1px solid #334155;" data-user="{created_by}">
+          <td style="padding: 12px 14px;"><a href="/reader/{name}{token_param}" target="_blank" style="color: #38bdf8; text-decoration: none; font-weight: 500;" title="{snap_title}">{name}</a></td>
+          {user_td}
           <td style="padding: 12px 14px; color: #94a3b8;">{mtime} UTC</td>
           <td style="padding: 12px 14px; color: #cbd5e1;">{size_kb} KB</td>
           <td style="padding: 12px 14px; display: flex; gap: 8px;">
@@ -2000,7 +2297,9 @@ def dashboard(token: str = Query(None)):
         </tr>
         """)
     
-    table_content = "".join(rows) if rows else '<tr><td colspan="4" style="padding: 24px; text-align: center; color: #94a3b8;">No article snapshots yet.</td></tr>'
+    colspan = 5 if is_admin else 4
+    empty_msg = "No article snapshots yet." if is_admin else "You haven't archived any articles yet. Use the browser extension or enter a URL above to archive your first article."
+    table_content = "".join(rows) if rows else f'<tr><td colspan="{colspan}" style="padding: 24px; text-align: center; color: #94a3b8;">{empty_msg}</td></tr>'
 
     return f"""<!DOCTYPE html>
     <html lang="en">
@@ -2269,13 +2568,17 @@ def dashboard(token: str = Query(None)):
       <div class="container">
         <div class="header">
           <h1>⚡ VPS Power Hub</h1>
-          <span class="badge" id="storageBadge">1Gbps Hetzner Connected</span>
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <span class="badge" style="background: #0284c7;">👤 {current_user.username} ({current_user.role})</span>
+            <span class="badge" id="storageBadge">1Gbps Hetzner Connected</span>
+          </div>
         </div>
 
         <!-- Navigation Tabs -->
         <div class="tabs">
           <button class="tab-btn" id="tabArticlesBtn" onclick="switchTab('articles')">📰 Web Articles & Reader</button>
           <button class="tab-btn active" id="tabMediaBtn" onclick="switchTab('media')">🎬 Media Streamer & Downloader</button>
+          <button class="tab-btn" id="tabUsersBtn" onclick="switchTab('users')">👥 Access & Users</button>
         </div>
 
         <!-- TAB 1: WEB ARTICLES -->
@@ -2287,17 +2590,12 @@ def dashboard(token: str = Query(None)):
             </div>
           </div>
 
-          <h3 style="color: #cbd5e1; margin-bottom: 12px;">Recent Snapshots</h3>
+          {snapshots_header_html}
           <table>
             <thead>
-              <tr>
-                <th>Snapshot ID</th>
-                <th>Timestamp</th>
-                <th>Size</th>
-                <th>Action</th>
-              </tr>
+              {snapshots_thead_html}
             </thead>
-            <tbody>
+            <tbody id="snapshotsTableBody">
               {table_content}
             </tbody>
           </table>
@@ -2326,34 +2624,7 @@ def dashboard(token: str = Query(None)):
               </label>
             </div>
 
-            <!-- YouTube Cookies Bypass Drawer -->
-            <div style="margin-top: 14px; border-top: 1px solid var(--border); padding-top: 12px;">
-              <div style="display: flex; justify-content: space-between; align-items: center; cursor: pointer;" onclick="toggleCookiesSection()">
-                <span style="font-size: 0.88rem; color: #cbd5e1; font-weight: 600; display: flex; align-items: center; gap: 8px;">
-                  🍪 YouTube Bot Bypass (Cookies) 
-                  <span id="cookiesStatusPill" style="font-size: 0.72rem; padding: 2px 8px; border-radius: 4px; background: #334155; color: #94a3b8; font-weight: 500;">Checking...</span>
-                </span>
-                <span id="cookiesChevron" style="font-size: 0.8rem; color: var(--text-muted);">▼</span>
-              </div>
-              
-              <div id="cookiesDrawer" style="display: none; margin-top: 12px; background: #0f172a; padding: 14px; border-radius: 8px; border: 1px solid var(--border);">
-                <p style="margin: 0 0 10px 0; font-size: 0.83rem; color: var(--text-muted); line-height: 1.4;">
-                  Some official Vevo music videos or age-gated YouTube videos block datacenter IPs unless authenticated.
-                  Drop your <code>cookies.txt</code> here once to bypass this permanently:
-                </p>
-                <ol style="margin: 0 0 12px 18px; font-size: 0.82rem; color: #94a3b8; padding: 0; line-height: 1.4;">
-                  <li>Install the free extension <b>Get cookies.txt LOCALLY</b> (in Chrome, Brave, or Firefox).</li>
-                  <li>Open <a href="https://youtube.com" target="_blank" style="color: #38bdf8;">youtube.com</a>, click the extension icon ➔ <b>Export</b>.</li>
-                  <li>Select or drop the exported <code>cookies.txt</code> file below:</li>
-                </ol>
-                <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
-                  <input type="file" id="cookiesFileInput" accept=".txt" style="font-size: 0.85rem; color: #cbd5e1;">
-                  <button class="btn-primary" onclick="uploadCookiesFile()" style="padding: 6px 14px; font-size: 0.85rem;">Save Cookies</button>
-                  <button class="action-btn action-delete" id="deleteCookiesBtn" onclick="deleteCookies()" style="display: none;">Remove Cookies</button>
-                </div>
-                <div id="cookiesUploadResult" style="margin-top: 8px; font-size: 0.82rem;"></div>
-              </div>
-            </div>
+            {cookies_section_html}
 
             <div class="status-box" id="mediaStatusBox">
               <div class="spinner" id="mediaSpinner"></div>
@@ -2411,12 +2682,54 @@ def dashboard(token: str = Query(None)):
           </div>
         </div>
 
+        <!-- TAB 3: ACCESS & USERS -->
+        <div id="tabUsers" class="tab-content">
+          <!-- Credentials & Extension Setup Card -->
+          <div class="hub-card">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+              <h3 style="color: #cbd5e1; margin: 0;">🔑 Your Credentials & Extension Setup</h3>
+              <span class="badge" style="background: #0284c7;">{current_user.role.upper()}</span>
+            </div>
+            <p style="font-size: 0.88rem; color: var(--text-muted); margin-bottom: 16px;">
+              Your personal credentials for the browser extension, dashboard access, and curl requests.
+            </p>
+
+            <div style="background: #0b1120; border: 1px solid var(--border); border-radius: 8px; padding: 14px; margin-bottom: 16px;">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                <span style="font-size: 0.85rem; color: #94a3b8;">Username:</span>
+                <span style="font-size: 0.9rem; font-weight: 600; color: #f8fafc;">{current_user.username}</span>
+              </div>
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                <span style="font-size: 0.85rem; color: #94a3b8;">Lens Server URL:</span>
+                <span style="font-size: 0.85rem; font-family: monospace; color: #38bdf8;" id="myServerUrlDisplay"></span>
+              </div>
+              <div style="display: flex; justify-content: space-between; align-items: center;">
+                <span style="font-size: 0.85rem; color: #94a3b8;">API Token:</span>
+                <div style="display: flex; gap: 8px; align-items: center;">
+                  <code style="background: #1e293b; padding: 4px 8px; border-radius: 4px; font-size: 0.85rem; color: #10b981;" id="myTokenVal">{current_user.token or "(cookie auth)"}</code>
+                  <button class="action-btn" onclick="copyMyToken()">📋 Copy</button>
+                </div>
+              </div>
+            </div>
+
+            <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+              <button class="action-btn" onclick="copySetupSnippet()">📋 Copy Extension Setup Info</button>
+              <button class="action-btn action-delete" onclick="logoutUser()">🚪 Sign Out</button>
+            </div>
+          </div>
+
+          {admin_section_html}
+        </div>
+
       </div>
 
       <script>
         const API_TOKEN = {token_js};
         const TOKEN_PARAM = {json.dumps(token_param)};
+        const CURRENT_USER = {current_username_js};
+        const IS_ADMIN = {is_admin_js};
         let activeStreamUrl = '';
+        let lastCreatedInvite = '';
 
         function switchTab(tab) {{
           document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
@@ -2426,6 +2739,13 @@ def dashboard(token: str = Query(None)):
             document.getElementById('tabArticlesBtn').classList.add('active');
             document.getElementById('tabArticles').classList.add('active');
             window.location.hash = 'articles';
+          }} else if (tab === 'users') {{
+            document.getElementById('tabUsersBtn').classList.add('active');
+            document.getElementById('tabUsers').classList.add('active');
+            window.location.hash = 'users';
+            if (IS_ADMIN) {{
+              loadUsersList();
+            }}
           }} else {{
             document.getElementById('tabMediaBtn').classList.add('active');
             document.getElementById('tabMedia').classList.add('active');
@@ -2437,6 +2757,8 @@ def dashboard(token: str = Query(None)):
         // Handle initial tab from URL hash
         if (window.location.hash === '#articles') {{
           switchTab('articles');
+        }} else if (window.location.hash === '#users') {{
+          switchTab('users');
         }} else {{
           switchTab('media');
         }}
@@ -2571,7 +2893,8 @@ def dashboard(token: str = Query(None)):
             }}
 
             if (!data.items || data.items.length === 0) {{
-              tbody.innerHTML = '<tr><td colspan="4" style="padding: 24px; text-align: center; color: var(--text-muted);">No saved media on VPS yet. Paste a link above to grab your first video!</td></tr>';
+              const emptyMediaMsg = IS_ADMIN ? 'No saved media on VPS yet. Paste a link above to grab your first video!' : 'You have not saved any media yet. Paste a link above to grab your first video!';
+              tbody.innerHTML = `<tr><td colspan="4" style="padding: 24px; text-align: center; color: var(--text-muted);">${{emptyMediaMsg}}</td></tr>`;
               return;
             }}
 
@@ -2579,11 +2902,12 @@ def dashboard(token: str = Query(None)):
               const isAudio = item.format === 'audio';
               const pillClass = isAudio ? 'pill-audio' : 'pill-video';
               const itemJson = JSON.stringify(item).replace(/"/g, '&quot;');
+              const creatorBadge = (IS_ADMIN && item.created_by) ? `<span style="background: rgba(56, 189, 248, 0.15); color: #38bdf8; padding: 1px 6px; border-radius: 4px; font-size: 0.72rem; font-weight: 600; margin-left: 6px;">${{escapeHtml(item.created_by)}}</span>` : '';
               return `
                 <tr style="border-bottom: 1px solid var(--border);">
                   <td style="padding: 12px 14px;">
                     <div style="font-weight: 600; color: #e0f2fe; margin-bottom: 4px;">${{escapeHtml(item.title)}}</div>
-                    <div style="font-size: 0.8rem; color: var(--text-muted);">${{escapeHtml(item.uploader || 'Unknown')}} • ${{new Date(item.created_at).toLocaleDateString()}}</div>
+                    <div style="font-size: 0.8rem; color: var(--text-muted);">${{escapeHtml(item.uploader || 'Unknown')}} • ${{new Date(item.created_at).toLocaleDateString()}}${{creatorBadge}}</div>
                   </td>
                   <td style="padding: 12px 14px;">
                     <span class="pill-tag ${{pillClass}}">${{item.format}}</span>
@@ -2702,6 +3026,172 @@ def dashboard(token: str = Query(None)):
             checkCookiesStatus();
             document.getElementById('cookiesUploadResult').innerHTML = '<span style="color: #94a3b8;">Cookies removed.</span>';
           }} catch (e) {{}}
+        }}
+
+        // Set server URL display on load
+        const serverUrlEl = document.getElementById('myServerUrlDisplay');
+        if (serverUrlEl) {{
+          serverUrlEl.textContent = window.location.origin;
+        }}
+
+        function filterSnapshots(targetUser) {{
+          const rows = document.querySelectorAll('#snapshotsTableBody tr');
+          rows.forEach(row => {{
+            const creator = row.getAttribute('data-user');
+            if (!creator) return;
+            if (targetUser === 'all' || creator === targetUser) {{
+              row.style.display = '';
+            }} else {{
+              row.style.display = 'none';
+            }}
+          }});
+          if (targetUser === 'all') {{
+            document.getElementById('filterAllBtn').classList.add('active');
+            document.getElementById('filterMineBtn').classList.remove('active');
+          }} else {{
+            document.getElementById('filterMineBtn').classList.add('active');
+            document.getElementById('filterAllBtn').classList.remove('active');
+          }}
+        }}
+
+        function copyMyToken() {{
+          const tok = document.getElementById('myTokenVal').textContent;
+          navigator.clipboard.writeText(tok).then(() => alert('API Token copied to clipboard!'));
+        }}
+
+        function copySetupSnippet() {{
+          const origin = window.location.origin;
+          const tok = document.getElementById('myTokenVal').textContent;
+          const snippet = `VPS Archive Lens Configuration:\nServer URL: ${{origin}}\nAPI Token: ${{tok}}`;
+          navigator.clipboard.writeText(snippet).then(() => alert('Configuration snippet copied!'));
+        }}
+
+        function logoutUser() {{
+          document.cookie = "lens_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+          window.location.href = "/";
+        }}
+
+        async function loadUsersList() {{
+          const tbody = document.getElementById('usersTableBody');
+          if (!tbody) return;
+          const tokenQuery = API_TOKEN ? `?token=${{encodeURIComponent(API_TOKEN)}}` : '';
+          try {{
+            const res = await fetch(`/api/admin/users${{tokenQuery}}`);
+            if (!res.ok) throw new Error('Failed to load user list');
+            const users = await res.json();
+            if (!users || users.length === 0) {{
+              tbody.innerHTML = '<tr><td colspan="5" style="padding: 20px; text-align: center; color: var(--text-muted);">No users found.</td></tr>';
+              return;
+            }}
+            tbody.innerHTML = users.map(u => {{
+              const isMe = u.username.toLowerCase() === CURRENT_USER.toLowerCase();
+              const roleBadge = u.role === 'admin' 
+                ? '<span style="background: #1e3a8a; color: #93c5fd; padding: 2px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: 700;">ADMIN</span>'
+                : '<span style="background: #334155; color: #cbd5e1; padding: 2px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: 600;">USER</span>';
+              
+              const maskedToken = u.token && u.token.length > 10 ? u.token.substring(0, 6) + '...' + u.token.slice(-4) : (u.token || '');
+              
+              const actionBtn = isMe 
+                ? '<span style="color: var(--text-muted); font-size: 0.8rem; font-style: italic;">(Current)</span>'
+                : `<button class="action-btn action-delete" onclick="revokeUser('${{escapeHtml(u.username)}}')">🗑️ Revoke</button>`;
+
+              return `
+                <tr style="border-bottom: 1px solid var(--border);">
+                  <td style="padding: 10px 14px; font-weight: 600; color: #f8fafc;">${{escapeHtml(u.username)}}</td>
+                  <td style="padding: 10px 14px;">${{roleBadge}}</td>
+                  <td style="padding: 10px 14px; font-family: monospace; font-size: 0.85rem; color: #10b981;">
+                    <span title="${{escapeHtml(u.token)}}">${{escapeHtml(maskedToken)}}</span>
+                    <button class="action-btn" style="margin-left: 6px; padding: 2px 6px; font-size: 0.75rem;" onclick="navigator.clipboard.writeText('${{escapeHtml(u.token)}}').then(()=>alert('Token copied!'))">📋</button>
+                  </td>
+                  <td style="padding: 10px 14px; color: var(--text-muted); font-size: 0.82rem;">${{new Date(u.created_at).toLocaleDateString()}}</td>
+                  <td style="padding: 10px 14px;">${{actionBtn}}</td>
+                </tr>
+              `;
+            }}).join('');
+          }} catch (err) {{
+            tbody.innerHTML = `<tr><td colspan="5" style="padding: 20px; text-align: center; color: #f87171;">Error loading users: ${{escapeHtml(err.message)}}</td></tr>`;
+          }}
+        }}
+
+        async function createNewUser() {{
+          const usernameInput = document.getElementById('newUsernameInput');
+          const roleInput = document.getElementById('newUserRoleInput');
+          const tokenInput = document.getElementById('newTokenInput');
+          const username = usernameInput.value.trim();
+          const role = roleInput.value;
+          const custom_token = tokenInput.value.trim() || undefined;
+
+          if (!username) {{
+            alert('Please enter a username');
+            return;
+          }}
+
+          const tokenQuery = API_TOKEN ? `?token=${{encodeURIComponent(API_TOKEN)}}` : '';
+          try {{
+            const res = await fetch(`/api/admin/users${{tokenQuery}}`, {{
+              method: 'POST',
+              headers: {{ 'Content-Type': 'application/json' }},
+              body: JSON.stringify({{ username, role, token: custom_token }})
+            }});
+            const data = await res.json();
+            if (!res.ok) {{
+              throw new Error(data.detail || 'Failed to create user');
+            }}
+
+            usernameInput.value = '';
+            tokenInput.value = '';
+
+            const origin = window.location.origin.includes('127.0.0.1') || window.location.origin.includes('localhost')
+              ? 'http://204.168.160.204:8888'
+              : window.location.origin;
+            const gitRepo = "https://github.com/mailinglistenator/vps-archive-lens";
+            const zipUrl = "https://github.com/mailinglistenator/vps-archive-lens/archive/refs/heads/main.zip";
+
+            lastCreatedInvite = `Hey ${{data.username}}! Here is your access key for VPS Archive Lens:\n\n` +
+              `🌐 Lens Server URL: ${{origin}}\n` +
+              `🔑 API Token: ${{data.token}}\n` +
+              `👤 Username: ${{data.username}} (${{data.role}})\n\n` +
+              `📦 1. Download Extension:\n` +
+              `   GitHub: ${{gitRepo}}\n` +
+              `   Direct Zip: ${{zipUrl}}\n\n` +
+              `🚀 2. Load into Chrome / Brave / Edge:\n` +
+              `   - Unzip the download\n` +
+              `   - Open chrome://extensions (or edge://extensions / brave://extensions)\n` +
+              `   - Toggle "Developer mode" ON (top right)\n` +
+              `   - Click "Load unpacked" and select the 'extension' folder\n\n` +
+              `⚙️ 3. Quick Configure:\n` +
+              `   - Click VPS Lens icon -> Options (or Settings gear)\n` +
+              `   - Server URL: ${{origin}}\n` +
+              `   - API Token: ${{data.token}}\n` +
+              `   - Click "Save Settings" & you're ready to archive!`;
+
+            document.getElementById('inviteSnippetPre').textContent = lastCreatedInvite;
+            document.getElementById('newUserInviteBox').style.display = 'block';
+
+            loadUsersList();
+          }} catch (err) {{
+            alert('Error creating user: ' + err.message);
+          }}
+        }}
+
+        function copyInviteSnippet() {{
+          if (!lastCreatedInvite) return;
+          navigator.clipboard.writeText(lastCreatedInvite).then(() => alert('Invite snippet copied to clipboard!'));
+        }}
+
+        async function revokeUser(username) {{
+          if (!confirm(`Are you sure you want to revoke access for "${{username}}"?`)) return;
+          const tokenQuery = API_TOKEN ? `?token=${{encodeURIComponent(API_TOKEN)}}` : '';
+          try {{
+            const res = await fetch(`/api/admin/users/${{encodeURIComponent(username)}}${{tokenQuery}}`, {{
+              method: 'DELETE'
+            }});
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.detail || 'Failed to revoke user');
+            loadUsersList();
+          }} catch (err) {{
+            alert('Error revoking user: ' + err.message);
+          }}
         }}
 
         // Check cookies status on initial load

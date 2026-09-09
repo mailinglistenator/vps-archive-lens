@@ -28,6 +28,7 @@
   - [Option C: Co-Locating with Hermes Agent](#option-c-co-locating-with-hermes-agent)
 - [Browser Extension Installation](#-browser-extension-installation)
 - [Configuration Reference (.env)](#-configuration-reference-env)
+- [Multi-User Management & Sharing with Friends](#-multi-user-management--sharing-with-friends)
 - [REST API Reference](#-rest-api-reference)
 - [Production Hardening & HTTPS](#-production-hardening--https)
 - [Troubleshooting & FAQ](#-troubleshooting--faq)
@@ -427,7 +428,7 @@ Fetches and caches images through the VPS network to bypass local ISP blocks.
 Interactive web dashboard listing all recent snapshots and storage metrics.
 
 - **Endpoint**: `GET /list`
-- **Authentication**: Required (`API_TOKEN`).
+- **Authentication**: Required (`API_TOKEN` or user token / cookie).
 
 ---
 
@@ -436,6 +437,80 @@ System health status and snapshot count.
 
 - **Endpoint**: `GET /health`
 - **Authentication**: None.
+
+---
+
+### 8. User Management Admin API
+Endpoints to manage multiple users, generate keys, and revoke access programmatically.
+
+- **List Users**: `GET /api/admin/users` (Admin only)
+- **Add User**: `POST /api/admin/users` (Admin only)
+  ```json
+  { "username": "bob", "role": "user", "token": "optional_custom_token" }
+  ```
+- **Revoke User**: `DELETE /api/admin/users/{username}` (Admin only)
+
+---
+
+## 👥 Multi-User Management & Sharing with Friends
+
+VPS Archive Lens includes full multi-user support, allowing you to share your archiver with friends, family, and secondary devices while maintaining separate API tokens and authorship tracking.
+
+### 🔑 Key Principles
+1. **Independent Keys**: Each friend gets their own secret token (`lens_...`). You never need to share your root admin token.
+2. **Authorship Attribution**: When a user pushes or archives an article (or downloads media), their username is saved with the snapshot metadata (`created_by: username`).
+3. **Frictionless Sharing**: All article view links (`/view/{id}` and `/reader/{id}`) remain publicly viewable without authentication. Anyone with the link can read the unpaywalled article in their browser.
+4. **Role Isolation**:
+   - `admin`: Can create and revoke user accounts, view all snapshots, and manage server settings.
+   - `user`: Can push snapshots, stream/download media, view snapshots, and filter by their own articles.
+
+---
+
+### Method A: Manage Users via Web Dashboard (GUI)
+1. Open the VPS Power Hub dashboard (`/list` or `/`).
+2. Click the **"👥 Access & Users"** tab.
+3. Under **"Manage Users & Friends"**:
+   - Enter your friend's username (e.g. `bob`).
+   - Select their role (`User` or `Admin`).
+   - Click **"➕ Add User"**.
+4. Click **"📋 Copy Invite"** and send the pre-formatted invite snippet to your friend!
+
+---
+
+### Method B: Manage Users via CLI (`manage_users.py`)
+Run the interactive admin CLI directly on your VPS:
+
+```bash
+# Add a friend with an auto-generated secure token
+python3 server/manage_users.py add bob --role user
+
+# Add an admin user with a custom token
+python3 server/manage_users.py add alice --role admin --token my_custom_secret
+
+# List all active users
+python3 server/manage_users.py list
+
+# Revoke access for a user immediately
+python3 server/manage_users.py revoke bob
+```
+
+When you add a user, the CLI outputs a ready-to-send setup snippet:
+```text
+📋 Send this snippet to your friend to set up their browser extension:
+  1. Load the extension in your browser (chrome://extensions -> Load Unpacked)
+  2. In Extension Settings, set:
+     - VPS Archiver URL: https://your-vps.example.com
+     - Secret API Token: lens_xxxxxxxxxxxxxxxxxxxxxx
+  3. Click 'Save Settings' and you're ready to archive!
+```
+
+---
+
+### Method C: Environment Variable Seeding (`USER_TOKENS`)
+You can optionally pre-seed multiple accounts directly in your `.env` or Docker configuration:
+```env
+USER_TOKENS="admin:admin_secret_123:admin, alice:alice_token_456:user, bob:bob_token_789:user"
+```
 
 ---
 

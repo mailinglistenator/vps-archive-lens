@@ -1,12 +1,13 @@
 ---
 name: archive-lens
 description: "Archive and unpaywall web articles, generate distraction-free AI Reader Views, and extract 3-bullet AI summaries using VPS Archive Lens."
-version: 1.0.0
-platforms: [linux, macos]
+version: 1.1.0
+platforms: [windows, linux, macos]
 metadata:
   hermes:
     tags: [archive, unpaywall, reader, news, summary, article, web, lens]
-    related_skills: []
+  antigravity:
+    tags: [archive, unpaywall, reader, news, summary, article, web, lens]
 ---
 
 # VPS Archive Lens Skill
@@ -19,22 +20,37 @@ Use this skill whenever the user wants to archive, unpaywall, read, or summarize
 - "Can you unpaywall this link: https://..."
 - "Summarize and give me a reader link for: https://..."
 - The user pastes an article URL and asks to "archive", "read", or "unpaywall" it.
-- The user sends a link in Telegram and asks for a clean reading view or key takeaways.
 
 ## How to Execute
 
-Run the `archive-lens` command via bash/terminal:
+### Method 1: Direct API Call (Cross-Platform: Windows, macOS, Linux)
+Call your VPS Archive Lens API using `curl.exe` (Windows built-in) or `curl`:
 
+```bash
+curl -s -X POST "<VPS_URL>/api/archive?url=<ENCODED_URL>&token=<YOUR_TOKEN>"
+```
+
+The server returns a JSON response:
+```json
+{
+  "id": "20260909_071234_ab12cd34",
+  "title": "Article Title",
+  "url": "https://...",
+  "view_url": "<VPS_URL>/view/20260909_071234_ab12cd34",
+  "reader_url": "<VPS_URL>/reader/20260909_071234_ab12cd34"
+}
+```
+
+### Method 2: CLI Wrapper (Linux / macOS / WSL)
+If installed locally:
 ```bash
 archive-lens "<URL>"
 ```
 
-### Response Guidelines
+## Response Guidelines
 
-The `archive-lens` CLI automatically captures the page, removes paywalls and tracking scripts, generates the AI key takeaways, and prints formatted Markdown containing:
-1. Article Headline & Reading Time
-2. 💡 3 AI Key Takeaways
-3. 📖 Direct link to the distraction-free AI Reader View
-4. 📸 Direct link to the raw captured DOM snapshot
+Present the archived article cleanly to the user:
+1. **Article Headline & Source**
+2. 📖 **[AI Reader View](<reader_url>)** (Distraction-free, clean typography, 4 color themes)
+3. 📸 **[Raw Captured Snapshot](<view_url>)** (Scripts and paywalls stripped, image proxy enabled)
 
-Present this output directly to the user in your Telegram response.
