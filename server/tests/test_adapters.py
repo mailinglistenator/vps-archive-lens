@@ -325,6 +325,55 @@ class TestAdaptersRegistry(unittest.TestCase):
         "reason.com",
         "pitchfork.com",
         "nme.com",
+        # Sites 201–300 Cohort 3: Nordic, Eastern European, Asian, Latin American, African & Regional Press
+        "dn.se",
+        "svd.se",
+        "hs.fi",
+        "aftenposten.no",
+        "politiken.dk",
+        "wyborcza.pl",
+        "dennikn.sk",
+        "telex.hu",
+        "novayagazeta.eu",
+        "eurasianet.org",
+        "thewire.in",
+        "scroll.in",
+        "theprint.in",
+        "livemint.com",
+        "business-standard.com",
+        "dawn.com",
+        "thedailystar.net",
+        "thejakartapost.com",
+        "bangkokpost.com",
+        "rappler.com",
+        "e.vnexpress.net",
+        "caixinglobal.com",
+        "reforma.com",
+        "eluniversal.com.mx",
+        "animalpolitico.com",
+        "eltiempo.com",
+        "elespectador.com",
+        "lanacion.com.ar",
+        "emol.com",
+        "elcomercio.pe",
+        "oglobo.globo.com",
+        "pagina12.com.ar",
+        "news24.com",
+        "mg.co.za",
+        "premiumtimesng.com",
+        "nation.africa",
+        "theafricareport.com",
+        "english.ahram.org.eg",
+        "today.lorientlejour.com",
+        "english.aawsat.com",
+        "sankei.com",
+        "tokyo-np.co.jp",
+        "nishinippon.co.jp",
+        "kmib.co.kr",
+        "munhwa.com",
+        "seoul.co.kr",
+        "fnnews.com",
+        "zdnet.co.kr",
     ]
 
     def test_all_top_200_registered(self):
@@ -1799,6 +1848,142 @@ class TestNewPlatformExtractors(unittest.TestCase):
         self.assertEqual(res["title"], "The Literary Legacy of Political Satire in the Age of Digital Broadcasting")
         self.assertIn("Julian Croft", res["authors"])
         self.assertIn("linguistic precision", res["body_html"])
+
+    def test_extract_dn_se(self):
+        from server.adapters import extract_dn_se
+        html = """
+        <html>
+          <head>
+            <title>Regeringen aviserar nya satsningar på förnybar havsbaserad vindkraft</title>
+          </head>
+          <body>
+            <h1 class="article__title">Regeringen aviserar nya satsningar på förnybar havsbaserad vindkraft</h1>
+            <div class="article__authors"><a class="author-link">Lars Lindström</a></div>
+            <div class="article__body">
+              <p>Miljödepartementet har presenterat en omfattande plan för att accelerera tillståndsprocesser för vindkraftsparker.</p>
+              <p>Satsningen syftar till att trygga elförsörjningen för den gröna industriomställningen.</p>
+            </div>
+          </body>
+        </html>
+        """
+        soup = BeautifulSoup(html, "html.parser")
+        res = extract_dn_se("https://www.dn.se/ekonomi/regeringen-havsbaserad-vindkraft/", soup, html, fetch_network=False)
+        self.assertEqual(res["title"], "Regeringen aviserar nya satsningar på förnybar havsbaserad vindkraft")
+        self.assertIn("Lars Lindström", res["authors"])
+        self.assertIn("Miljödepartementet", res["body_html"])
+
+    def test_extract_thewire(self):
+        from server.adapters import extract_thewire
+        html = """
+        <html>
+          <head>
+            <title>Agrarian Supply Chains Face Climate Vulnerabilities Across Northern River Basins</title>
+          </head>
+          <body>
+            <h1 class="title">Agrarian Supply Chains Face Climate Vulnerabilities Across Northern River Basins</h1>
+            <span class="author-name">Kabir Sen</span>
+            <div class="grey-card-content">
+              <p>Hydrological variability and delayed monsoon patterns have triggered unprecedented procurement challenges.</p>
+              <p>Policy experts argue that decentralized storage infrastructure is essential for rural resilience.</p>
+            </div>
+          </body>
+        </html>
+        """
+        soup = BeautifulSoup(html, "html.parser")
+        res = extract_thewire("https://thewire.in/agriculture/supply-chains-climate-vulnerabilities", soup, html, fetch_network=False)
+        self.assertEqual(res["title"], "Agrarian Supply Chains Face Climate Vulnerabilities Across Northern River Basins")
+        self.assertIn("Kabir Sen", res["authors"])
+        self.assertIn("Hydrological variability", res["body_html"])
+
+    def test_extract_reforma(self):
+        from server.adapters import extract_reforma
+        html = """
+        <html>
+          <head>
+            <title>Proyectan modernización tecnológica integral en corredores logísticos del norte</title>
+          </head>
+          <body>
+            <h1 class="titulo_nota">Proyectan modernización tecnológica integral en corredores logísticos del norte</h1>
+            <span class="autor_nota">Carlos Mendoza</span>
+            <div class="cuerpo_nota">
+              <p>Inversionistas del sector transporte anuncian desembolsos estratégicos para digitalizar aduanas fronterizas.</p>
+              <p>El plan busca reducir tiempos de tránsito comercial en hasta un cuarenta por ciento.</p>
+            </div>
+          </body>
+        </html>
+        """
+        soup = BeautifulSoup(html, "html.parser")
+        res = extract_reforma("https://www.reforma.com/logistica-norte-aduanas/ar23491", soup, html, fetch_network=False)
+        self.assertEqual(res["title"], "Proyectan modernización tecnológica integral en corredores logísticos del norte")
+        self.assertIn("Carlos Mendoza", res["authors"])
+        self.assertIn("desembolsos estratégicos", res["body_html"])
+
+    def test_extract_news24(self):
+        from server.adapters import extract_news24
+        html = """
+        <html>
+          <head>
+            <title>National Grid Expansion Initiatives Target Renewable Integration Bottlenecks</title>
+          </head>
+          <body>
+            <h1 class="article__title">National Grid Expansion Initiatives Target Renewable Integration Bottlenecks</h1>
+            <div class="article-byline"><span class="author">Thabo Mokoena</span></div>
+            <div class="article__body">
+              <p>Energy authorities have unveiled major transmission corridors to unlock untapped renewable capacity.</p>
+              <p>Transmission infrastructure investments are projected to stimulate regional industrial development.</p>
+            </div>
+          </body>
+        </html>
+        """
+        soup = BeautifulSoup(html, "html.parser")
+        res = extract_news24("https://www.news24.com/fin24/economy/grid-expansion-renewable-bottlenecks-20260909", soup, html, fetch_network=False)
+        self.assertEqual(res["title"], "National Grid Expansion Initiatives Target Renewable Integration Bottlenecks")
+        self.assertIn("Thabo Mokoena", res["authors"])
+        self.assertIn("transmission corridors", res["body_html"])
+
+    def test_extract_sankei(self):
+        from server.adapters import extract_sankei
+        html = """
+        <html>
+          <head>
+            <title>次世代半導体製造基盤の強化に向けた新技術戦略を策定</title>
+          </head>
+          <body>
+            <h1 class="article-title">次世代半導体製造基盤の強化に向けた新技術戦略を策定</h1>
+            <span class="author">経済取材班</span>
+            <div class="article-body">
+              <p>産学官連携による先端微細化技術の研究拠点が新たに整備される方針が示された。</p>
+              <p>国内サプライチェーンの自律性確保に向けた投資支援が本格化する見通しだ。</p>
+            </div>
+          </body>
+        </html>
+        """
+        soup = BeautifulSoup(html, "html.parser")
+        res = extract_sankei("https://www.sankei.com/article/20260909-semiconductor-strategy/", soup, html, fetch_network=False)
+        self.assertEqual(res["title"], "次世代半導体製造基盤の強化に向けた新技術戦略を策定")
+        self.assertIn("産学官連携による先端微細化技術", res["body_html"])
+
+    def test_extract_kmib(self):
+        from server.adapters import extract_kmib
+        html = """
+        <html>
+          <head>
+            <title>친환경 모빌리티 충전 인프라 전국 도심부 대폭 확충</title>
+          </head>
+          <body>
+            <div class="nwsti"><h3>친환경 모빌리티 충전 인프라 전국 도심부 대폭 확충</h3></div>
+            <p class="reporter">박지훈 기자</p>
+            <div id="articleBody">
+              <p>도심 주요 거점을 중심으로 초급속 충전소 구축 사업이 본격적인 착공에 들어갔다.</p>
+              <p>시민 편의성 향상과 탄소 배출 저감 효과를 동시에 달성할 것으로 기대된다.</p>
+            </div>
+          </body>
+        </html>
+        """
+        soup = BeautifulSoup(html, "html.parser")
+        res = extract_kmib("https://www.kmib.co.kr/article/view.asp?arcid=00234812", soup, html, fetch_network=False)
+        self.assertEqual(res["title"], "친환경 모빌리티 충전 인프라 전국 도심부 대폭 확충")
+        self.assertIn("초급속 충전소 구축", res["body_html"])
 
 
 if __name__ == "__main__":

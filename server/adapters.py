@@ -4513,6 +4513,586 @@ def extract_nme(url: str, soup: BeautifulSoup, raw_html: str, fetch_network: boo
     )
 
 
+# ------------------------------------------------------------------------------
+# Cohort 3: Nordic, Eastern European, Asian, Latin American, African & Regional Press
+# ------------------------------------------------------------------------------
+
+def extract_dn_se(url: str, soup: BeautifulSoup, raw_html: str, fetch_network: bool = True) -> Dict[str, Any]:
+    """Dagens Nyheter Swedish national daily extractor."""
+    return extract_with_selectors(
+        url=url,
+        soup=soup,
+        site_name="Dagens Nyheter",
+        body_selectors=["div.article__body", "div.article-content", "article"],
+        title_selectors=["h1.article__title", "h1.article-header__title", "h1"],
+        author_selectors=["div.article__authors", "a.author-link", "span.author"],
+    )
+
+
+def extract_svd(url: str, soup: BeautifulSoup, raw_html: str, fetch_network: bool = True) -> Dict[str, Any]:
+    """Svenska Dagbladet Swedish daily extractor."""
+    return extract_with_selectors(
+        url=url,
+        soup=soup,
+        site_name="Svenska Dagbladet",
+        body_selectors=["div.ArticleBody", "div.article-body", "article"],
+        title_selectors=["h1.Heading", "h1.article-header__headline", "h1"],
+        author_selectors=["span.AuthorName", "div.byline"],
+    )
+
+
+def extract_hs_fi(url: str, soup: BeautifulSoup, raw_html: str, fetch_network: bool = True) -> Dict[str, Any]:
+    """Helsingin Sanomat Finnish daily extractor."""
+    return extract_with_selectors(
+        url=url,
+        soup=soup,
+        site_name="Helsingin Sanomat",
+        body_selectors=["section.article-body", "div.article-body", "article"],
+        title_selectors=["h1.article-title", "h1.title", "h1"],
+        author_selectors=["span.author-name", "div.author"],
+    )
+
+
+def extract_aftenposten(url: str, soup: BeautifulSoup, raw_html: str, fetch_network: bool = True) -> Dict[str, Any]:
+    """Aftenposten Norwegian daily extractor."""
+    return extract_with_selectors(
+        url=url,
+        soup=soup,
+        site_name="Aftenposten",
+        body_selectors=["div.article-body", "div.article-content", "article"],
+        title_selectors=["h1.article-title", "h1.heading", "h1"],
+        author_selectors=["div.byline-name", "span.author"],
+    )
+
+
+def extract_politiken(url: str, soup: BeautifulSoup, raw_html: str, fetch_network: bool = True) -> Dict[str, Any]:
+    """Politiken Danish daily extractor."""
+    return extract_with_selectors(
+        url=url,
+        soup=soup,
+        site_name="Politiken",
+        body_selectors=["div.article__body", "div.article-body", "article"],
+        title_selectors=["h1.article__title", "h1.headline", "h1"],
+        author_selectors=["div.article__byline", "span.byline"],
+    )
+
+
+def extract_wyborcza(url: str, soup: BeautifulSoup, raw_html: str, fetch_network: bool = True) -> Dict[str, Any]:
+    """Gazeta Wyborcza Polish daily extractor."""
+    return extract_with_selectors(
+        url=url,
+        soup=soup,
+        site_name="Gazeta Wyborcza",
+        body_selectors=["div.art-body", "section.body", "article"],
+        title_selectors=["h1.article-title", "h1.title", "h1"],
+        author_selectors=["div.art-author", "span.author"],
+    )
+
+
+def extract_dennikn(url: str, soup: BeautifulSoup, raw_html: str, fetch_network: bool = True) -> Dict[str, Any]:
+    """Denník N Slovak independent daily extractor."""
+    return extract_with_selectors(
+        url=url,
+        soup=soup,
+        site_name="Denník N",
+        body_selectors=["div.e_content", "div.article-body", "article"],
+        title_selectors=["h1.e_title", "h1.title", "h1"],
+        author_selectors=["div.e_author", "span.author"],
+    )
+
+
+def extract_telex(url: str, soup: BeautifulSoup, raw_html: str, fetch_network: bool = True) -> Dict[str, Any]:
+    """Telex Hungarian independent news extractor."""
+    return extract_with_selectors(
+        url=url,
+        soup=soup,
+        site_name="Telex",
+        body_selectors=["div.article-html-content", "div.text", "article"],
+        title_selectors=["h1.title", "h1.headline", "h1"],
+        author_selectors=["div.author__name", "span.author"],
+    )
+
+
+def extract_novayagazeta(url: str, soup: BeautifulSoup, raw_html: str, fetch_network: bool = True) -> Dict[str, Any]:
+    """Novaya Gazeta Europe independent investigative extractor."""
+    return extract_with_selectors(
+        url=url,
+        soup=soup,
+        site_name="Novaya Gazeta Europe",
+        body_selectors=["div.article-body", "div.content-body", "article"],
+        title_selectors=["h1.article-title", "h1.title", "h1"],
+        author_selectors=["div.author-info", "span.author"],
+    )
+
+
+def extract_eurasianet(url: str, soup: BeautifulSoup, raw_html: str, fetch_network: bool = True) -> Dict[str, Any]:
+    """Eurasianet Central Asia & Caucasus analysis extractor."""
+    return extract_with_selectors(
+        url=url,
+        soup=soup,
+        site_name="Eurasianet",
+        body_selectors=["div.article-content", "div.field--name-body", "article"],
+        title_selectors=["h1.article-header__title", "h1.title", "h1"],
+        author_selectors=["div.article-header__author", "span.author"],
+    )
+
+
+def extract_thewire(url: str, soup: BeautifulSoup, raw_html: str, fetch_network: bool = True) -> Dict[str, Any]:
+    """The Wire (India) independent digital news extractor."""
+    return extract_with_selectors(
+        url=url,
+        soup=soup,
+        site_name="The Wire",
+        body_selectors=["div.grey-card-content", "div.article-content", "article"],
+        title_selectors=["h1.title", "h1.headline", "h1"],
+        author_selectors=["span.author-name", "div.author"],
+    )
+
+
+def extract_scroll(url: str, soup: BeautifulSoup, raw_html: str, fetch_network: bool = True) -> Dict[str, Any]:
+    """Scroll.in Indian digital news & features extractor."""
+    return extract_with_selectors(
+        url=url,
+        soup=soup,
+        site_name="Scroll.in",
+        body_selectors=["div.article-content", "div.story-body", "article"],
+        title_selectors=["h1.story-title", "h1.title", "h1"],
+        author_selectors=["div.author-info", "span.author"],
+    )
+
+
+def extract_theprint(url: str, soup: BeautifulSoup, raw_html: str, fetch_network: bool = True) -> Dict[str, Any]:
+    """ThePrint Indian political & strategic affairs extractor."""
+    return extract_with_selectors(
+        url=url,
+        soup=soup,
+        site_name="ThePrint",
+        body_selectors=["div.td-post-content", "div.entry-content", "article"],
+        title_selectors=["h1.entry-title", "h1.tdb-title-text", "h1"],
+        author_selectors=["div.td-post-author-name", "span.author"],
+    )
+
+
+def extract_livemint(url: str, soup: BeautifulSoup, raw_html: str, fetch_network: bool = True) -> Dict[str, Any]:
+    """Livemint Indian business and financial daily extractor."""
+    return extract_with_selectors(
+        url=url,
+        soup=soup,
+        site_name="Livemint",
+        body_selectors=["div.contentSec", "div.article-content", "article"],
+        title_selectors=["h1.headline", "h1.title", "h1"],
+        author_selectors=["span.article-byline", "div.author"],
+    )
+
+
+def extract_businessstandard(url: str, soup: BeautifulSoup, raw_html: str, fetch_network: bool = True) -> Dict[str, Any]:
+    """Business Standard Indian financial newspaper extractor."""
+    return extract_with_selectors(
+        url=url,
+        soup=soup,
+        site_name="Business Standard",
+        body_selectors=["div.story-content", "div.article-content", "article"],
+        title_selectors=["h1.story-title", "h1.headline", "h1"],
+        author_selectors=["div.story-author", "span.author"],
+    )
+
+
+def extract_dawn(url: str, soup: BeautifulSoup, raw_html: str, fetch_network: bool = True) -> Dict[str, Any]:
+    """Dawn Pakistani newspaper of record extractor."""
+    return extract_with_selectors(
+        url=url,
+        soup=soup,
+        site_name="Dawn",
+        body_selectors=["div.story__content", "div.content", "article"],
+        title_selectors=["h2.story__title", "h1.story__title", "h1"],
+        author_selectors=["span.story__byline", "a.story__author"],
+    )
+
+
+def extract_thedailystar(url: str, soup: BeautifulSoup, raw_html: str, fetch_network: bool = True) -> Dict[str, Any]:
+    """The Daily Star Bangladeshi newspaper extractor."""
+    return extract_with_selectors(
+        url=url,
+        soup=soup,
+        site_name="The Daily Star",
+        body_selectors=["div.field-type-text-with-summary", "div.article-body", "article"],
+        title_selectors=["h1.title", "h1.article-title", "h1"],
+        author_selectors=["div.author-name", "span.author"],
+    )
+
+
+def extract_thejakartapost(url: str, soup: BeautifulSoup, raw_html: str, fetch_network: bool = True) -> Dict[str, Any]:
+    """The Jakarta Post Indonesian daily extractor."""
+    return extract_with_selectors(
+        url=url,
+        soup=soup,
+        site_name="The Jakarta Post",
+        body_selectors=["div.detailNews", "div.post-content", "article"],
+        title_selectors=["h1.title-large", "h1.title", "h1"],
+        author_selectors=["span.author-name", "div.byline"],
+    )
+
+
+def extract_bangkokpost(url: str, soup: BeautifulSoup, raw_html: str, fetch_network: bool = True) -> Dict[str, Any]:
+    """Bangkok Post English-language Thai newspaper extractor."""
+    return extract_with_selectors(
+        url=url,
+        soup=soup,
+        site_name="Bangkok Post",
+        body_selectors=["div.articl-content", "div.article-content", "article"],
+        title_selectors=["h1.headline", "h1.title", "h1"],
+        author_selectors=["div.author-name", "span.author"],
+    )
+
+
+def extract_rappler(url: str, soup: BeautifulSoup, raw_html: str, fetch_network: bool = True) -> Dict[str, Any]:
+    """Rappler Philippine investigative news extractor."""
+    return extract_with_selectors(
+        url=url,
+        soup=soup,
+        site_name="Rappler",
+        body_selectors=["div.post-content", "div.entry-content", "article"],
+        title_selectors=["h1.post-title", "h1.entry-title", "h1"],
+        author_selectors=["div.author-details", "span.author"],
+    )
+
+
+def extract_vnexpress(url: str, soup: BeautifulSoup, raw_html: str, fetch_network: bool = True) -> Dict[str, Any]:
+    """VnExpress International Vietnamese news extractor."""
+    return extract_with_selectors(
+        url=url,
+        soup=soup,
+        site_name="VnExpress",
+        body_selectors=["div.fck_detail", "div.content-detail", "article"],
+        title_selectors=["h1.title-detail", "h1.title_news_detail", "h1"],
+        author_selectors=["p.author_mail", "span.author"],
+    )
+
+
+def extract_caixinglobal(url: str, soup: BeautifulSoup, raw_html: str, fetch_network: bool = True) -> Dict[str, Any]:
+    """Caixin Global Chinese financial and economic news extractor."""
+    return extract_with_selectors(
+        url=url,
+        soup=soup,
+        site_name="Caixin Global",
+        body_selectors=["div.article-content", "div.content", "article"],
+        title_selectors=["h1.article-title", "h1.title", "h1"],
+        author_selectors=["div.author", "span.author"],
+    )
+
+
+def extract_reforma(url: str, soup: BeautifulSoup, raw_html: str, fetch_network: bool = True) -> Dict[str, Any]:
+    """Reforma Mexican major newspaper extractor."""
+    return extract_with_selectors(
+        url=url,
+        soup=soup,
+        site_name="Reforma",
+        body_selectors=["div.cuerpo_nota", "div.nota_completa", "article"],
+        title_selectors=["h1.titulo_nota", "h1.headline", "h1"],
+        author_selectors=["span.autor_nota", "div.autor"],
+    )
+
+
+def extract_eluniversal_mx(url: str, soup: BeautifulSoup, raw_html: str, fetch_network: bool = True) -> Dict[str, Any]:
+    """El Universal Mexican daily newspaper extractor."""
+    return extract_with_selectors(
+        url=url,
+        soup=soup,
+        site_name="El Universal Mexico",
+        body_selectors=["div.content-nota", "div.field-name-body", "article"],
+        title_selectors=["h1.nota-titulo", "h1.title", "h1"],
+        author_selectors=["div.nota-autor", "span.author"],
+    )
+
+
+def extract_animalpolitico(url: str, soup: BeautifulSoup, raw_html: str, fetch_network: bool = True) -> Dict[str, Any]:
+    """Animal Político Mexican investigative journalism extractor."""
+    return extract_with_selectors(
+        url=url,
+        soup=soup,
+        site_name="Animal Político",
+        body_selectors=["div.content-clean", "div.entry-content", "article"],
+        title_selectors=["h1.title", "h1.entry-title", "h1"],
+        author_selectors=["div.author-name", "span.author"],
+    )
+
+
+def extract_eltiempo(url: str, soup: BeautifulSoup, raw_html: str, fetch_network: bool = True) -> Dict[str, Any]:
+    """El Tiempo Colombian national daily extractor."""
+    return extract_with_selectors(
+        url=url,
+        soup=soup,
+        site_name="El Tiempo",
+        body_selectors=["div.articulo-contenido", "div.c-cuerpo", "article"],
+        title_selectors=["h1.c-titulo", "h1.titulo-articulo", "h1"],
+        author_selectors=["div.c-autor", "span.autor"],
+    )
+
+
+def extract_elespectador(url: str, soup: BeautifulSoup, raw_html: str, fetch_network: bool = True) -> Dict[str, Any]:
+    """El Espectador Colombian newspaper extractor."""
+    return extract_with_selectors(
+        url=url,
+        soup=soup,
+        site_name="El Espectador",
+        body_selectors=["section.Article-Body", "div.article-body", "article"],
+        title_selectors=["h1.Article-Title", "h1.title", "h1"],
+        author_selectors=["span.Article-Author", "div.byline"],
+    )
+
+
+def extract_lanacion_ar(url: str, soup: BeautifulSoup, raw_html: str, fetch_network: bool = True) -> Dict[str, Any]:
+    """La Nación Argentine leading daily extractor."""
+    return extract_with_selectors(
+        url=url,
+        soup=soup,
+        site_name="La Nación Argentina",
+        body_selectors=["section.c-cuerpo", "div.mod-cuerpo", "article"],
+        title_selectors=["h1.c-titulo", "h1.com-title", "h1"],
+        author_selectors=["div.c-autor", "span.com-author"],
+    )
+
+
+def extract_emol(url: str, soup: BeautifulSoup, raw_html: str, fetch_network: bool = True) -> Dict[str, Any]:
+    """El Mercurio / Emol Chilean newspaper extractor."""
+    return extract_with_selectors(
+        url=url,
+        soup=soup,
+        site_name="El Mercurio",
+        body_selectors=["div#cuDetalle_cuTexto", "div.texto-noticia", "article"],
+        title_selectors=["h1#cuDetalle_cuTitular", "h1.titular", "h1"],
+        author_selectors=["div.autor", "span.autor"],
+    )
+
+
+def extract_elcomercio_pe(url: str, soup: BeautifulSoup, raw_html: str, fetch_network: bool = True) -> Dict[str, Any]:
+    """El Comercio Peruvian leading newspaper extractor."""
+    return extract_with_selectors(
+        url=url,
+        soup=soup,
+        site_name="El Comercio Peru",
+        body_selectors=["div.story-contents", "div.nota-body", "article"],
+        title_selectors=["h1.story-title", "h1.nota-title", "h1"],
+        author_selectors=["div.story-author", "span.author"],
+    )
+
+
+def extract_oglobo(url: str, soup: BeautifulSoup, raw_html: str, fetch_network: bool = True) -> Dict[str, Any]:
+    """O Globo Brazilian major newspaper extractor."""
+    return extract_with_selectors(
+        url=url,
+        soup=soup,
+        site_name="O Globo",
+        body_selectors=["div.article__content-container", "div.corpo", "article"],
+        title_selectors=["h1.article__title", "h1.c-title", "h1"],
+        author_selectors=["div.author__name", "span.author"],
+    )
+
+
+def extract_pagina12(url: str, soup: BeautifulSoup, raw_html: str, fetch_network: bool = True) -> Dict[str, Any]:
+    """Página 12 Argentine progressive newspaper extractor."""
+    return extract_with_selectors(
+        url=url,
+        soup=soup,
+        site_name="Página 12",
+        body_selectors=["div.article-text", "div.article-body", "article"],
+        title_selectors=["h1.article-title", "h1.title", "h1"],
+        author_selectors=["div.article-author", "span.author"],
+    )
+
+
+def extract_news24(url: str, soup: BeautifulSoup, raw_html: str, fetch_network: bool = True) -> Dict[str, Any]:
+    """News24 South Africa premier digital news extractor."""
+    return extract_with_selectors(
+        url=url,
+        soup=soup,
+        site_name="News24",
+        body_selectors=["div.article__body", "div.article-content", "article"],
+        title_selectors=["h1.article__title", "h1.title", "h1"],
+        author_selectors=["div.article-byline", "span.author"],
+    )
+
+
+def extract_mg_co_za(url: str, soup: BeautifulSoup, raw_html: str, fetch_network: bool = True) -> Dict[str, Any]:
+    """Mail & Guardian South African investigative weekly extractor."""
+    return extract_with_selectors(
+        url=url,
+        soup=soup,
+        site_name="Mail & Guardian",
+        body_selectors=["div.entry-content", "div.article-content", "article"],
+        title_selectors=["h1.entry-title", "h1.post-title", "h1"],
+        author_selectors=["div.author-name", "span.author"],
+    )
+
+
+def extract_premiumtimes(url: str, soup: BeautifulSoup, raw_html: str, fetch_network: bool = True) -> Dict[str, Any]:
+    """Premium Times Nigerian investigative newspaper extractor."""
+    return extract_with_selectors(
+        url=url,
+        soup=soup,
+        site_name="Premium Times",
+        body_selectors=["div.entry-content", "div.post-content", "article"],
+        title_selectors=["h1.entry-title", "h1.post-title", "h1"],
+        author_selectors=["div.author-info", "span.author"],
+    )
+
+
+def extract_nation_africa(url: str, soup: BeautifulSoup, raw_html: str, fetch_network: bool = True) -> Dict[str, Any]:
+    """Daily Nation Kenya / Nation Africa leading newspaper extractor."""
+    return extract_with_selectors(
+        url=url,
+        soup=soup,
+        site_name="Daily Nation",
+        body_selectors=["section.article-body", "div.article-content", "article"],
+        title_selectors=["h1.title-large", "h1.title", "h1"],
+        author_selectors=["span.author-name", "div.byline"],
+    )
+
+
+def extract_theafricareport(url: str, soup: BeautifulSoup, raw_html: str, fetch_network: bool = True) -> Dict[str, Any]:
+    """The Africa Report politics and business magazine extractor."""
+    return extract_with_selectors(
+        url=url,
+        soup=soup,
+        site_name="The Africa Report",
+        body_selectors=["div.article-content", "div.post-content", "article"],
+        title_selectors=["h1.article-title", "h1.entry-title", "h1"],
+        author_selectors=["div.author", "span.author"],
+    )
+
+
+def extract_ahram_online(url: str, soup: BeautifulSoup, raw_html: str, fetch_network: bool = True) -> Dict[str, Any]:
+    """Ahram Online Egyptian newspaper of record extractor."""
+    return extract_with_selectors(
+        url=url,
+        soup=soup,
+        site_name="Ahram Online",
+        body_selectors=["div#divContent", "div.content-area", "article"],
+        title_selectors=["h1.title", "h1.headline", "h1"],
+        author_selectors=["div.author-byline", "span.author"],
+    )
+
+
+def extract_lorienttoday(url: str, soup: BeautifulSoup, raw_html: str, fetch_network: bool = True) -> Dict[str, Any]:
+    """L'Orient Today Lebanese independent journalism extractor."""
+    return extract_with_selectors(
+        url=url,
+        soup=soup,
+        site_name="L'Orient Today",
+        body_selectors=["div.article-body", "div.content", "article"],
+        title_selectors=["h1.article-title", "h1.title", "h1"],
+        author_selectors=["div.author-name", "span.author"],
+    )
+
+
+def extract_aawsat(url: str, soup: BeautifulSoup, raw_html: str, fetch_network: bool = True) -> Dict[str, Any]:
+    """Asharq Al-Awsat pan-Arab international newspaper extractor."""
+    return extract_with_selectors(
+        url=url,
+        soup=soup,
+        site_name="Asharq Al-Awsat",
+        body_selectors=["div.article-body", "div.field--name-body", "article"],
+        title_selectors=["h1.article-title", "h1.title", "h1"],
+        author_selectors=["div.author-title", "span.author"],
+    )
+
+
+def extract_sankei(url: str, soup: BeautifulSoup, raw_html: str, fetch_network: bool = True) -> Dict[str, Any]:
+    """Sankei Shimbun Japanese national daily extractor."""
+    return extract_with_selectors(
+        url=url,
+        soup=soup,
+        site_name="Sankei Shimbun",
+        body_selectors=["div.article-body", "div.article-text", "article"],
+        title_selectors=["h1.article-title", "h1.title", "h1"],
+        author_selectors=["span.author", "div.byline"],
+    )
+
+
+def extract_tokyonp(url: str, soup: BeautifulSoup, raw_html: str, fetch_network: bool = True) -> Dict[str, Any]:
+    """Tokyo Shimbun Japanese metropolitan daily extractor."""
+    return extract_with_selectors(
+        url=url,
+        soup=soup,
+        site_name="Tokyo Shimbun",
+        body_selectors=["div.article-body", "div.main-text", "article"],
+        title_selectors=["h1.title", "h1.article-title", "h1"],
+        author_selectors=["span.author", "p.credit"],
+    )
+
+
+def extract_nishinippon(url: str, soup: BeautifulSoup, raw_html: str, fetch_network: bool = True) -> Dict[str, Any]:
+    """Nishinippon Shimbun Japanese regional daily extractor."""
+    return extract_with_selectors(
+        url=url,
+        soup=soup,
+        site_name="Nishinippon Shimbun",
+        body_selectors=["div.article-body", "div.article-text", "article"],
+        title_selectors=["h1.article-title", "h1.title", "h1"],
+        author_selectors=["span.author", "p.credit"],
+    )
+
+
+def extract_kmib(url: str, soup: BeautifulSoup, raw_html: str, fetch_network: bool = True) -> Dict[str, Any]:
+    """Kookmin Ilbo Korean national daily extractor (국민일보)."""
+    return extract_with_selectors(
+        url=url,
+        soup=soup,
+        site_name="Kookmin Ilbo",
+        body_selectors=["div#articleBody", "div.tx", "article"],
+        title_selectors=["div.nwsti h3", "h3.title", "h1"],
+        author_selectors=["span.byline", "p.reporter"],
+    )
+
+
+def extract_munhwa(url: str, soup: BeautifulSoup, raw_html: str, fetch_network: bool = True) -> Dict[str, Any]:
+    """Munhwa Ilbo Korean evening daily extractor (문화일보)."""
+    return extract_with_selectors(
+        url=url,
+        soup=soup,
+        site_name="Munhwa Ilbo",
+        body_selectors=["div#NewsAdContent", "div.art_body", "article"],
+        title_selectors=["h3.title", "h1.title", "h1"],
+        author_selectors=["p.reporter", "span.byline"],
+    )
+
+
+def extract_seoul_co_kr(url: str, soup: BeautifulSoup, raw_html: str, fetch_network: bool = True) -> Dict[str, Any]:
+    """Seoul Shinmun Korean daily newspaper extractor (서울신문)."""
+    return extract_with_selectors(
+        url=url,
+        soup=soup,
+        site_name="Seoul Shinmun",
+        body_selectors=["div#atic_article", "div.v_article", "article"],
+        title_selectors=["h1.headline", "h1.tit", "h1"],
+        author_selectors=["span.reporter", "div.byline"],
+    )
+
+
+def extract_fnnews(url: str, soup: BeautifulSoup, raw_html: str, fetch_network: bool = True) -> Dict[str, Any]:
+    """Financial News Korean financial daily extractor (파이낸셜뉴스)."""
+    return extract_with_selectors(
+        url=url,
+        soup=soup,
+        site_name="Financial News",
+        body_selectors=["div#article_content", "div.content", "article"],
+        title_selectors=["h1.headline", "h1.title", "h1"],
+        author_selectors=["span.byline", "p.reporter"],
+    )
+
+
+def extract_zdnet_kr(url: str, soup: BeautifulSoup, raw_html: str, fetch_network: bool = True) -> Dict[str, Any]:
+    """ZDNet Korea enterprise tech news extractor (지디넷코리아)."""
+    return extract_with_selectors(
+        url=url,
+        soup=soup,
+        site_name="ZDNet Korea",
+        body_selectors=["div#articleBody", "div.view_cont", "article"],
+        title_selectors=["h1.news_tit", "h1.tit", "h1"],
+        author_selectors=["span.reporter_name", "p.reporter"],
+    )
+
+
 # 6. Central Registries (SITE_ADAPTERS & BROWSER_HINTS)
 # ==============================================================================
 
@@ -4823,6 +5403,58 @@ SITE_ADAPTERS: Dict[str, Callable[[str, BeautifulSoup, str, bool], Dict[str, Any
     "reason.com": extract_reason,
     "pitchfork.com": extract_pitchfork,
     "nme.com": extract_nme,
+
+    # Nordic, Eastern European, Asian, Latin American, African & Regional Press (Cohort 3)
+    "dn.se": extract_dn_se,
+    "svd.se": extract_svd,
+    "hs.fi": extract_hs_fi,
+    "hesari.fi": extract_hs_fi,
+    "aftenposten.no": extract_aftenposten,
+    "politiken.dk": extract_politiken,
+    "wyborcza.pl": extract_wyborcza,
+    "dennikn.sk": extract_dennikn,
+    "telex.hu": extract_telex,
+    "novayagazeta.eu": extract_novayagazeta,
+    "eurasianet.org": extract_eurasianet,
+    "thewire.in": extract_thewire,
+    "scroll.in": extract_scroll,
+    "theprint.in": extract_theprint,
+    "livemint.com": extract_livemint,
+    "business-standard.com": extract_businessstandard,
+    "dawn.com": extract_dawn,
+    "thedailystar.net": extract_thedailystar,
+    "thejakartapost.com": extract_thejakartapost,
+    "bangkokpost.com": extract_bangkokpost,
+    "rappler.com": extract_rappler,
+    "e.vnexpress.net": extract_vnexpress,
+    "vnexpress.net": extract_vnexpress,
+    "caixinglobal.com": extract_caixinglobal,
+    "reforma.com": extract_reforma,
+    "eluniversal.com.mx": extract_eluniversal_mx,
+    "animalpolitico.com": extract_animalpolitico,
+    "eltiempo.com": extract_eltiempo,
+    "elespectador.com": extract_elespectador,
+    "lanacion.com.ar": extract_lanacion_ar,
+    "emol.com": extract_emol,
+    "elcomercio.pe": extract_elcomercio_pe,
+    "oglobo.globo.com": extract_oglobo,
+    "pagina12.com.ar": extract_pagina12,
+    "news24.com": extract_news24,
+    "mg.co.za": extract_mg_co_za,
+    "premiumtimesng.com": extract_premiumtimes,
+    "nation.africa": extract_nation_africa,
+    "theafricareport.com": extract_theafricareport,
+    "english.ahram.org.eg": extract_ahram_online,
+    "today.lorientlejour.com": extract_lorienttoday,
+    "english.aawsat.com": extract_aawsat,
+    "sankei.com": extract_sankei,
+    "tokyo-np.co.jp": extract_tokyonp,
+    "nishinippon.co.jp": extract_nishinippon,
+    "kmib.co.kr": extract_kmib,
+    "munhwa.com": extract_munhwa,
+    "seoul.co.kr": extract_seoul_co_kr,
+    "fnnews.com": extract_fnnews,
+    "zdnet.co.kr": extract_zdnet_kr,
 }
 
 
@@ -6018,6 +6650,208 @@ BROWSER_HINTS: Dict[str, Dict[str, Any]] = {
     "nme.com": {
         "wait_for_selector": "div.td-post-content, article",
         "dismiss_selectors": ["#onetrust-accept-btn-handler", ".qc-cmp2-summary-buttons button:first-child"],
+    },
+
+    # Nordic, Eastern European, Asian, Latin American, African & Regional Press (Cohort 3)
+    "dn.se": {
+        "wait_for_selector": "div.article__body, article",
+        "dismiss_selectors": ["#onetrust-accept-btn-handler"],
+    },
+    "svd.se": {
+        "wait_for_selector": "div.ArticleBody, article",
+        "dismiss_selectors": ["#onetrust-accept-btn-handler"],
+    },
+    "hs.fi": {
+        "wait_for_selector": "section.article-body, article",
+        "dismiss_selectors": ["#onetrust-accept-btn-handler"],
+    },
+    "hesari.fi": {
+        "wait_for_selector": "section.article-body, article",
+        "dismiss_selectors": ["#onetrust-accept-btn-handler"],
+    },
+    "aftenposten.no": {
+        "wait_for_selector": "div.article-body, article",
+        "dismiss_selectors": ["#onetrust-accept-btn-handler"],
+    },
+    "politiken.dk": {
+        "wait_for_selector": "div.article__body, article",
+        "dismiss_selectors": ["#onetrust-accept-btn-handler"],
+    },
+    "wyborcza.pl": {
+        "wait_for_selector": "div.art-body, article",
+        "dismiss_selectors": ["#onetrust-accept-btn-handler"],
+    },
+    "dennikn.sk": {
+        "wait_for_selector": "div.e_content, article",
+        "dismiss_selectors": [],
+    },
+    "telex.hu": {
+        "wait_for_selector": "div.article-html-content, article",
+        "dismiss_selectors": [],
+    },
+    "novayagazeta.eu": {
+        "wait_for_selector": "div.article-body, article",
+        "dismiss_selectors": [],
+    },
+    "eurasianet.org": {
+        "wait_for_selector": "div.article-content, article",
+        "dismiss_selectors": [],
+    },
+    "thewire.in": {
+        "wait_for_selector": "div.grey-card-content, article",
+        "dismiss_selectors": [],
+    },
+    "scroll.in": {
+        "wait_for_selector": "div.article-content, article",
+        "dismiss_selectors": [],
+    },
+    "theprint.in": {
+        "wait_for_selector": "div.td-post-content, article",
+        "dismiss_selectors": [],
+    },
+    "livemint.com": {
+        "wait_for_selector": "div.contentSec, article",
+        "dismiss_selectors": ["#onetrust-accept-btn-handler"],
+    },
+    "business-standard.com": {
+        "wait_for_selector": "div.story-content, article",
+        "dismiss_selectors": ["#onetrust-accept-btn-handler"],
+    },
+    "dawn.com": {
+        "wait_for_selector": "div.story__content, article",
+        "dismiss_selectors": [],
+    },
+    "thedailystar.net": {
+        "wait_for_selector": "div.field-type-text-with-summary, article",
+        "dismiss_selectors": [],
+    },
+    "thejakartapost.com": {
+        "wait_for_selector": "div.detailNews, article",
+        "dismiss_selectors": ["#onetrust-accept-btn-handler"],
+    },
+    "bangkokpost.com": {
+        "wait_for_selector": "div.articl-content, article",
+        "dismiss_selectors": ["#onetrust-accept-btn-handler"],
+    },
+    "rappler.com": {
+        "wait_for_selector": "div.post-content, article",
+        "dismiss_selectors": [],
+    },
+    "e.vnexpress.net": {
+        "wait_for_selector": "div.fck_detail, article",
+        "dismiss_selectors": [],
+    },
+    "vnexpress.net": {
+        "wait_for_selector": "div.fck_detail, article",
+        "dismiss_selectors": [],
+    },
+    "caixinglobal.com": {
+        "wait_for_selector": "div.article-content, article",
+        "dismiss_selectors": [],
+    },
+    "reforma.com": {
+        "wait_for_selector": "div.cuerpo_nota, article",
+        "dismiss_selectors": [],
+    },
+    "eluniversal.com.mx": {
+        "wait_for_selector": "div.content-nota, article",
+        "dismiss_selectors": ["#onetrust-accept-btn-handler"],
+    },
+    "animalpolitico.com": {
+        "wait_for_selector": "div.content-clean, article",
+        "dismiss_selectors": [],
+    },
+    "eltiempo.com": {
+        "wait_for_selector": "div.articulo-contenido, article",
+        "dismiss_selectors": ["#onetrust-accept-btn-handler"],
+    },
+    "elespectador.com": {
+        "wait_for_selector": "section.Article-Body, article",
+        "dismiss_selectors": ["#onetrust-accept-btn-handler"],
+    },
+    "lanacion.com.ar": {
+        "wait_for_selector": "section.c-cuerpo, article",
+        "dismiss_selectors": ["#onetrust-accept-btn-handler"],
+    },
+    "emol.com": {
+        "wait_for_selector": "div#cuDetalle_cuTexto, article",
+        "dismiss_selectors": [],
+    },
+    "elcomercio.pe": {
+        "wait_for_selector": "div.story-contents, article",
+        "dismiss_selectors": ["#onetrust-accept-btn-handler"],
+    },
+    "oglobo.globo.com": {
+        "wait_for_selector": "div.article__content-container, article",
+        "dismiss_selectors": ["#onetrust-accept-btn-handler"],
+    },
+    "pagina12.com.ar": {
+        "wait_for_selector": "div.article-text, article",
+        "dismiss_selectors": [],
+    },
+    "news24.com": {
+        "wait_for_selector": "div.article__body, article",
+        "dismiss_selectors": ["#onetrust-accept-btn-handler"],
+    },
+    "mg.co.za": {
+        "wait_for_selector": "div.entry-content, article",
+        "dismiss_selectors": [],
+    },
+    "premiumtimesng.com": {
+        "wait_for_selector": "div.entry-content, article",
+        "dismiss_selectors": [],
+    },
+    "nation.africa": {
+        "wait_for_selector": "section.article-body, article",
+        "dismiss_selectors": ["#onetrust-accept-btn-handler"],
+    },
+    "theafricareport.com": {
+        "wait_for_selector": "div.article-content, article",
+        "dismiss_selectors": [],
+    },
+    "english.ahram.org.eg": {
+        "wait_for_selector": "div#divContent, article",
+        "dismiss_selectors": [],
+    },
+    "today.lorientlejour.com": {
+        "wait_for_selector": "div.article-body, article",
+        "dismiss_selectors": ["#onetrust-accept-btn-handler"],
+    },
+    "english.aawsat.com": {
+        "wait_for_selector": "div.article-body, article",
+        "dismiss_selectors": [],
+    },
+    "sankei.com": {
+        "wait_for_selector": "div.article-body, article",
+        "dismiss_selectors": ["#onetrust-accept-btn-handler"],
+    },
+    "tokyo-np.co.jp": {
+        "wait_for_selector": "div.article-body, article",
+        "dismiss_selectors": [],
+    },
+    "nishinippon.co.jp": {
+        "wait_for_selector": "div.article-body, article",
+        "dismiss_selectors": [],
+    },
+    "kmib.co.kr": {
+        "wait_for_selector": "div#articleBody, article",
+        "dismiss_selectors": [],
+    },
+    "munhwa.com": {
+        "wait_for_selector": "div#NewsAdContent, article",
+        "dismiss_selectors": [],
+    },
+    "seoul.co.kr": {
+        "wait_for_selector": "div#atic_article, article",
+        "dismiss_selectors": [],
+    },
+    "fnnews.com": {
+        "wait_for_selector": "div#article_content, article",
+        "dismiss_selectors": [],
+    },
+    "zdnet.co.kr": {
+        "wait_for_selector": "div#articleBody, article",
+        "dismiss_selectors": [],
     },
 }
 
