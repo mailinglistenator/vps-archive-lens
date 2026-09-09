@@ -1741,6 +1741,8 @@ def generate_ai_reader(snapshot_id: str, force_refresh: bool = False) -> Path:
                 logger.info(f"Invalidating stale false-forum reader cache for {safe_id}")
             elif "takeaways-box" not in cached_str and "<!-- no-takeaways -->" not in cached_str and len(cached_str) > 150:
                 logger.info(f"Invalidating stale reader cache missing AI takeaways for {safe_id}")
+            elif "Video Player is loading" in cached_str or "This is a modal window" in cached_str or "Beginning of dialog window" in cached_str:
+                logger.info(f"Invalidating stale reader cache containing video player modal noise for {safe_id}")
             else:
                 return reader_path
         except Exception:
@@ -1790,7 +1792,16 @@ def generate_ai_reader(snapshot_id: str, force_refresh: bool = False) -> Path:
             image = adapter_data["hero_image_url"]
 
     # 2. Article markdown extraction
-    extracted_md = trafilatura.extract(raw_html, include_images=True, include_links=True, output_format="markdown") or ""
+    clean_raw_soup = BeautifulSoup(raw_html, "html.parser")
+    for video_node in clean_raw_soup.find_all(
+        class_=re.compile(r"vjs-|video-js|op-embed-player|videoWrapper|jwplayer|player-modal|vms-player|media-player", re.I)
+    ):
+        video_node.decompose()
+    for dialog_node in clean_raw_soup.find_all(["div", "section"], attrs={"role": "dialog"}):
+        dialog_node.decompose()
+    clean_raw_html = str(clean_raw_soup)
+
+    extracted_md = trafilatura.extract(clean_raw_html, include_images=True, include_links=True, output_format="markdown") or ""
 
     if len(extracted_md.strip()) < 150:
         if adapter_data and adapter_data.get("body_html") and len(adapter_data["body_html"].strip()) > 80:
@@ -1803,18 +1814,31 @@ def generate_ai_reader(snapshot_id: str, force_refresh: bool = False) -> Path:
                 ps = [p.get_text(strip=True) for p in article_elem.find_all("p") if len(p.get_text(strip=True)) > 40]
                 extracted_md = "\n\n".join(ps)
 
-    # Clean promotional and boilerplate lines
+    # Clean promotional, boilerplate, and video player modal noise
     cleaned_lines = []
     for line in extracted_md.split("\n"):
         low = line.lower().strip()
+        if not low:
+            cleaned_lines.append(line)
+            continue
         if any(noise in low for noise in [
             "save us as a preferred source",
             "download our app",
+            "download our new app",
             "follow us on",
             "sign up for our newsletter",
             "click here to subscribe",
-            "advertisement"
+            "advertisement",
+            "video player is loading",
+            "this is a modal window",
+            "beginning of dialog window",
+            "end of dialog window",
+            "escape will cancel and close the window",
+            "playing on chromecast",
+            "this modal can be closed by pressing the escape key",
         ]):
+            continue
+        if re.match(r"^loaded:\s*\d+%$", low) or low in ["x", "close"]:
             continue
         if low.startswith("# ") and title.lower() in low:
             continue

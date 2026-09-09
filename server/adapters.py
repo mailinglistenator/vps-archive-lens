@@ -101,6 +101,18 @@ def sanitize_element_to_html(container: Tag) -> str:
     ):
         ad_node.decompose()
 
+    # Remove video player chrome, modal dialogs, and video controls
+    for video_chrome in container.find_all(
+        class_=re.compile(
+            r"vjs-|video-js|op-embed-player|videoWrapper|jwplayer|player-modal|vms-player|media-player|vms-vertical-player",
+            re.IGNORECASE,
+        )
+    ):
+        video_chrome.decompose()
+
+    for dialog_node in container.find_all(["div", "section"], attrs={"role": "dialog"}):
+        dialog_node.decompose()
+
     # Replace <br> tags with double newlines in text nodes
     for br in container.find_all("br"):
         br.replace_with("\n\n")
@@ -153,6 +165,18 @@ def sanitize_element_to_html(container: Tag) -> str:
 
         raw_txt = el.get_text(strip=True)
         if not raw_txt or len(raw_txt) < 3:
+            continue
+
+        low_txt = raw_txt.lower()
+        if any(v in low_txt for v in [
+            "video player is loading",
+            "this is a modal window",
+            "beginning of dialog window",
+            "end of dialog window",
+            "escape will cancel and close the window",
+            "playing on chromecast",
+            "modal can be closed by pressing the escape key",
+        ]) or re.match(r"^loaded:\s*\d+%$", low_txt) or low_txt in ["x", "close"]:
             continue
 
         # Deduplicate identical consecutive blocks
@@ -5093,6 +5117,20 @@ def extract_zdnet_kr(url: str, soup: BeautifulSoup, raw_html: str, fetch_network
     )
 
 
+def extract_news_com_au(url: str, soup: BeautifulSoup, raw_html: str, fetch_network: bool = True) -> Dict[str, Any]:
+    """News.com.au and Australian News Corp network extractor."""
+    for v in soup.find_all(class_=re.compile(r"vjs-|video-js|op-embed-player|videoWrapper|vms-player|media-player", re.I)):
+        v.decompose()
+    return extract_with_selectors(
+        url=url,
+        soup=soup,
+        site_name="news.com.au",
+        body_selectors=["div.story-body-nodes", "div#story-primary", "div.story-content", "article"],
+        title_selectors=["h1.story-headline", "h1.headline", "h1"],
+        author_selectors=["div.author-byline", "span.author", "p.byline"],
+    )
+
+
 # 6. Central Registries (SITE_ADAPTERS & BROWSER_HINTS)
 # ==============================================================================
 
@@ -5455,6 +5493,13 @@ SITE_ADAPTERS: Dict[str, Callable[[str, BeautifulSoup, str, bool], Dict[str, Any
     "seoul.co.kr": extract_seoul_co_kr,
     "fnnews.com": extract_fnnews,
     "zdnet.co.kr": extract_zdnet_kr,
+
+    # Australian News Corp Network
+    "news.com.au": extract_news_com_au,
+    "theaustralian.com.au": extract_news_com_au,
+    "dailytelegraph.com.au": extract_news_com_au,
+    "heraldsun.com.au": extract_news_com_au,
+    "couriermail.com.au": extract_news_com_au,
 }
 
 
@@ -6852,6 +6897,28 @@ BROWSER_HINTS: Dict[str, Dict[str, Any]] = {
     "zdnet.co.kr": {
         "wait_for_selector": "div#articleBody, article",
         "dismiss_selectors": [],
+    },
+
+    # Australian News Corp Network
+    "news.com.au": {
+        "wait_for_selector": "div.story-body-nodes, article",
+        "dismiss_selectors": ["#onetrust-accept-btn-handler"],
+    },
+    "theaustralian.com.au": {
+        "wait_for_selector": "div.story-body-nodes, article",
+        "dismiss_selectors": ["#onetrust-accept-btn-handler"],
+    },
+    "dailytelegraph.com.au": {
+        "wait_for_selector": "div.story-body-nodes, article",
+        "dismiss_selectors": ["#onetrust-accept-btn-handler"],
+    },
+    "heraldsun.com.au": {
+        "wait_for_selector": "div.story-body-nodes, article",
+        "dismiss_selectors": ["#onetrust-accept-btn-handler"],
+    },
+    "couriermail.com.au": {
+        "wait_for_selector": "div.story-body-nodes, article",
+        "dismiss_selectors": ["#onetrust-accept-btn-handler"],
     },
 }
 

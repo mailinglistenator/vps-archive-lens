@@ -155,13 +155,48 @@ All rights reserved. Copyright 2026.
         reader_file = Path(self.test_dir) / f"{snap_id}_reader.html"
         reader_file.write_text(stale_reader_html, encoding="utf-8")
 
-        # Call generate_ai_reader without force_refresh.
-        # It should detect missing takeaways-box and invalidate the stale cache automatically!
         with patch("server.app.get_hermes_ai_provider", return_value=None):
             updated_reader = generate_ai_reader(snap_id, force_refresh=False)
             updated_content = updated_reader.read_text(encoding="utf-8")
             self.assertIn("takeaways-box", updated_content)
             self.assertIn("Key Takeaways (Extractive)", updated_content)
+
+    def test_generate_ai_reader_strips_video_modal_noise(self):
+        snap_id = "test_snapshot_video_modal"
+        raw_html = """<!DOCTYPE html>
+<html>
+<head><title>Major Economic Forecast Report</title></head>
+<body>
+  <article>
+    <h1>Major Economic Forecast Report</h1>
+    <p>The sovereign treasury department has released revised fiscal forecasts indicating steady domestic consumption growth across the current quarter.</p>
+    <div class="video-js vjs-paused">
+      <div class="vjs-modal-dialog vjs-hidden">
+        <p class="vjs-modal-dialog-description">Beginning of dialog window. Escape will cancel and close the window.</p>
+        <div class="vjs-modal-dialog-content">This is a modal window.</div>
+      </div>
+      <div class="vjs-loading-spinner"><span class="vjs-control-text">Video Player is loading.</span></div>
+      <p class="vjs-control-text">Playing on Chromecast</p>
+      <p>Loaded: 0%</p>
+    </div>
+    <p>Central bank governors emphasized that interest rate trajectories will remain data-dependent to maintain currency stability and prevent inflationary pressures.</p>
+  </article>
+</body>
+</html>"""
+        raw_file = Path(self.test_dir) / f"{snap_id}.html"
+        raw_file.write_text(raw_html, encoding="utf-8")
+
+        with patch("server.app.get_hermes_ai_provider", return_value=None):
+            reader = generate_ai_reader(snap_id, force_refresh=False)
+            content = reader.read_text(encoding="utf-8")
+            self.assertNotIn("Video Player is loading", content)
+            self.assertNotIn("This is a modal window", content)
+            self.assertNotIn("Beginning of dialog window", content)
+            self.assertNotIn("Playing on Chromecast", content)
+            self.assertNotIn("Loaded: 0%", content)
+            self.assertIn("sovereign treasury department", content)
+            self.assertIn("Central bank governors", content)
+
 
 if __name__ == "__main__":
     unittest.main()
