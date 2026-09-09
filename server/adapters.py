@@ -473,25 +473,40 @@ def extract_with_rss_fallback(
             with httpx.Client(headers={"User-Agent": "Mozilla/5.0"}, timeout=6.0, follow_redirects=True) as client:
                 resp = client.get(feed_url)
                 if resp.status_code == 200:
-                    feed_soup = BeautifulSoup(resp.content, "html.parser")
+                    try:
+                        feed_soup = BeautifulSoup(resp.content, "xml")
+                    except Exception:
+                        feed_soup = BeautifulSoup(resp.content, "html.parser")
+
                     for item in feed_soup.find_all(["item", "entry"]):
                         link_node = item.find("link")
                         link = ""
                         if link_node:
-                            link = link_node.get("href") or link_node.get_text(strip=True)
+                            link = (
+                                link_node.get("href")
+                                or link_node.get_text(strip=True)
+                                or (link_node.next_sibling and str(link_node.next_sibling))
+                                or ""
+                            ).strip()
+                        if not link:
+                            m = re.search(r"<link[^>]*>([^<]+)</link>|<link[^>]+href=[\"']([^\"']+)[\"']", str(item))
+                            if m:
+                                link = (m.group(1) or m.group(2) or "").strip()
+
                         if link and (link in url or url in link):
                             content_node = item.find("content:encoded") or item.find("content") or item.find("description")
                             if content_node:
                                 c_text = content_node.get_text(strip=True)
-                                if len(c_text) > 200:
+                                if len(c_text) > 120:
                                     title_node = item.find("title")
                                     title = clean_text(title_node.get_text(strip=True) if title_node else "")
                                     c_soup = BeautifulSoup(c_text, "html.parser")
+                                    pub_node = item.find(["pubdate", "pubDate", "published"])
                                     return {
                                         "title": title,
                                         "body_html": sanitize_element_to_html(c_soup),
                                         "authors": [],
-                                        "published_date": clean_text(item.find(["pubdate", "published"]).get_text(strip=True)) if item.find(["pubdate", "published"]) else "",
+                                        "published_date": clean_text(pub_node.get_text(strip=True)) if pub_node else "",
                                         "hero_image_url": "",
                                         "canonical_url": link,
                                         "site_name": site_name,
