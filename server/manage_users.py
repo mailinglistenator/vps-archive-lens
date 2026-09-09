@@ -17,7 +17,10 @@ except ImportError:
 
 # Ensure server package can be imported
 sys.path.insert(0, str(PROJECT_ROOT))
-from server.users import UserManager
+try:
+    from server.users import UserManager
+except ImportError:
+    from users import UserManager
 
 def get_base_url() -> str:
     return os.getenv("BASE_URL", "http://localhost:8888").rstrip("/")

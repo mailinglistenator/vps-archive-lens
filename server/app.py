@@ -29,7 +29,10 @@ from dotenv import load_dotenv
 load_dotenv(Path(__file__).parent / ".env")
 load_dotenv(Path(__file__).resolve().parent.parent / ".env")
 
-from server.users import UserManager, UserRecord
+try:
+    from server.users import UserManager, UserRecord
+except ImportError:
+    from users import UserManager, UserRecord
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 logger = logging.getLogger("archiver")
