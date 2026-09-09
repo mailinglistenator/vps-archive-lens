@@ -1880,10 +1880,13 @@ def dashboard(request: Request, response: Response, token: str = Query(None)):
                 <td style="padding: 10px 14px;">{role_badge}</td>
                 <td style="padding: 10px 14px; font-family: monospace; font-size: 0.85rem; color: #10b981;">
                   <span title="{html.escape(u.token)}">{html.escape(masked_token)}</span>
-                  <button class="action-btn" style="margin-left: 6px; padding: 2px 6px; font-size: 0.75rem;" onclick="navigator.clipboard.writeText('{html.escape(u.token)}').then(()=>alert('Token copied!'))">📋</button>
+                  <button class="action-btn" style="margin-left: 6px; padding: 2px 6px; font-size: 0.75rem;" onclick="copyRawToken(this, '{html.escape(u.token)}')">📋 Token</button>
                 </td>
                 <td style="padding: 10px 14px; color: var(--text-muted); font-size: 0.82rem;">{created_str}</td>
-                <td style="padding: 10px 14px;">{action_btn}</td>
+                <td style="padding: 10px 14px; display: flex; gap: 6px; align-items: center;">
+                  <button class="action-btn" style="padding: 4px 8px; font-size: 0.8rem; background: #065f46; color: #ecfdf5; border-color: #34d399;" onclick="copyRowInvite(this, '{html.escape(u.username)}', '{html.escape(u.role)}', '{html.escape(u.token)}')">📨 Copy Invite</button>
+                  {action_btn}
+                </td>
               </tr>
             """)
         user_rows_html = "".join(rendered_rows) if rendered_rows else '<tr><td colspan="5" style="padding: 20px; text-align: center; color: var(--text-muted);">No users found.</td></tr>'
@@ -1910,8 +1913,8 @@ def dashboard(request: Request, response: Response, token: str = Query(None)):
             <!-- New User Invite Box (displays when a user is added) -->
             <div id="newUserInviteBox" style="display: none; background: #064e3b; border: 1px solid #059669; border-radius: 8px; padding: 14px; margin-bottom: 16px;">
               <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-                <span style="font-weight: 700; color: #a7f3d0; font-size: 0.9rem;">🎉 User Created! Send this invite to your friend:</span>
-                <button class="action-btn" onclick="copyInviteSnippet()" style="background: #065f46; color: #ecfdf5; border-color: #34d399;">📋 Copy Invite</button>
+                <span style="font-weight: 700; color: #a7f3d0; font-size: 0.9rem;" id="inviteBoxTitle">🎉 User Created! Send this invite to your friend:</span>
+                <button class="action-btn" id="copyInviteBtn" onclick="copyActiveInvite(this)" style="background: #065f46; color: #ecfdf5; border-color: #34d399;">📋 Copy Invite</button>
               </div>
               <pre id="inviteSnippetPre" style="background: #022c22; color: #6ee7b7; padding: 12px; border-radius: 6px; font-size: 0.82rem; margin: 0; white-space: pre-wrap; font-family: monospace;"></pre>
             </div>
@@ -1924,7 +1927,7 @@ def dashboard(request: Request, response: Response, token: str = Query(None)):
                   <th>Role</th>
                   <th>API Token</th>
                   <th>Created</th>
-                  <th>Action</th>
+                  <th>Actions</th>
                 </tr>
               </thead>
               <tbody id="usersTableBody">
@@ -2442,16 +2445,154 @@ def dashboard(request: Request, response: Response, token: str = Query(None)):
           }}
         }}
 
-        function copyMyToken() {{
-          const tok = document.getElementById('myTokenVal').textContent;
-          navigator.clipboard.writeText(tok).then(() => alert('API Token copied to clipboard!'));
+        function showToast(msg) {{
+          let toast = document.getElementById('copyToast');
+          if (!toast) {{
+            toast = document.createElement('div');
+            toast.id = 'copyToast';
+            toast.style.position = 'fixed';
+            toast.style.bottom = '24px';
+            toast.style.right = '24px';
+            toast.style.background = '#065f46';
+            toast.style.color = '#ecfdf5';
+            toast.style.border = '1px solid #34d399';
+            toast.style.padding = '12px 20px';
+            toast.style.borderRadius = '8px';
+            toast.style.fontWeight = '600';
+            toast.style.fontSize = '0.9rem';
+            toast.style.boxShadow = '0 10px 15px -3px rgba(0,0,0,0.5)';
+            toast.style.zIndex = '99999';
+            toast.style.transition = 'opacity 0.25s ease';
+            document.body.appendChild(toast);
+          }}
+          toast.textContent = msg;
+          toast.style.display = 'block';
+          toast.style.opacity = '1';
+          setTimeout(() => {{
+            toast.style.opacity = '0';
+            setTimeout(() => {{ toast.style.display = 'none'; }}, 250);
+          }}, 2200);
         }}
 
-        function copySetupSnippet() {{
-          const origin = window.location.origin;
-          const tok = document.getElementById('myTokenVal').textContent;
+        async function copyToClipboard(text, btnElement, successLabel) {{
+          if (!text) return;
+          successLabel = successLabel || '✅ Copied!';
+          let ok = false;
+
+          // 1. Try modern Async Clipboard API
+          if (navigator.clipboard && window.isSecureContext) {{
+            try {{
+              await navigator.clipboard.writeText(text);
+              ok = true;
+            }} catch (e) {{
+              console.warn('navigator.clipboard failed, attempting textarea fallback:', e);
+            }}
+          }}
+
+          // 2. Reliable hidden textarea fallback (works across all browsers and plain HTTP)
+          if (!ok) {{
+            try {{
+              const ta = document.createElement('textarea');
+              ta.value = text;
+              ta.setAttribute('readonly', '');
+              ta.style.position = 'fixed';
+              ta.style.left = '-9999px';
+              ta.style.top = '-9999px';
+              document.body.appendChild(ta);
+              ta.focus();
+              ta.select();
+              ta.setSelectionRange(0, 99999);
+              ok = document.execCommand('copy');
+              document.body.removeChild(ta);
+            }} catch (e) {{
+              console.error('execCommand copy failed:', e);
+            }}
+          }}
+
+          if (btnElement) {{
+            const origHtml = btnElement.innerHTML;
+            btnElement.innerHTML = successLabel;
+            btnElement.style.borderColor = '#10b981';
+            btnElement.style.color = '#34d399';
+            setTimeout(() => {{
+              btnElement.innerHTML = origHtml;
+              btnElement.style.borderColor = '';
+              btnElement.style.color = '';
+            }}, 2000);
+          }}
+
+          if (ok) {{
+            showToast('Copied to clipboard!');
+          }} else {{
+            window.prompt('Copy manually with Ctrl+C, then Enter:', text);
+          }}
+        }}
+
+        function copyMyToken(btn) {{
+          const tok = document.getElementById('myTokenVal').textContent.trim();
+          copyToClipboard(tok, btn || event?.target, '✅ Copied Token!');
+        }}
+
+        function copySetupSnippet(btn) {{
+          const origin = window.location.origin.includes('127.0.0.1') || window.location.origin.includes('localhost')
+            ? 'http://204.168.160.204:8888'
+            : window.location.origin;
+          const tok = document.getElementById('myTokenVal').textContent.trim();
           const snippet = `VPS Archive Lens Configuration:\nServer URL: ${{origin}}\nAPI Token: ${{tok}}`;
-          navigator.clipboard.writeText(snippet).then(() => alert('Configuration snippet copied!'));
+          copyToClipboard(snippet, btn || event?.target, '✅ Copied Setup!');
+        }}
+
+        function copyRawToken(btn, token) {{
+          copyToClipboard(token, btn, '✅ Copied Token!');
+        }}
+
+        function generateInviteText(username, role, token) {{
+          const origin = window.location.origin.includes('127.0.0.1') || window.location.origin.includes('localhost')
+            ? 'http://204.168.160.204:8888'
+            : window.location.origin;
+          const gitRepo = "https://github.com/mailinglistenator/vps-archive-lens";
+          const zipUrl = "https://github.com/mailinglistenator/vps-archive-lens/archive/refs/heads/main.zip";
+
+          return `Hey ${{username}}! Here is your access key for VPS Archive Lens:\n\n` +
+            `🌐 Lens Server URL: ${{origin}}\n` +
+            `🔑 API Token: ${{token}}\n` +
+            `👤 Username: ${{username}} (${{role}})\n\n` +
+            `📦 1. Download Extension:\n` +
+            `   GitHub: ${{gitRepo}}\n` +
+            `   Direct Zip: ${{zipUrl}}\n\n` +
+            `🚀 2. Load into Chrome / Brave / Edge:\n` +
+            `   - Unzip the download and keep the 'extension' folder\n` +
+            `   - Open chrome://extensions (or brave://extensions / edge://extensions)\n` +
+            `   - Toggle "Developer mode" ON (top right)\n` +
+            `   - Click "Load unpacked" and select the 'extension' folder\n\n` +
+            `⚙️ 3. Quick Configure:\n` +
+            `   - Click VPS Lens icon -> Options (or Settings gear)\n` +
+            `   - Server URL: ${{origin}}\n` +
+            `   - API Token: ${{token}}\n` +
+            `   - Click "Save Settings" & you're ready to archive!`;
+        }}
+
+        function copyRowInvite(btn, username, role, token) {{
+          const invite = generateInviteText(username, role, token);
+          lastCreatedInvite = invite;
+          const pre = document.getElementById('inviteSnippetPre');
+          if (pre) pre.textContent = invite;
+          const title = document.getElementById('inviteBoxTitle');
+          if (title) title.textContent = `📨 Invite for ${{username}}:`;
+          const box = document.getElementById('newUserInviteBox');
+          if (box) box.style.display = 'block';
+          copyToClipboard(invite, btn, '✅ Copied Invite!');
+        }}
+
+        function copyActiveInvite(btn) {{
+          let text = lastCreatedInvite;
+          if (!text) {{
+            const pre = document.getElementById('inviteSnippetPre');
+            if (pre) text = pre.textContent.trim();
+          }}
+          if (text) {{
+            copyToClipboard(text, btn, '✅ Copied Invite!');
+          }}
         }}
 
         function logoutUser() {{
@@ -2499,10 +2640,13 @@ def dashboard(request: Request, response: Response, token: str = Query(None)):
                   <td style="padding: 10px 14px;">${{roleBadge}}</td>
                   <td style="padding: 10px 14px; font-family: monospace; font-size: 0.85rem; color: #10b981;">
                     <span title="${{escapeHtml(u.token)}}">${{escapeHtml(maskedToken)}}</span>
-                    <button class="action-btn" style="margin-left: 6px; padding: 2px 6px; font-size: 0.75rem;" onclick="navigator.clipboard.writeText('${{escapeHtml(u.token)}}').then(()=>alert('Token copied!'))">📋</button>
+                    <button class="action-btn" style="margin-left: 6px; padding: 2px 6px; font-size: 0.75rem;" onclick="copyRawToken(this, '${{escapeHtml(u.token)}}')">📋 Token</button>
                   </td>
                   <td style="padding: 10px 14px; color: var(--text-muted); font-size: 0.82rem;">${{new Date(u.created_at).toLocaleDateString()}}</td>
-                  <td style="padding: 10px 14px;">${{actionBtn}}</td>
+                  <td style="padding: 10px 14px; display: flex; gap: 6px; align-items: center;">
+                    <button class="action-btn" style="padding: 4px 8px; font-size: 0.8rem; background: #065f46; color: #ecfdf5; border-color: #34d399;" onclick="copyRowInvite(this, '${{escapeHtml(u.username)}}', '${{escapeHtml(u.role)}}', '${{escapeHtml(u.token)}}')">📨 Copy Invite</button>
+                    ${{actionBtn}}
+                  </td>
                 </tr>
               `;
             }}).join('');
@@ -2539,42 +2683,23 @@ def dashboard(request: Request, response: Response, token: str = Query(None)):
             usernameInput.value = '';
             tokenInput.value = '';
 
-            const origin = window.location.origin.includes('127.0.0.1') || window.location.origin.includes('localhost')
-              ? 'http://204.168.160.204:8888'
-              : window.location.origin;
-            const gitRepo = "https://github.com/mailinglistenator/vps-archive-lens";
-            const zipUrl = "https://github.com/mailinglistenator/vps-archive-lens/archive/refs/heads/main.zip";
+            const invite = generateInviteText(data.username, data.role, data.token);
+            lastCreatedInvite = invite;
 
-            lastCreatedInvite = `Hey ${{data.username}}! Here is your access key for VPS Archive Lens:\n\n` +
-              `🌐 Lens Server URL: ${{origin}}\n` +
-              `🔑 API Token: ${{data.token}}\n` +
-              `👤 Username: ${{data.username}} (${{data.role}})\n\n` +
-              `📦 1. Download Extension:\n` +
-              `   GitHub: ${{gitRepo}}\n` +
-              `   Direct Zip: ${{zipUrl}}\n\n` +
-              `🚀 2. Load into Chrome / Brave / Edge:\n` +
-              `   - Unzip the download\n` +
-              `   - Open chrome://extensions (or edge://extensions / brave://extensions)\n` +
-              `   - Toggle "Developer mode" ON (top right)\n` +
-              `   - Click "Load unpacked" and select the 'extension' folder\n\n` +
-              `⚙️ 3. Quick Configure:\n` +
-              `   - Click VPS Lens icon -> Options (or Settings gear)\n` +
-              `   - Server URL: ${{origin}}\n` +
-              `   - API Token: ${{data.token}}\n` +
-              `   - Click "Save Settings" & you're ready to archive!`;
+            const pre = document.getElementById('inviteSnippetPre');
+            if (pre) pre.textContent = invite;
+            const title = document.getElementById('inviteBoxTitle');
+            if (title) title.textContent = `🎉 User '${{data.username}}' Created! Send this invite:`;
+            const box = document.getElementById('newUserInviteBox');
+            if (box) box.style.display = 'block';
 
-            document.getElementById('inviteSnippetPre').textContent = lastCreatedInvite;
-            document.getElementById('newUserInviteBox').style.display = 'block';
+            const copyBtn = document.getElementById('copyInviteBtn');
+            copyToClipboard(invite, copyBtn, '✅ Copied Invite!');
 
             loadUsersList();
           }} catch (err) {{
             alert('Error creating user: ' + err.message);
           }}
-        }}
-
-        function copyInviteSnippet() {{
-          if (!lastCreatedInvite) return;
-          navigator.clipboard.writeText(lastCreatedInvite).then(() => alert('Invite snippet copied to clipboard!'));
         }}
 
         async function revokeUser(username) {{
