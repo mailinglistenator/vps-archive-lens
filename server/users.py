@@ -44,7 +44,16 @@ class UserManager:
     """
 
     def __init__(self, storage_dir: Optional[Path] = None):
-        self.storage_dir = Path(storage_dir) if storage_dir else Path(os.getenv("STORAGE_DIR", "./snapshots"))
+        if storage_dir:
+            self.storage_dir = Path(storage_dir).resolve()
+        else:
+            env_dir = os.getenv("STORAGE_DIR")
+            if env_dir:
+                self.storage_dir = Path(env_dir).resolve()
+            elif Path("/home/hermes/personal-archiver/snapshots").exists():
+                self.storage_dir = Path("/home/hermes/personal-archiver/snapshots")
+            else:
+                self.storage_dir = (Path(__file__).resolve().parent.parent / "snapshots").resolve()
         self.users_file = self.storage_dir / "users.json"
         self._lock = threading.RLock()
         self._users: Dict[str, UserRecord] = {}

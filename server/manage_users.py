@@ -10,8 +10,10 @@ import argparse
 from pathlib import Path
 try:
     from dotenv import load_dotenv
-    PROJECT_ROOT = Path(__file__).resolve().parent.parent
-    load_dotenv(PROJECT_ROOT / ".env")
+    curr_dir = Path(__file__).resolve().parent
+    load_dotenv(curr_dir / ".env")
+    load_dotenv(curr_dir.parent / ".env")
+    PROJECT_ROOT = curr_dir.parent
 except ImportError:
     PROJECT_ROOT = Path(__file__).resolve().parent.parent
 
@@ -23,7 +25,13 @@ except ImportError:
     from users import UserManager
 
 def get_base_url() -> str:
-    return os.getenv("BASE_URL", "http://localhost:8888").rstrip("/")
+    url = os.getenv("BASE_URL")
+    if not url:
+        if Path("/home/hermes").is_dir():
+            url = "http://204.168.160.204:8888"
+        else:
+            url = "http://localhost:8888"
+    return url.rstrip("/")
 
 def main():
     parser = argparse.ArgumentParser(
@@ -58,7 +66,17 @@ Examples:
         parser.print_help()
         sys.exit(1)
 
-    storage_dir = Path(os.getenv("STORAGE_DIR", PROJECT_ROOT / "snapshots"))
+    curr_dir = Path(__file__).resolve().parent
+    if (curr_dir / "snapshots").is_dir():
+        default_storage = curr_dir / "snapshots"
+    elif (curr_dir.parent / "snapshots").is_dir():
+        default_storage = curr_dir.parent / "snapshots"
+    elif Path("/home/hermes/personal-archiver/snapshots").is_dir():
+        default_storage = Path("/home/hermes/personal-archiver/snapshots")
+    else:
+        default_storage = curr_dir.parent / "snapshots"
+
+    storage_dir = Path(os.getenv("STORAGE_DIR", default_storage)).resolve()
     manager = UserManager(storage_dir=storage_dir)
     base_url = get_base_url()
 
