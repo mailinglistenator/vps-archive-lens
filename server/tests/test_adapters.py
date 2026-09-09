@@ -270,6 +270,7 @@ class TestAdaptersRegistry(unittest.TestCase):
         "president.jp",
         "itmedia.co.jp",
         "ascii.jp",
+        "unz.com",
     ]
 
     def test_all_top_200_registered(self):
@@ -1537,6 +1538,28 @@ class TestNewPlatformExtractors(unittest.TestCase):
         res = extract_toyokeizai("https://toyokeizai.net/articles/-/823456", soup, html, fetch_network=False)
         self.assertEqual(res["title"], "次世代半導体コンソーシアム、2ナノプロセス試作ラインの稼働を開始")
         self.assertIn("次世代コンピューティング向けチップ", res["body_html"])
+
+    def test_extract_unz(self):
+        from server.adapters import extract_unz
+        html = """
+        <html>
+          <head>
+            <meta property="og:title" content="The Hoopla Over D-Day Is A Way To Conceal Who Really Won The War">
+            <meta property="article:published_time" content="2026-09-07T00:02:45-04:00">
+            <a rel="author" href="/author/mike-whitney/">Mike Whitney</a>
+          </head>
+          <body>
+            <div id="contents-holder" class="entry">
+              <p>Soviet histories of the war stated that the ruling circles in Britain and the United States wanted Germany and the Soviet Union to exhaust themselves.</p>
+            </div>
+          </body>
+        </html>
+        """
+        soup = BeautifulSoup(html, "html.parser")
+        res = extract_unz("https://www.unz.com/mwhitney/the-hoopla-over-d-day/", soup, html, fetch_network=False)
+        self.assertEqual(res["title"], "The Hoopla Over D-Day Is A Way To Conceal Who Really Won The War")
+        self.assertIn("Soviet histories of the war", res["body_html"])
+        self.assertEqual(res["authors"], ["Mike Whitney"])
 
 
 if __name__ == "__main__":

@@ -3862,6 +3862,49 @@ def extract_ascii(url: str, soup: BeautifulSoup, raw_html: str, fetch_network: b
     )
 
 
+def extract_unz(url: str, soup: BeautifulSoup, raw_html: str, fetch_network: bool = True) -> Dict[str, Any]:
+    """The Unz Review alternative analysis extractor (unz.com) with origin fast-path."""
+    if fetch_network:
+        try:
+            parsed = urlparse(url)
+            path = parsed.path
+            if parsed.query:
+                path += f"?{parsed.query}"
+            origin_url = f"https://160.153.173.174{path}"
+            with httpx.Client(verify=False, timeout=12.0, follow_redirects=True) as client:
+                resp = client.get(
+                    origin_url,
+                    headers={
+                        "Host": "www.unz.com",
+                        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36",
+                        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+                    },
+                )
+                if resp.status_code == 200 and len(resp.text) > 500:
+                    origin_soup = BeautifulSoup(resp.text, "html.parser")
+                    return extract_with_selectors(
+                        url=url,
+                        soup=origin_soup,
+                        site_name="The Unz Review",
+                        body_selectors=["div#contents-holder", "div.entry", "div.singlepost", "div.post", "article"],
+                        title_selectors=[".post-title", ".entry-title", "h1", "h2"],
+                        author_selectors=["a[rel='author']", ".author", "span.author"],
+                        date_selectors=["time", ".date", ".published"],
+                    )
+        except Exception as e:
+            logger.warning(f"Unz origin direct extraction failed: {e}")
+
+    return extract_with_selectors(
+        url=url,
+        soup=soup,
+        site_name="The Unz Review",
+        body_selectors=["div#contents-holder", "div.entry", "div.singlepost", "div.post", "article"],
+        title_selectors=[".post-title", ".entry-title", "h1", "h2"],
+        author_selectors=["a[rel='author']", ".author", "span.author"],
+        date_selectors=["time", ".date", ".published"],
+    )
+
+
 # 6. Central Registries (SITE_ADAPTERS & BROWSER_HINTS)
 # ==============================================================================
 
@@ -4115,6 +4158,7 @@ SITE_ADAPTERS: Dict[str, Callable[[str, BeautifulSoup, str, bool], Dict[str, Any
     "president.jp": extract_president,
     "itmedia.co.jp": extract_itmedia,
     "ascii.jp": extract_ascii,
+    "unz.com": extract_unz,
 }
 
 
@@ -5093,6 +5137,10 @@ BROWSER_HINTS: Dict[str, Dict[str, Any]] = {
     },
     "ascii.jp": {
         "wait_for_selector": "div.article-body, article",
+        "dismiss_selectors": [],
+    },
+    "unz.com": {
+        "wait_for_selector": "div#contents-holder, div.entry, article",
         "dismiss_selectors": [],
     },
 }

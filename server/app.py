@@ -474,6 +474,21 @@ def sanitize_and_save_snapshot(raw_html: str, resolved_url: str, target_url: str
     return meta
 
 async def capture_page(target_url: str, created_by: str = "admin") -> dict:
+    # Auto-unwrap internal snapshot view URLs to the original article URL
+    view_match = re.search(r"/view/([0-9]{8}_[0-9]{6}_[a-f0-9]+)", target_url)
+    if view_match:
+        old_id = view_match.group(1)
+        meta_file = SNAPSHOTS_DIR / f"{old_id}.meta.json"
+        if meta_file.exists():
+            try:
+                with open(meta_file, "r", encoding="utf-8") as mf:
+                    old_meta = json.load(mf)
+                    if old_meta.get("url") and not re.search(r"/view/[0-9]{8}_", old_meta["url"]):
+                        logger.info(f"Unwrapped internal view URL {target_url} -> {old_meta['url']}")
+                        target_url = old_meta["url"]
+            except Exception as err:
+                logger.debug(f"Failed to unwrap view URL: {err}")
+
     validate_url_safety(target_url)
 
     url_hash = hashlib.sha256(target_url.encode()).hexdigest()[:16]
@@ -681,6 +696,19 @@ def health():
 @app.get("/archive", response_class=HTMLResponse)
 async def archive_web_view(request: Request, response: Response, url: str = Query(...), token: str = Query(None)):
     """Browser entrypoint: Shows instant responsive loading page while unpaywalling."""
+    view_match = re.search(r"/view/([0-9]{8}_[0-9]{6}_[a-f0-9]+)", url)
+    if view_match:
+        old_id = view_match.group(1)
+        meta_file = SNAPSHOTS_DIR / f"{old_id}.meta.json"
+        if meta_file.exists():
+            try:
+                with open(meta_file, "r", encoding="utf-8") as mf:
+                    old_meta = json.load(mf)
+                    if old_meta.get("url") and not re.search(r"/view/[0-9]{8}_", old_meta["url"]):
+                        url = old_meta["url"]
+            except Exception:
+                pass
+
     user = verify_token(request, token)
     
     # Check if we already have this URL cached recently (within 5 mins) for this user
