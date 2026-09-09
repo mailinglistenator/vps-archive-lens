@@ -1181,7 +1181,112 @@ def get_hermes_ai_provider():
             "display_name": f"AI ({generic_model or 'OpenAI-Compatible'})"
         }
 
-    return None
+def extract_heuristic_takeaways(text: str, title: str = "") -> List[str]:
+    """
+    Extracts 3 concise, high-impact key takeaway sentences from article markdown.
+    Used as an instant, zero-latency fallback if upstream LLM inference times out or is offline.
+    """
+    if not text or len(text.strip()) < 80:
+        return []
+
+    # Clean markdown syntax, links, images, headers
+    cleaned = re.sub(r'!\[.*?\]\(.*?\)', '', text)
+    cleaned = re.sub(r'\[([^\]]+)\]\([^\)]+\)', r'\1', cleaned)
+    cleaned = re.sub(r'[*_`#>]', '', cleaned)
+
+    raw_paragraphs = [p.strip() for p in cleaned.split("\n\n") if p.strip()]
+    noise_patterns = [
+        "subscribe", "sign up", "follow us", "all rights reserved", "photo by",
+        "image via", "click here", "read more", "advertisement", "copyright",
+        "share this", "listen to this article", "join our channel"
+    ]
+
+    valid_paras = [p for p in raw_paragraphs if len(p) >= 40 and not any(np in p.lower() for np in noise_patterns)]
+    if not valid_paras:
+        valid_paras = [p for p in raw_paragraphs if len(p) >= 40]
+    if not valid_paras:
+        return []
+
+    all_sentences = []
+    title_words = set(re.findall(r'\w+', title.lower())) if title else set()
+
+    for para_idx, para in enumerate(valid_paras):
+        sentences = [s.strip() for s in re.split(r'(?<=[.!?])\s+', para) if s.strip()]
+        for s in sentences:
+            if len(s) < 40 or len(s) > 300:
+                continue
+            if not (s[0].isupper() or s[0] in ('"', '“', "'", '‘')):
+                continue
+            if s.endswith('?') or s.count('?') > 0:
+                continue
+            s_words = set(re.findall(r'\w+', s.lower()))
+            if title_words and len(s_words & title_words) / max(1, len(title_words)) > 0.8:
+                continue
+
+            score = 0.0
+            if para_idx == 0:
+                score += 3.0
+            elif para_idx == 1:
+                score += 2.0
+            elif para_idx >= len(valid_paras) - 2:
+                score += 1.5
+
+            if re.search(r'\b\d+(\.\d+)?%?\b', s):
+                score += 2.0
+            entities = re.findall(r'\b[A-Z][a-z]+(?:\s+[A-Z][a-z]+)*\b', s)
+            score += min(len(entities) * 0.4, 2.0)
+
+            all_sentences.append({
+                "sentence": s,
+                "para_idx": para_idx,
+                "score": score
+            })
+
+    if not all_sentences:
+        bullets = []
+        for p in valid_paras[:3]:
+            sents = [s.strip() for s in re.split(r'(?<=[.!?])\s+', p) if s.strip()]
+            if sents and len(sents[0]) > 30:
+                bullets.append(sents[0])
+        return bullets[:3]
+
+    selected = []
+    intro_candidates = [s for s in all_sentences if s["para_idx"] <= 1]
+    if intro_candidates:
+        intro_candidates.sort(key=lambda x: x["score"], reverse=True)
+        selected.append(intro_candidates[0]["sentence"])
+
+    middle_candidates = [s for s in all_sentences if 1 < s["para_idx"] < max(2, len(valid_paras) - 1)]
+    if middle_candidates:
+        middle_candidates.sort(key=lambda x: x["score"], reverse=True)
+        for c in middle_candidates:
+            if c["sentence"] not in selected:
+                selected.append(c["sentence"])
+                break
+
+    conclusion_candidates = [s for s in all_sentences if s["para_idx"] >= max(2, len(valid_paras) - 2)]
+    if conclusion_candidates:
+        conclusion_candidates.sort(key=lambda x: x["score"], reverse=True)
+        for c in conclusion_candidates:
+            if c["sentence"] not in selected:
+                selected.append(c["sentence"])
+                break
+
+    if len(selected) < 3:
+        all_sentences.sort(key=lambda x: x["score"], reverse=True)
+        for c in all_sentences:
+            if c["sentence"] not in selected:
+                selected.append(c["sentence"])
+                if len(selected) >= 3:
+                    break
+
+    result = []
+    for bullet in selected[:3]:
+        b = bullet.strip()
+        if not b.endswith(('.', '!', '?', '"', '”')):
+            b += '.'
+        result.append(b)
+    return result
 
 def render_reader_template(
     snapshot_id: str,
@@ -1207,7 +1312,7 @@ def render_reader_template(
         {bullets_li}
       </ul>
     </div>
-    """ if summary_bullets else ""
+    """ if summary_bullets else "<!-- no-takeaways -->"
 
     hero_proxied = f"/api/proxy/image?url={quote(image, safe='')}" if image else ""
     hero_section = f"""
@@ -1634,6 +1739,8 @@ def generate_ai_reader(snapshot_id: str, force_refresh: bool = False) -> Path:
                 cached_str = f_cached.read()
             if "Discussion Forum / Directory Page" in cached_str:
                 logger.info(f"Invalidating stale false-forum reader cache for {safe_id}")
+            elif "takeaways-box" not in cached_str and "<!-- no-takeaways -->" not in cached_str and len(cached_str) > 150:
+                logger.info(f"Invalidating stale reader cache missing AI takeaways for {safe_id}")
             else:
                 return reader_path
         except Exception:
@@ -1717,75 +1824,83 @@ def generate_ai_reader(snapshot_id: str, force_refresh: bool = False) -> Path:
     word_count = len(clean_md.split())
     reading_time = max(1, round(word_count / 220))
 
-    # 3. AI Key Takeaways
-    ai_provider = get_hermes_ai_provider()
-    summary_bullets = []
-    provider_name = "Heuristic Extractor"
+    # 3. Check for forum/directory index first to avoid unnecessary AI inference
+    is_forum_directory = (
+        word_count < 120
+        and any(kw in orig_url.lower() for kw in ["forumdisplay", "viewforum", "/forum/index", "/forums/index", "/boards/index"])
+    )
 
-    if ai_provider:
-        provider_name = ai_provider["display_name"]
-        prompt = f"""You are an expert news editor. Given this article, summarize the 3 most important key takeaways into concise, high-impact bullet points.
+    # 4. Key Takeaways Extraction (LLM with resilient timeout + instant extractive fallback)
+    summary_bullets = []
+    provider_name = "Key Takeaways"
+
+    if not is_forum_directory:
+        ai_provider = get_hermes_ai_provider()
+        if ai_provider:
+            provider_name = ai_provider["display_name"]
+            prompt = f"""You are an expert news editor. Given this article, summarize the 3 most important key takeaways into concise, high-impact bullet points.
 Return strictly valid JSON in this format:
 {{"summary": ["Key takeaway 1", "Key takeaway 2", "Key takeaway 3"]}}
 
 Article:
 {clean_md[:4500]}
 """
-        try:
-            req_data = json.dumps({
-                "model": ai_provider["model"],
-                "messages": [
-                    {"role": "system", "content": "You are an editorial assistant. Return valid JSON only."},
-                    {"role": "user", "content": prompt}
-                ],
-                "response_format": {"type": "json_object"}
-            }).encode()
-
-            headers = {
-                "Content-Type": "application/json",
-                **ai_provider.get("extra_headers", {})
-            }
-            if ai_provider.get("auth_header"):
-                headers["Authorization"] = ai_provider["auth_header"]
-            req = urllib.request.Request(f"{ai_provider['base_url']}/chat/completions", data=req_data, headers=headers)
             try:
-                with urllib.request.urlopen(req, timeout=10) as resp:
-                    resp_bytes = resp.read()
-            except urllib.error.HTTPError as he:
-                if he.code == 401 and ai_provider.get("provider") == "nous":
-                    logger.info("Nous token returned 401. Attempting auto-refresh...")
-                    new_token = refresh_nous_token()
-                    if new_token:
-                        headers["Authorization"] = f"Bearer {new_token}"
-                        req = urllib.request.Request(f"{ai_provider['base_url']}/chat/completions", data=req_data, headers=headers)
-                        with urllib.request.urlopen(req, timeout=10) as resp:
-                            resp_bytes = resp.read()
+                req_data = json.dumps({
+                    "model": ai_provider["model"],
+                    "messages": [
+                        {"role": "system", "content": "You are an editorial assistant. Return valid JSON only."},
+                        {"role": "user", "content": prompt}
+                    ],
+                    "response_format": {"type": "json_object"}
+                }).encode()
+
+                headers = {
+                    "Content-Type": "application/json",
+                    **ai_provider.get("extra_headers", {})
+                }
+                if ai_provider.get("auth_header"):
+                    headers["Authorization"] = ai_provider["auth_header"]
+                req = urllib.request.Request(f"{ai_provider['base_url']}/chat/completions", data=req_data, headers=headers)
+                try:
+                    with urllib.request.urlopen(req, timeout=25) as resp:
+                        resp_bytes = resp.read()
+                except urllib.error.HTTPError as he:
+                    if he.code == 401 and ai_provider.get("provider") == "nous":
+                        logger.info("Nous token returned 401. Attempting auto-refresh...")
+                        new_token = refresh_nous_token()
+                        if new_token:
+                            headers["Authorization"] = f"Bearer {new_token}"
+                            req = urllib.request.Request(f"{ai_provider['base_url']}/chat/completions", data=req_data, headers=headers)
+                            with urllib.request.urlopen(req, timeout=25) as resp:
+                                resp_bytes = resp.read()
+                        else:
+                            raise
                     else:
                         raise
-                else:
-                    raise
-            data = json.loads(resp_bytes.decode())
-            content_str = data["choices"][0]["message"]["content"]
-            content_str = re.sub(r"^```json\s*", "", content_str.strip())
-            content_str = re.sub(r"\s*```$", "", content_str.strip())
-            parsed = json.loads(content_str)
-            raw_bullets = parsed.get("summary", [])
-            # Clean any markdown syntax from AI bullets
-            summary_bullets = []
-            for b in raw_bullets:
-                b_clean = re.sub(r'\[([^\]]+)\]\([^\)]+\)', r'\1', str(b))
-                b_clean = re.sub(r'[*_`#]', '', b_clean).strip()
-                if b_clean and len(b_clean) > 10:
-                    summary_bullets.append(b_clean)
-        except Exception as e:
-            logger.warning(f"AI summary request failed ({provider_name}): {e}")
-            summary_bullets = []
+                data = json.loads(resp_bytes.decode())
+                content_str = data["choices"][0]["message"]["content"]
+                content_str = re.sub(r"^```json\s*", "", content_str.strip())
+                content_str = re.sub(r"\s*```$", "", content_str.strip())
+                parsed = json.loads(content_str)
+                raw_bullets = parsed.get("summary", [])
+                for b in raw_bullets:
+                    b_clean = re.sub(r'\[([^\]]+)\]\([^\)]+\)', r'\1', str(b))
+                    b_clean = re.sub(r'[*_`#]', '', b_clean).strip()
+                    if b_clean and len(b_clean) > 10:
+                        summary_bullets.append(b_clean)
+            except Exception as e:
+                logger.warning(f"AI summary request failed ({provider_name}): {e}")
+                summary_bullets = []
 
-    # 4. Smart forum/index directory check: ONLY trigger if it's strictly a forum directory/index without real prose
-    is_forum_directory = (
-        word_count < 120
-        and any(kw in orig_url.lower() for kw in ["forumdisplay", "viewforum", "/forum/index", "/forums/index", "/boards/index"])
-    )
+        # Instant extractive fallback if LLM timed out, errored, or is unconfigured
+        if not summary_bullets and clean_md and word_count >= 60:
+            extracted_bullets = extract_heuristic_takeaways(clean_md, title=title)
+            if extracted_bullets:
+                summary_bullets = extracted_bullets
+                provider_name = "Key Takeaways (Extractive)"
+
+    # 5. Render body HTML
     if is_forum_directory:
         body_html = f"""
         <div style="text-align: center; padding: 40px 20px; background: var(--card-bg); border-radius: 12px; border: 1px solid var(--card-border); margin: 20px 0;">
