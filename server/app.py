@@ -35,6 +35,11 @@ try:
 except ImportError:
     from users import UserManager, UserRecord
 
+try:
+    from server.adapters import extract_article, get_browser_hints
+except ImportError:
+    from adapters import extract_article, get_browser_hints
+
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 logger = logging.getLogger("archiver")
 
@@ -529,7 +534,25 @@ async def capture_page(target_url: str, created_by: str = "admin") -> dict:
                         html_candidate = await page.content()
                         status_code = 200 if "just a moment..." not in (await page.title()).lower() else status_code
 
-                    last_html_candidate = html_candidate
+                    # Site-specific browser hints for hydration & overlay dismissal
+                    try:
+                        hints = get_browser_hints(target_url)
+                        if hints.get("wait_for_selector"):
+                            try:
+                                await page.wait_for_selector(hints["wait_for_selector"], timeout=4000)
+                            except Exception:
+                                pass
+                        if hints.get("dismiss_selectors"):
+                            for dismiss_sel in hints["dismiss_selectors"]:
+                                try:
+                                    btn = await page.query_selector(dismiss_sel)
+                                    if btn:
+                                        await btn.click()
+                                        await asyncio.sleep(0.3)
+                                except Exception:
+                                    pass
+                    except Exception as e:
+                        logger.debug(f"Browser hints execution skipped: {e}")
 
                     # Scroll down to trigger lazy loading of images
                     await page.evaluate("""async () => {
@@ -1548,6 +1571,22 @@ def generate_ai_reader(snapshot_id: str, force_refresh: bool = False) -> Path:
 
     soup = BeautifulSoup(raw_html, "html.parser")
 
+    base_elem = soup.find("base")
+    orig_url = base_elem.get("href", "#") if base_elem else "#"
+    domain = ""
+    try:
+        domain = urlparse(orig_url).netloc
+    except Exception:
+        pass
+
+    # Try high-fidelity site adapter first
+    adapter_data = None
+    if orig_url and orig_url != "#":
+        try:
+            adapter_data = extract_article(orig_url, raw_html, fetch_network=True)
+        except Exception as e:
+            logger.debug(f"Site adapter extraction skipped: {e}")
+
     # 1. Metadata extraction
     meta = trafilatura.extract_metadata(raw_html)
     title = (meta.title if meta and meta.title else soup.find("title").text if soup.find("title") else "Archived Article").strip()
@@ -1560,22 +1599,29 @@ def generate_ai_reader(snapshot_id: str, force_refresh: bool = False) -> Path:
         if og_img and og_img.get("content"):
             image = og_img["content"]
 
-    base_elem = soup.find("base")
-    orig_url = base_elem.get("href", "#") if base_elem else "#"
-    domain = ""
-    try:
-        domain = urlparse(orig_url).netloc
-    except Exception:
-        pass
+    if adapter_data:
+        if adapter_data.get("title") and (not title or title == "Archived Article"):
+            title = adapter_data["title"]
+        if adapter_data.get("authors") and not author:
+            author = ", ".join(adapter_data["authors"])
+        if adapter_data.get("published_date") and not date:
+            date = adapter_data["published_date"]
+        if adapter_data.get("hero_image_url") and not image:
+            image = adapter_data["hero_image_url"]
 
     # 2. Article markdown extraction
     extracted_md = trafilatura.extract(raw_html, include_images=True, include_links=True, output_format="markdown") or ""
 
     if len(extracted_md.strip()) < 150:
-        article_elem = soup.find("article") or soup.find(itemprop="articleBody") or soup.find("main") or soup.body
-        if article_elem:
-            ps = [p.get_text(strip=True) for p in article_elem.find_all("p") if len(p.get_text(strip=True)) > 40]
+        if adapter_data and adapter_data.get("body_html") and len(adapter_data["body_html"].strip()) > 80:
+            body_soup = BeautifulSoup(adapter_data["body_html"], "html.parser")
+            ps = [p.get_text(strip=True) for p in body_soup.find_all(["p", "h2", "h3", "blockquote"]) if p.get_text(strip=True)]
             extracted_md = "\n\n".join(ps)
+        else:
+            article_elem = soup.find("article") or soup.find(itemprop="articleBody") or soup.find("main") or soup.body
+            if article_elem:
+                ps = [p.get_text(strip=True) for p in article_elem.find_all("p") if len(p.get_text(strip=True)) > 40]
+                extracted_md = "\n\n".join(ps)
 
     # Clean promotional and boilerplate lines
     cleaned_lines = []
@@ -1680,8 +1726,12 @@ Article:
         """
         summary_bullets = []
     else:
-        # Convert clean markdown to HTML body
-        body_html = markdown.markdown(clean_md, extensions=["extra", "nl2br", "sane_lists"])
+        # If adapter returned pristine clean body_html and trafilatura was poor or short
+        if adapter_data and adapter_data.get("body_html") and (len(clean_md) < 150 or not extracted_md):
+            body_html = adapter_data["body_html"]
+        else:
+            # Convert clean markdown to HTML body
+            body_html = markdown.markdown(clean_md, extensions=["extra", "nl2br", "sane_lists"])
 
     # Clean, proxy, and format images to bypass ISP blocks and prevent broken stubs
     body_soup = BeautifulSoup(body_html, "html.parser")
