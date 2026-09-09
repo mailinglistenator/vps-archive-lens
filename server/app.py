@@ -42,8 +42,6 @@ API_TOKEN = os.getenv("API_TOKEN", "")
 DEFAULT_BASE_DIR = Path("/home/hermes/personal-archiver") if Path("/home/hermes/personal-archiver").exists() else Path(".")
 STORAGE_DIR = Path(os.getenv("STORAGE_DIR", str(DEFAULT_BASE_DIR / "snapshots"))).resolve()
 IMAGE_CACHE_DIR = (STORAGE_DIR / "image_cache").resolve()
-MEDIA_STORAGE_DIR = Path(os.getenv("MEDIA_STORAGE_DIR", str(DEFAULT_BASE_DIR / "videos"))).resolve()
-COOKIES_FILE = Path(os.getenv("YOUTUBE_COOKIES_PATH", str(DEFAULT_BASE_DIR / "cookies.txt"))).resolve()
 BASE_URL = os.getenv("BASE_URL", "http://localhost:8888").rstrip("/")
 MAX_IMAGE_SIZE = int(os.getenv("MAX_IMAGE_SIZE_BYTES", str(20 * 1024 * 1024)))  # 20MB limit
 MAX_CONCURRENT_ARCHIVES = int(os.getenv("MAX_CONCURRENT_ARCHIVES", "2"))
@@ -59,7 +57,6 @@ def get_archive_semaphore() -> asyncio.Semaphore:
 
 STORAGE_DIR.mkdir(parents=True, exist_ok=True)
 IMAGE_CACHE_DIR.mkdir(parents=True, exist_ok=True)
-MEDIA_STORAGE_DIR.mkdir(parents=True, exist_ok=True)
 
 user_manager = UserManager(storage_dir=STORAGE_DIR)
 
@@ -1764,273 +1761,7 @@ def reader_view(snapshot_id: str, refresh: str = Query(None)):
     reader_file = generate_ai_reader(snapshot_id, force_refresh=force_refresh)
     return FileResponse(reader_file, media_type="text/html")
 
-class MediaDownloadRequest(BaseModel):
-    url: str
-    format: str = "video"  # "video" or "audio"
 
-def sanitize_filename(name: str) -> str:
-    cleaned = re.sub(r'[\\/*?:"<>|]', "", name).strip()
-    return cleaned[:100] if cleaned else "media"
-
-@app.post("/api/media/download")
-async def api_media_download(req: Request, payload: MediaDownloadRequest, token: str = Query(None)):
-    user = verify_token(req, token)
-    url = payload.url.strip()
-    if not url:
-        raise HTTPException(status_code=400, detail="Missing URL")
-    
-    fmt = payload.format.lower()
-    if fmt not in ("video", "audio"):
-        fmt = "video"
-    
-    media_id = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S") + "_" + hashlib.sha256(url.encode()).hexdigest()[:8]
-    
-    info_cmd = ["yt-dlp", "--dump-single-json", "--no-playlist"]
-    if COOKIES_FILE.exists() and COOKIES_FILE.stat().st_size > 0:
-        info_cmd.extend(["--cookies", str(COOKIES_FILE)])
-    info_cmd.append(url)
-
-    try:
-        proc = await asyncio.to_thread(
-            subprocess.run, info_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, timeout=35
-        )
-    except subprocess.TimeoutExpired:
-        raise HTTPException(status_code=504, detail="Timeout extracting video metadata")
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error executing yt-dlp: {str(e)}")
-
-    title = "Media Download"
-    duration = 0
-    uploader = ""
-    thumbnail = ""
-    if proc.returncode == 0:
-        try:
-            info = json.loads(proc.stdout)
-            title = info.get("title", title)
-            duration = int(info.get("duration") or 0)
-            uploader = info.get("uploader") or info.get("channel") or ""
-            thumbnail = info.get("thumbnail") or ""
-        except Exception:
-            pass
-    elif "Sign in to confirm" in proc.stderr or "bot" in proc.stderr.lower():
-        raise HTTPException(
-            status_code=502,
-            detail="YouTube bot check triggered for this video. Please upload your YouTube cookies.txt in the 'YouTube Cookies Bypass' drawer below to download it."
-        )
-
-    out_template = str(MEDIA_STORAGE_DIR / f"{media_id}.%(ext)s")
-    if fmt == "audio":
-        dl_cmd = [
-            "yt-dlp", "--no-playlist",
-            "-x", "--audio-format", "mp3", "--audio-quality", "0",
-            "--embed-thumbnail", "--embed-metadata",
-            "-o", out_template
-        ]
-        if COOKIES_FILE.exists() and COOKIES_FILE.stat().st_size > 0:
-            dl_cmd.extend(["--cookies", str(COOKIES_FILE)])
-        dl_cmd.append(url)
-        target_ext = "mp3"
-        media_type = "audio/mpeg"
-    else:
-        dl_cmd = [
-            "yt-dlp", "--no-playlist",
-            "-f", "bv*[ext=mp4]+ba[ext=m4a]/b[ext=mp4]/bestvideo+bestaudio/best",
-            "--merge-output-format", "mp4",
-            "-o", out_template
-        ]
-        if COOKIES_FILE.exists() and COOKIES_FILE.stat().st_size > 0:
-            dl_cmd.extend(["--cookies", str(COOKIES_FILE)])
-        dl_cmd.append(url)
-        target_ext = "mp4"
-        media_type = "video/mp4"
-
-    try:
-        dl_proc = await asyncio.to_thread(
-            subprocess.run, dl_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, timeout=300
-        )
-    except subprocess.TimeoutExpired:
-        raise HTTPException(status_code=504, detail="Download timed out (exceeded 5 minutes)")
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Download execution failed: {str(e)}")
-
-    if dl_proc.returncode != 0:
-        err_msg = dl_proc.stderr.strip().split("\n")[-1] or "Download failed"
-        if "Sign in to confirm" in dl_proc.stderr or "bot" in dl_proc.stderr.lower():
-            err_msg = "YouTube bot check triggered for this video. Please upload your YouTube cookies.txt in the 'YouTube Cookies Bypass' drawer below to download it."
-        logger.error(f"yt-dlp download failed: {err_msg}")
-        raise HTTPException(status_code=502, detail=err_msg)
-
-    expected_file = MEDIA_STORAGE_DIR / f"{media_id}.{target_ext}"
-    if not expected_file.exists():
-        candidates = list(MEDIA_STORAGE_DIR.glob(f"{media_id}.*"))
-        non_json = [c for c in candidates if c.suffix != ".json"]
-        if non_json:
-            expected_file = non_json[0]
-            target_ext = expected_file.suffix.lstrip(".")
-            if target_ext in ("mp4", "mkv", "webm"):
-                media_type = "video/mp4"
-            elif target_ext in ("mp3", "m4a", "aac"):
-                media_type = "audio/mpeg"
-        else:
-            raise HTTPException(status_code=500, detail="Downloaded media file not found on server")
-
-    file_size = expected_file.stat().st_size
-    size_mb = round(file_size / (1024 * 1024), 2)
-    duration_str = f"{duration // 60}:{duration % 60:02d}" if duration else "--:--"
-
-    metadata = {
-        "id": media_id,
-        "title": title,
-        "url": url,
-        "uploader": uploader,
-        "duration": duration,
-        "duration_str": duration_str,
-        "format": fmt,
-        "filename": expected_file.name,
-        "size_mb": size_mb,
-        "media_type": media_type,
-        "thumbnail": thumbnail,
-        "created_by": user.username,
-        "created_at": datetime.now(timezone.utc).isoformat()
-    }
-
-    meta_file = MEDIA_STORAGE_DIR / f"{media_id}.json"
-    with open(meta_file, "w", encoding="utf-8") as f:
-        json.dump(metadata, f, indent=2)
-
-    return {
-        "status": "success",
-        "media": metadata,
-        "stream_url": f"/api/media/stream/{media_id}",
-        "download_url": f"/api/media/download/{media_id}"
-    }
-
-@app.get("/api/media/stream/{media_id}")
-@app.head("/api/media/stream/{media_id}")
-async def api_media_stream(media_id: str, request: Request, token: str = Query(None)):
-    user = verify_token(request, token)
-    meta_file = MEDIA_STORAGE_DIR / f"{media_id}.json"
-    if not meta_file.exists():
-        raise HTTPException(status_code=404, detail="Media not found")
-    with open(meta_file, "r", encoding="utf-8") as f:
-        meta = json.load(f)
-    if user.role != "admin" and meta.get("created_by", "").lower() != user.username.lower():
-        raise HTTPException(status_code=403, detail="Forbidden: Access to this media file is restricted.")
-    media_file = MEDIA_STORAGE_DIR / meta["filename"]
-    if not media_file.exists():
-        raise HTTPException(status_code=404, detail="Media file missing from storage")
-    return FileResponse(media_file, media_type=meta.get("media_type", "video/mp4"))
-
-@app.get("/api/media/download/{media_id}")
-@app.head("/api/media/download/{media_id}")
-async def api_media_file_download(media_id: str, request: Request, token: str = Query(None)):
-    user = verify_token(request, token)
-    meta_file = MEDIA_STORAGE_DIR / f"{media_id}.json"
-    if not meta_file.exists():
-        raise HTTPException(status_code=404, detail="Media not found")
-    with open(meta_file, "r", encoding="utf-8") as f:
-        meta = json.load(f)
-    if user.role != "admin" and meta.get("created_by", "").lower() != user.username.lower():
-        raise HTTPException(status_code=403, detail="Forbidden: Access to this media file is restricted.")
-    media_file = MEDIA_STORAGE_DIR / meta["filename"]
-    if not media_file.exists():
-        raise HTTPException(status_code=404, detail="Media file missing from storage")
-    safe_name = sanitize_filename(meta.get("title", media_id))
-    ext = media_file.suffix
-    download_filename = f"{safe_name}{ext}"
-    return FileResponse(
-        media_file,
-        media_type="application/octet-stream",
-        headers={"Content-Disposition": f'attachment; filename="{download_filename}"'}
-    )
-
-@app.get("/api/media/list")
-async def api_media_list(request: Request, token: str = Query(None)):
-    user = verify_token(request, token)
-    items = []
-    for meta_file in sorted(MEDIA_STORAGE_DIR.glob("*.json"), key=lambda p: p.stat().st_mtime, reverse=True):
-        try:
-            with open(meta_file, "r", encoding="utf-8") as f:
-                data = json.load(f)
-            if (MEDIA_STORAGE_DIR / data["filename"]).exists():
-                # Server-side user segregation: non-admin users only see their own media
-                if user.role != "admin" and data.get("created_by", "").lower() != user.username.lower():
-                    continue
-                items.append(data)
-        except Exception:
-            continue
-
-    try:
-        total, used, free = shutil.disk_usage(MEDIA_STORAGE_DIR)
-        disk_info = {
-            "total_gb": round(total / (1024**3), 1),
-            "free_gb": round(free / (1024**3), 1),
-            "used_gb": round(used / (1024**3), 1),
-        }
-    except Exception:
-        disk_info = {"total_gb": 0, "free_gb": 0, "used_gb": 0}
-
-    return {"items": items, "disk": disk_info}
-
-@app.get("/api/media/cookies")
-async def api_media_cookies_status(request: Request, token: str = Query(None)):
-    verify_token(request, token)
-    exists = COOKIES_FILE.exists() and COOKIES_FILE.stat().st_size > 0
-    mtime = datetime.fromtimestamp(COOKIES_FILE.stat().st_mtime, tz=timezone.utc).strftime("%Y-%m-%d %H:%M") if exists else None
-    return {"exists": exists, "mtime": mtime, "size_bytes": COOKIES_FILE.stat().st_size if exists else 0}
-
-@app.post("/api/media/cookies")
-async def api_media_cookies_upload(request: Request, token: str = Query(None)):
-    user = verify_token(request, token)
-    if user.role != "admin":
-        raise HTTPException(status_code=403, detail="Forbidden: Admin role required to update system cookies.")
-    body = await request.body()
-    if not body:
-        raise HTTPException(status_code=400, detail="Empty cookies data")
-    with open(COOKIES_FILE, "wb") as f:
-        f.write(body)
-    os.chmod(COOKIES_FILE, 0o600)
-    return {"status": "saved", "size_bytes": len(body)}
-
-@app.delete("/api/media/cookies")
-async def api_media_cookies_delete(request: Request, token: str = Query(None)):
-    user = verify_token(request, token)
-    if user.role != "admin":
-        raise HTTPException(status_code=403, detail="Forbidden: Admin role required to delete system cookies.")
-    if COOKIES_FILE.exists():
-        COOKIES_FILE.unlink()
-    return {"status": "deleted"}
-
-@app.delete("/api/media/{media_id}")
-async def api_media_delete(media_id: str, request: Request, token: str = Query(None)):
-    user = verify_token(request, token)
-    meta_file = MEDIA_STORAGE_DIR / f"{media_id}.json"
-    if not meta_file.exists():
-        raise HTTPException(status_code=404, detail="Media not found")
-    try:
-        with open(meta_file, "r", encoding="utf-8") as f:
-            meta = json.load(f)
-    except Exception:
-        meta = {}
-    if user.role != "admin" and meta.get("created_by", "").lower() != user.username.lower():
-        raise HTTPException(status_code=403, detail="Forbidden: You can only delete media you downloaded.")
-
-    media_file = MEDIA_STORAGE_DIR / meta.get("filename", "")
-    if media_file.exists():
-        try:
-            media_file.unlink()
-        except Exception:
-            pass
-    try:
-        meta_file.unlink()
-    except Exception:
-        pass
-    for c in MEDIA_STORAGE_DIR.glob(f"{media_id}.*"):
-        try:
-            c.unlink()
-        except Exception:
-            pass
-    return {"status": "deleted", "id": media_id}
 
 class AddUserRequest(BaseModel):
     username: str
@@ -2190,36 +1921,6 @@ def dashboard(request: Request, response: Response, token: str = Query(None)):
                 <th>Action</th>
               </tr>
         """
-        cookies_section_html = """
-            <!-- YouTube Cookies Bypass Drawer -->
-            <div style="margin-top: 14px; border-top: 1px solid var(--border); padding-top: 12px;">
-              <div style="display: flex; justify-content: space-between; align-items: center; cursor: pointer;" onclick="toggleCookiesSection()">
-                <span style="font-size: 0.88rem; color: #cbd5e1; font-weight: 600; display: flex; align-items: center; gap: 8px;">
-                  🍪 YouTube Bot Bypass (Cookies) 
-                  <span id="cookiesStatusPill" style="font-size: 0.72rem; padding: 2px 8px; border-radius: 4px; background: #334155; color: #94a3b8; font-weight: 500;">Checking...</span>
-                </span>
-                <span id="cookiesChevron" style="font-size: 0.8rem; color: var(--text-muted);">▼</span>
-              </div>
-              
-              <div id="cookiesDrawer" style="display: none; margin-top: 12px; background: #0f172a; padding: 14px; border-radius: 8px; border: 1px solid var(--border);">
-                <p style="margin: 0 0 10px 0; font-size: 0.83rem; color: var(--text-muted); line-height: 1.4;">
-                  Some official Vevo music videos or age-gated YouTube videos block datacenter IPs unless authenticated.
-                  Drop your <code>cookies.txt</code> here once to bypass this permanently:
-                </p>
-                <ol style="margin: 0 0 12px 18px; font-size: 0.82rem; color: #94a3b8; padding: 0; line-height: 1.4;">
-                  <li>Install the free extension <b>Get cookies.txt LOCALLY</b> (in Chrome, Brave, or Firefox).</li>
-                  <li>Open <a href="https://youtube.com" target="_blank" style="color: #38bdf8;">youtube.com</a>, click the extension icon ➔ <b>Export</b>.</li>
-                  <li>Select or drop the exported <code>cookies.txt</code> file below:</li>
-                </ol>
-                <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
-                  <input type="file" id="cookiesFileInput" accept=".txt" style="font-size: 0.85rem; color: #cbd5e1;">
-                  <button class="btn-primary" onclick="uploadCookiesFile()" style="padding: 6px 14px; font-size: 0.85rem;">Save Cookies</button>
-                  <button class="action-btn action-delete" id="deleteCookiesBtn" onclick="deleteCookies()" style="display: none;">Remove Cookies</button>
-                </div>
-                <div id="cookiesUploadResult" style="margin-top: 8px; font-size: 0.82rem;"></div>
-              </div>
-            </div>
-        """
     else:
         admin_section_html = """
           <div class="hub-card" style="text-align: center; color: var(--text-muted); font-size: 0.88rem;">
@@ -2239,11 +1940,6 @@ def dashboard(request: Request, response: Response, token: str = Query(None)):
                 <th>Size</th>
                 <th>Action</th>
               </tr>
-        """
-        cookies_section_html = """
-            <div style="margin-top: 14px; border-top: 1px solid var(--border); padding-top: 10px; font-size: 0.82rem; color: var(--text-muted); display: flex; align-items: center; gap: 6px;">
-              🍪 YouTube Bot Bypass: <span id="cookiesStatusPill" style="font-size: 0.72rem; padding: 2px 8px; border-radius: 4px; background: #334155; color: #94a3b8; font-weight: 500;">Checking...</span> (Active across server)
-            </div>
         """
     
     snapshot_items = []
@@ -2308,7 +2004,7 @@ def dashboard(request: Request, response: Response, token: str = Query(None)):
     <html lang="en">
     <head>
       <meta charset="UTF-8">
-      <title>⚡ VPS Power Hub - Archive & Media</title>
+      <title>⚡ VPS Archive Lens</title>
       <meta name="viewport" content="width=device-width, initial-scale=1">
       <style>
         :root {{
@@ -2570,22 +2266,21 @@ def dashboard(request: Request, response: Response, token: str = Query(None)):
     <body>
       <div class="container">
         <div class="header">
-          <h1>⚡ VPS Power Hub</h1>
+          <h1>⚡ VPS Archive Lens</h1>
           <div style="display: flex; align-items: center; gap: 8px;">
             <span class="badge" style="background: #0284c7;">👤 {current_user.username} ({current_user.role})</span>
-            <span class="badge" id="storageBadge">1Gbps Hetzner Connected</span>
+            <span class="badge" id="storageBadge">Hetzner VPS Connected</span>
           </div>
         </div>
 
         <!-- Navigation Tabs -->
         <div class="tabs">
-          <button class="tab-btn" id="tabArticlesBtn" onclick="switchTab('articles')">📰 Web Articles & Reader</button>
-          <button class="tab-btn active" id="tabMediaBtn" onclick="switchTab('media')">🎬 Media Streamer & Downloader</button>
+          <button class="tab-btn active" id="tabArticlesBtn" onclick="switchTab('articles')">📰 Web Articles & Reader</button>
           <button class="tab-btn" id="tabUsersBtn" onclick="switchTab('users')">👥 Access & Users</button>
         </div>
 
         <!-- TAB 1: WEB ARTICLES -->
-        <div id="tabArticles" class="tab-content">
+        <div id="tabArticles" class="tab-content active">
           <div class="hub-card">
             <div class="form-row">
               <input type="text" id="urlInput" placeholder="https://example.com/paywalled-article...">
@@ -2608,84 +2303,7 @@ def dashboard(request: Request, response: Response, token: str = Query(None)):
           </div>
         </div>
 
-        <!-- TAB 2: MEDIA STREAMER & DOWNLOADER -->
-        <div id="tabMedia" class="tab-content active">
-          <div class="hub-card">
-            <div class="form-row">
-              <input type="text" id="mediaUrlInput" placeholder="Paste YouTube, TikTok, Reddit, Twitter/X, Instagram, Facebook URL...">
-              <button class="btn-primary" id="grabBtn" onclick="grabMedia()">⚡ Grab to VPS</button>
-            </div>
-            
-            <div class="format-selector">
-              <label class="format-pill">
-                <input type="radio" name="mediaFormat" value="video" checked>
-                <span>🎬 Video (MP4)</span>
-              </label>
-              <label class="format-pill">
-                <input type="radio" name="mediaFormat" value="audio">
-                <span>🎵 Audio (MP3)</span>
-              </label>
-            </div>
-
-            {cookies_section_html}
-
-            <div class="status-box" id="mediaStatusBox">
-              <div class="spinner" id="mediaSpinner"></div>
-              <span id="mediaStatusText">Grabbing media at 1Gbps...</span>
-            </div>
-          </div>
-
-          <!-- Active Player Card -->
-          <div id="playerCard">
-            <div class="player-header">
-              <div>
-                <h3 class="player-title" id="playerTitle">Media Title</h3>
-                <div class="player-meta">
-                  <span id="playerUploader">Channel</span>
-                  <span>•</span>
-                  <span id="playerDuration">00:00</span>
-                  <span>•</span>
-                  <span id="playerSize">0.0 MB</span>
-                </div>
-              </div>
-              <button class="action-btn" onclick="closePlayer()" style="font-size: 0.9rem;">✕ Close</button>
-            </div>
-
-            <video id="playerVideo" controls playsinline style="width: 100%; max-height: 480px; border-radius: 8px; background: #000; margin-top: 10px; display: none;"></video>
-            <audio id="playerAudio" controls style="width: 100%; margin-top: 10px; display: none;"></audio>
-
-            <div class="player-actions">
-              <a id="playerDownloadBtn" href="#" class="btn-success">📥 Download to Linux Mint</a>
-              <button class="action-btn" onclick="copyStreamLink()">📋 Copy Stream Link</button>
-            </div>
-          </div>
-
-          <!-- Media Library List -->
-          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
-            <h3 style="color: #cbd5e1; margin: 0;">Saved Media on VPS</h3>
-            <span id="diskInfo" style="font-size: 0.85rem; color: var(--text-muted);">Loading storage...</span>
-          </div>
-
-          <table>
-            <thead>
-              <tr>
-                <th>Title / Media</th>
-                <th>Format</th>
-                <th>Duration / Size</th>
-                <th>Action</th>
-              </tr>
-            </thead>
-            <tbody id="mediaTableBody">
-              <tr><td colspan="4" style="padding: 24px; text-align: center; color: var(--text-muted);">Loading media library...</td></tr>
-            </tbody>
-          </table>
-
-          <div class="meta-info">
-            Downloaded directly on your VPS. Click <b>Stream</b> to watch instantly in your browser or <b>Download</b> to save to Linux Mint.
-          </div>
-        </div>
-
-        <!-- TAB 3: ACCESS & USERS -->
+        <!-- TAB 2: ACCESS & USERS -->
         <div id="tabUsers" class="tab-content">
           <!-- Credentials & Extension Setup Card -->
           <div class="hub-card">
@@ -2731,18 +2349,13 @@ def dashboard(request: Request, response: Response, token: str = Query(None)):
         const TOKEN_PARAM = {json.dumps(token_param)};
         const CURRENT_USER = {current_username_js};
         const IS_ADMIN = {is_admin_js};
-        let activeStreamUrl = '';
         let lastCreatedInvite = '';
 
         function switchTab(tab) {{
           document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
           document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
 
-          if (tab === 'articles') {{
-            document.getElementById('tabArticlesBtn').classList.add('active');
-            document.getElementById('tabArticles').classList.add('active');
-            window.location.hash = 'articles';
-          }} else if (tab === 'users') {{
+          if (tab === 'users') {{
             document.getElementById('tabUsersBtn').classList.add('active');
             document.getElementById('tabUsers').classList.add('active');
             window.location.hash = 'users';
@@ -2750,20 +2363,17 @@ def dashboard(request: Request, response: Response, token: str = Query(None)):
               loadUsersList();
             }}
           }} else {{
-            document.getElementById('tabMediaBtn').classList.add('active');
-            document.getElementById('tabMedia').classList.add('active');
-            window.location.hash = 'media';
-            loadMediaLibrary();
+            document.getElementById('tabArticlesBtn').classList.add('active');
+            document.getElementById('tabArticles').classList.add('active');
+            window.location.hash = 'articles';
           }}
         }}
 
         // Handle initial tab from URL hash
-        if (window.location.hash === '#articles') {{
-          switchTab('articles');
-        }} else if (window.location.hash === '#users') {{
+        if (window.location.hash === '#users') {{
           switchTab('users');
         }} else {{
-          switchTab('media');
+          switchTab('articles');
         }}
 
         // Article Archive function
@@ -2775,261 +2385,6 @@ def dashboard(request: Request, response: Response, token: str = Query(None)):
         document.getElementById('urlInput').addEventListener('keydown', (e) => {{
           if (e.key === 'Enter') archiveUrl();
         }});
-
-        // Media Downloader logic
-        async function grabMedia() {{
-          const urlInput = document.getElementById('mediaUrlInput');
-          const url = urlInput.value.trim();
-          if (!url) return;
-
-          const format = document.querySelector('input[name="mediaFormat"]:checked').value;
-          const statusBox = document.getElementById('mediaStatusBox');
-          const statusText = document.getElementById('mediaStatusText');
-          const spinner = document.getElementById('mediaSpinner');
-          const grabBtn = document.getElementById('grabBtn');
-
-          statusBox.style.display = 'flex';
-          spinner.style.display = 'block';
-          statusText.textContent = `Grabbing ${{format === 'video' ? 'video' : 'audio'}} from URL at 1Gbps...`;
-          grabBtn.disabled = true;
-          grabBtn.style.opacity = '0.6';
-
-          try {{
-            const tokenQuery = API_TOKEN ? `?token=${{encodeURIComponent(API_TOKEN)}}` : '';
-            const res = await fetch(`/api/media/download${{tokenQuery}}`, {{
-              method: 'POST',
-              headers: {{ 'Content-Type': 'application/json' }},
-              body: JSON.stringify({{ url, format }})
-            }});
-
-            const data = await res.json();
-            if (!res.ok) {{
-              throw new Error(data.detail || 'Download failed');
-            }}
-
-            statusText.textContent = '✅ Finished downloading! Loading player...';
-            spinner.style.display = 'none';
-            setTimeout(() => {{ statusBox.style.display = 'none'; }}, 2000);
-            
-            urlInput.value = '';
-            playMedia(data.media);
-            loadMediaLibrary();
-          }} catch (err) {{
-            statusText.textContent = '❌ ' + err.message;
-            spinner.style.display = 'none';
-          }} finally {{
-            grabBtn.disabled = false;
-            grabBtn.style.opacity = '1';
-          }}
-        }}
-
-        document.getElementById('mediaUrlInput').addEventListener('keydown', (e) => {{
-          if (e.key === 'Enter') grabMedia();
-        }});
-
-        function playMedia(item) {{
-          const card = document.getElementById('playerCard');
-          const title = document.getElementById('playerTitle');
-          const uploader = document.getElementById('playerUploader');
-          const duration = document.getElementById('playerDuration');
-          const size = document.getElementById('playerSize');
-          const video = document.getElementById('playerVideo');
-          const audio = document.getElementById('playerAudio');
-          const dlBtn = document.getElementById('playerDownloadBtn');
-
-          title.textContent = item.title;
-          uploader.textContent = item.uploader || 'Web Stream';
-          duration.textContent = item.duration_str || '--:--';
-          size.textContent = item.size_mb + ' MB';
-
-          const tokenQuery = API_TOKEN ? `?token=${{encodeURIComponent(API_TOKEN)}}` : '';
-          activeStreamUrl = `/api/media/stream/${{item.id}}${{tokenQuery}}`;
-          dlBtn.href = `/api/media/download/${{item.id}}${{tokenQuery}}`;
-          dlBtn.setAttribute('download', item.filename);
-
-          if (item.format === 'audio') {{
-            video.style.display = 'none';
-            video.pause();
-            audio.src = activeStreamUrl;
-            audio.style.display = 'block';
-            audio.play();
-          }} else {{
-            audio.style.display = 'none';
-            audio.pause();
-            video.src = activeStreamUrl;
-            video.style.display = 'block';
-            video.play();
-          }}
-
-          card.style.display = 'block';
-          card.scrollIntoView({{ behavior: 'smooth', block: 'start' }});
-        }}
-
-        function closePlayer() {{
-          const video = document.getElementById('playerVideo');
-          const audio = document.getElementById('playerAudio');
-          video.pause();
-          audio.pause();
-          document.getElementById('playerCard').style.display = 'none';
-        }}
-
-        function copyStreamLink() {{
-          if (!activeStreamUrl) return;
-          const fullUrl = window.location.origin + activeStreamUrl;
-          navigator.clipboard.writeText(fullUrl).then(() => {{
-            alert('Stream link copied to clipboard!');
-          }});
-        }}
-
-        async function loadMediaLibrary() {{
-          const tbody = document.getElementById('mediaTableBody');
-          const diskInfo = document.getElementById('diskInfo');
-          const tokenQuery = API_TOKEN ? `?token=${{encodeURIComponent(API_TOKEN)}}` : '';
-
-          try {{
-            const res = await fetch(`/api/media/list${{tokenQuery}}`);
-            if (!res.ok) throw new Error('Failed to load media');
-            const data = await res.json();
-
-            if (data.disk) {{
-              diskInfo.textContent = `💾 ${{data.disk.free_gb}} GB Free on VPS`;
-            }}
-
-            if (!data.items || data.items.length === 0) {{
-              const emptyMediaMsg = IS_ADMIN ? 'No saved media on VPS yet. Paste a link above to grab your first video!' : 'You have not saved any media yet. Paste a link above to grab your first video!';
-              tbody.innerHTML = `<tr><td colspan="4" style="padding: 24px; text-align: center; color: var(--text-muted);">${{emptyMediaMsg}}</td></tr>`;
-              return;
-            }}
-
-            tbody.innerHTML = data.items.map(item => {{
-              const isAudio = item.format === 'audio';
-              const pillClass = isAudio ? 'pill-audio' : 'pill-video';
-              const itemJson = JSON.stringify(item).replace(/"/g, '&quot;');
-              const creatorBadge = (IS_ADMIN && item.created_by) ? `<span style="background: rgba(56, 189, 248, 0.15); color: #38bdf8; padding: 1px 6px; border-radius: 4px; font-size: 0.72rem; font-weight: 600; margin-left: 6px;">${{escapeHtml(item.created_by)}}</span>` : '';
-              return `
-                <tr style="border-bottom: 1px solid var(--border);">
-                  <td style="padding: 12px 14px;">
-                    <div style="font-weight: 600; color: #e0f2fe; margin-bottom: 4px;">${{escapeHtml(item.title)}}</div>
-                    <div style="font-size: 0.8rem; color: var(--text-muted);">${{escapeHtml(item.uploader || 'Unknown')}} • ${{new Date(item.created_at).toLocaleDateString()}}${{creatorBadge}}</div>
-                  </td>
-                  <td style="padding: 12px 14px;">
-                    <span class="pill-tag ${{pillClass}}">${{item.format}}</span>
-                  </td>
-                  <td style="padding: 12px 14px; color: #cbd5e1; font-size: 0.85rem;">
-                    ${{item.duration_str}} • ${{item.size_mb}} MB
-                  </td>
-                  <td style="padding: 12px 14px; display: flex; gap: 8px;">
-                    <button class="action-btn" onclick='playMedia(${{itemJson}})' style="color: #38bdf8; border-color: #0284c7;">▶️ Stream</button>
-                    <a class="action-btn" href="/api/media/download/${{item.id}}${{tokenQuery}}" download="${{escapeHtml(item.filename)}}">⬇️ DL</a>
-                    <button class="action-btn action-delete" onclick="deleteMedia('${{item.id}}')">🗑️</button>
-                  </td>
-                </tr>
-              `;
-            }}).join('');
-          }} catch (e) {{
-            tbody.innerHTML = '<tr><td colspan="4" style="padding: 24px; text-align: center; color: #f87171;">Error loading media library.</td></tr>';
-          }}
-        }}
-
-        async function deleteMedia(id) {{
-          if (!confirm('Are you sure you want to delete this media file from the VPS?')) return;
-          const tokenQuery = API_TOKEN ? `?token=${{encodeURIComponent(API_TOKEN)}}` : '';
-          try {{
-            const res = await fetch(`/api/media/${{id}}${{tokenQuery}}`, {{ method: 'DELETE' }});
-            if (res.ok) {{
-              loadMediaLibrary();
-            }} else {{
-              alert('Failed to delete media');
-            }}
-          }} catch (e) {{
-            alert('Error deleting media: ' + e.message);
-          }}
-        }}
-
-        function escapeHtml(str) {{
-          if (!str) return '';
-          return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
-        }}
-
-        // Cookies management
-        function toggleCookiesSection() {{
-          const drawer = document.getElementById('cookiesDrawer');
-          const chevron = document.getElementById('cookiesChevron');
-          if (drawer.style.display === 'none') {{
-            drawer.style.display = 'block';
-            chevron.textContent = '▲';
-            checkCookiesStatus();
-          }} else {{
-            drawer.style.display = 'none';
-            chevron.textContent = '▼';
-          }}
-        }}
-
-        async function checkCookiesStatus() {{
-          const pill = document.getElementById('cookiesStatusPill');
-          const delBtn = document.getElementById('deleteCookiesBtn');
-          const tokenQuery = API_TOKEN ? `?token=${{encodeURIComponent(API_TOKEN)}}` : '';
-          try {{
-            const res = await fetch(`/api/media/cookies${{tokenQuery}}`);
-            const data = await res.json();
-            if (data.exists) {{
-              pill.textContent = `🟢 Active (${{(data.size_bytes / 1024).toFixed(1)}} KB)`;
-              pill.style.background = '#064e3b';
-              pill.style.color = '#6ee7b7';
-              delBtn.style.display = 'inline-flex';
-            }} else {{
-              pill.textContent = '⚪ Not Loaded';
-              pill.style.background = '#334155';
-              pill.style.color = '#94a3b8';
-              delBtn.style.display = 'none';
-            }}
-          }} catch (e) {{
-            pill.textContent = '⚪ Status Unknown';
-          }}
-        }}
-
-        async function uploadCookiesFile() {{
-          const fileInput = document.getElementById('cookiesFileInput');
-          const resultDiv = document.getElementById('cookiesUploadResult');
-          if (!fileInput.files || fileInput.files.length === 0) {{
-            alert('Please select a cookies.txt file first.');
-            return;
-          }}
-
-          const file = fileInput.files[0];
-          const tokenQuery = API_TOKEN ? `?token=${{encodeURIComponent(API_TOKEN)}}` : '';
-          resultDiv.innerHTML = '<span style="color: #38bdf8;">Uploading cookies to VPS...</span>';
-
-          try {{
-            const content = await file.arrayBuffer();
-            const res = await fetch(`/api/media/cookies${{tokenQuery}}`, {{
-              method: 'POST',
-              headers: {{ 'Content-Type': 'application/octet-stream' }},
-              body: content
-            }});
-
-            const data = await res.json();
-            if (res.ok) {{
-              resultDiv.innerHTML = '<span style="color: #10b981; font-weight: 600;">✅ YouTube cookies saved successfully! All YouTube videos are now unlocked.</span>';
-              checkCookiesStatus();
-              fileInput.value = '';
-            }} else {{
-              resultDiv.innerHTML = '<span style="color: #ef4444;">❌ Failed: ' + (data.detail || 'Upload error') + '</span>';
-            }}
-          }} catch (e) {{
-            resultDiv.innerHTML = '<span style="color: #ef4444;">❌ Error: ' + e.message + '</span>';
-          }}
-        }}
-
-        async function deleteCookies() {{
-          if (!confirm('Remove YouTube cookies from VPS?')) return;
-          const tokenQuery = API_TOKEN ? `?token=${{encodeURIComponent(API_TOKEN)}}` : '';
-          try {{
-            await fetch(`/api/media/cookies${{tokenQuery}}`, {{ method: 'DELETE' }});
-            checkCookiesStatus();
-            document.getElementById('cookiesUploadResult').innerHTML = '<span style="color: #94a3b8;">Cookies removed.</span>';
-          }} catch (e) {{}}
-        }}
 
         // Set server URL display on load
         const serverUrlEl = document.getElementById('myServerUrlDisplay');
@@ -3197,8 +2552,6 @@ def dashboard(request: Request, response: Response, token: str = Query(None)):
           }}
         }}
 
-        // Check cookies status on initial load
-        checkCookiesStatus();
       </script>
     </body>
     </html>

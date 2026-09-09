@@ -173,7 +173,7 @@ class TestFastAPIUserEndpoints(unittest.TestCase):
         res = self.client.get("/?token=sam_secret_key")
         self.assertEqual(res.status_code, 200)
         self.assertIn("friend_sam (user)", res.text)
-        self.assertIn("VPS Power Hub", res.text)
+        self.assertIn("VPS Archive Lens", res.text)
 
     def test_authenticated_dashboard_with_bearer_header(self):
         res = self.client.get("/", headers={"Authorization": "Bearer admin_super_secret"})
@@ -312,97 +312,6 @@ class TestFastAPIUserEndpoints(unittest.TestCase):
         self.assertIn("Sam Personal Article", admin_dash.text)
         self.assertIn("filterAllBtn", admin_dash.text)
 
-    def test_media_strict_segregation(self):
-        media_dir = Path(self.test_dir) / "videos"
-        media_dir.mkdir(parents=True, exist_ok=True)
-
-        # Create admin media item
-        admin_meta = {
-            "id": "admin_vid_1",
-            "title": "Admin Confidential Video",
-            "url": "https://youtube.com/watch?v=admin1",
-            "uploader": "AdminChannel",
-            "duration": 120,
-            "duration_str": "2:00",
-            "format": "video",
-            "filename": "admin_vid_1.mp4",
-            "size_mb": 15.0,
-            "media_type": "video/mp4",
-            "thumbnail": "",
-            "created_by": "admin",
-            "created_at": "2026-09-09T00:00:00Z"
-        }
-        with open(media_dir / "admin_vid_1.json", "w", encoding="utf-8") as f:
-            import json
-            json.dump(admin_meta, f)
-        with open(media_dir / "admin_vid_1.mp4", "w", encoding="utf-8") as f:
-            f.write("mock video content")
-
-        # Create Sam media item
-        sam_meta = {
-            "id": "sam_vid_1",
-            "title": "Sam Favorite Music",
-            "url": "https://youtube.com/watch?v=sam1",
-            "uploader": "SamChannel",
-            "duration": 200,
-            "duration_str": "3:20",
-            "format": "video",
-            "filename": "sam_vid_1.mp4",
-            "size_mb": 25.0,
-            "media_type": "video/mp4",
-            "thumbnail": "",
-            "created_by": "friend_sam",
-            "created_at": "2026-09-09T01:00:00Z"
-        }
-        with open(media_dir / "sam_vid_1.json", "w", encoding="utf-8") as f:
-            json.dump(sam_meta, f)
-        with open(media_dir / "sam_vid_1.mp4", "w", encoding="utf-8") as f:
-            f.write("mock video content 2")
-
-        # Sam lists media: should only see sam_vid_1
-        sam_list = self.client.get("/api/media/list?token=sam_secret_key")
-        self.assertEqual(sam_list.status_code, 200)
-        sam_items = sam_list.json()["items"]
-        sam_ids = [it["id"] for it in sam_items]
-        self.assertIn("sam_vid_1", sam_ids)
-        self.assertNotIn("admin_vid_1", sam_ids)
-
-        # Admin lists media: sees both
-        admin_list = self.client.get("/api/media/list?token=admin_super_secret")
-        self.assertEqual(admin_list.status_code, 200)
-        admin_items = admin_list.json()["items"]
-        admin_ids = [it["id"] for it in admin_items]
-        self.assertIn("admin_vid_1", admin_ids)
-        self.assertIn("sam_vid_1", admin_ids)
-
-        # Sam tries to stream admin's media -> 403 Forbidden
-        sam_stream_admin = self.client.get("/api/media/stream/admin_vid_1?token=sam_secret_key")
-        self.assertEqual(sam_stream_admin.status_code, 403)
-
-        # Sam streams own media -> 200 OK
-        sam_stream_own = self.client.get("/api/media/stream/sam_vid_1?token=sam_secret_key")
-        self.assertEqual(sam_stream_own.status_code, 200)
-
-        # Sam tries to download admin's media -> 403 Forbidden
-        sam_dl_admin = self.client.get("/api/media/download/admin_vid_1?token=sam_secret_key")
-        self.assertEqual(sam_dl_admin.status_code, 403)
-
-        # Sam tries to delete admin's media -> 403 Forbidden
-        sam_del_admin = self.client.delete("/api/media/admin_vid_1?token=sam_secret_key")
-        self.assertEqual(sam_del_admin.status_code, 403)
-        self.assertTrue((media_dir / "admin_vid_1.mp4").exists())
-
-        # Sam cannot upload or delete cookies -> 403 Forbidden
-        sam_upload_cookies = self.client.post("/api/media/cookies?token=sam_secret_key", content=b"cookies")
-        self.assertEqual(sam_upload_cookies.status_code, 403)
-        sam_del_cookies = self.client.delete("/api/media/cookies?token=sam_secret_key")
-        self.assertEqual(sam_del_cookies.status_code, 403)
-
-        # Sam deletes own media -> 200 OK
-        sam_del_own = self.client.delete("/api/media/sam_vid_1?token=sam_secret_key")
-        self.assertEqual(sam_del_own.status_code, 200)
-        self.assertFalse((media_dir / "sam_vid_1.mp4").exists())
-
-
 if __name__ == "__main__":
     unittest.main()
+
