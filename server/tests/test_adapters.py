@@ -296,6 +296,35 @@ class TestAdaptersRegistry(unittest.TestCase):
         "simpleflying.com",
         "lawfaremedia.org",
         "theconversation.com",
+        # Sites 201–300 Cohort 2: Think Tanks, Policy Reviews, Watchdogs & Intellectual Media
+        "brookings.edu",
+        "csis.org",
+        "carnegieendowment.org",
+        "rand.org",
+        "chathamhouse.org",
+        "project-syndicate.org",
+        "bostonreview.net",
+        "lrb.co.uk",
+        "nybooks.com",
+        "aeon.co",
+        "icij.org",
+        "occrp.org",
+        "gijn.org",
+        "publicintegrity.org",
+        "themarshallproject.org",
+        "chalkbeat.org",
+        "texastribune.org",
+        "calmatters.org",
+        "opensecrets.org",
+        "revealnews.org",
+        "spectator.co.uk",
+        "newstatesman.com",
+        "prospectmagazine.co.uk",
+        "unherd.com",
+        "jacobin.com",
+        "reason.com",
+        "pitchfork.com",
+        "nme.com",
     ]
 
     def test_all_top_200_registered(self):
@@ -1679,6 +1708,97 @@ class TestNewPlatformExtractors(unittest.TestCase):
         res = extract_theconversation("https://theconversation.com/seabed-mining-threats-234812", soup, html, fetch_network=False)
         self.assertEqual(res["title"], "Why Deep Seabed Mining Threatens Unmapped Hydrothermal Vent Ecosystems")
         self.assertIn("abyssal nodules", res["body_html"])
+
+    def test_extract_brookings(self):
+        from server.adapters import extract_brookings
+        html = """
+        <html>
+          <head>
+            <title>Macroeconomic Dynamics and Fiscal Policy Trajectories in Developing Markets</title>
+          </head>
+          <body>
+            <h1 class="post-title">Macroeconomic Dynamics and Fiscal Policy Trajectories in Developing Markets</h1>
+            <div class="authors-list"><a class="author-link">Dr. Eleanor Vance</a></div>
+            <div class="post-body">
+              <p>Emerging economies face acute sovereign debt refinancing requirements amid shifting international monetary policies.</p>
+              <p>Multilateral financial stabilization facilities must adapt risk-sharing frameworks to maintain balance-of-payments resilience.</p>
+            </div>
+          </body>
+        </html>
+        """
+        soup = BeautifulSoup(html, "html.parser")
+        res = extract_brookings("https://www.brookings.edu/articles/macroeconomic-dynamics-fiscal-policy/", soup, html, fetch_network=False)
+        self.assertEqual(res["title"], "Macroeconomic Dynamics and Fiscal Policy Trajectories in Developing Markets")
+        self.assertIn("Eleanor Vance", res["authors"][0])
+        self.assertIn("sovereign debt refinancing", res["body_html"])
+
+    def test_extract_icij(self):
+        from server.adapters import extract_icij
+        html = """
+        <html>
+          <head>
+            <title>Cross-Border Asset Flows Uncover Multi-Jurisdictional Tax Avoidance Schemes</title>
+          </head>
+          <body>
+            <h1 class="entry-title">Cross-Border Asset Flows Uncover Multi-Jurisdictional Tax Avoidance Schemes</h1>
+            <div class="byline-authors"><span class="author">Investigative Desk</span></div>
+            <div class="entry-content">
+              <p>Leaked corporate registries reveal intricate networks of intermediary shell holding entities across offshore registries.</p>
+              <p>Regulatory authorities are intensifying oversight following revelations of undisclosed beneficial ownership structures.</p>
+            </div>
+          </body>
+        </html>
+        """
+        soup = BeautifulSoup(html, "html.parser")
+        res = extract_icij("https://www.icij.org/investigations/offshore-flows-report/", soup, html, fetch_network=False)
+        self.assertEqual(res["title"], "Cross-Border Asset Flows Uncover Multi-Jurisdictional Tax Avoidance Schemes")
+        self.assertIn("offshore registries", res["body_html"])
+
+    def test_extract_themarshallproject(self):
+        from server.adapters import extract_themarshallproject
+        html = """
+        <html>
+          <head>
+            <title>Examining Systemic Overcrowding and Healthcare Delivery in State Correctional Systems</title>
+          </head>
+          <body>
+            <h1 class="headline">Examining Systemic Overcrowding and Healthcare Delivery in State Correctional Systems</h1>
+            <span class="byline">By Sarah Jenkins</span>
+            <div class="post-content">
+              <p>State correctional departments struggle to recruit clinical personnel, leading to extensive delays in chronic care management.</p>
+              <p>Independent oversight reports highlight the urgent need for comprehensive medical staff benchmarking.</p>
+            </div>
+          </body>
+        </html>
+        """
+        soup = BeautifulSoup(html, "html.parser")
+        res = extract_themarshallproject("https://www.themarshallproject.org/2026/09/09/state-correctional-healthcare", soup, html, fetch_network=False)
+        self.assertEqual(res["title"], "Examining Systemic Overcrowding and Healthcare Delivery in State Correctional Systems")
+        self.assertIn("Sarah Jenkins", res["authors"][0])
+        self.assertIn("clinical personnel", res["body_html"])
+
+    def test_extract_spectator(self):
+        from server.adapters import extract_spectator
+        html = """
+        <html>
+          <head>
+            <title>The Literary Legacy of Political Satire in the Age of Digital Broadcasting</title>
+          </head>
+          <body>
+            <h1 class="article__title">The Literary Legacy of Political Satire in the Age of Digital Broadcasting</h1>
+            <a class="article__author-link">Julian Croft</a>
+            <div class="article-body">
+              <p>Contemporary political commentary frequently oscillates between polemical urgency and comedic exhaustion.</p>
+              <p>Historical predecessors demonstrate that lasting satirical resonance requires rigorous fidelity to linguistic precision.</p>
+            </div>
+          </body>
+        </html>
+        """
+        soup = BeautifulSoup(html, "html.parser")
+        res = extract_spectator("https://www.spectator.co.uk/article/literary-legacy-satire/", soup, html, fetch_network=False)
+        self.assertEqual(res["title"], "The Literary Legacy of Political Satire in the Age of Digital Broadcasting")
+        self.assertIn("Julian Croft", res["authors"])
+        self.assertIn("linguistic precision", res["body_html"])
 
 
 if __name__ == "__main__":

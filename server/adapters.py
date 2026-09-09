@@ -4173,6 +4173,346 @@ def extract_theconversation(url: str, soup: BeautifulSoup, raw_html: str, fetch_
     )
 
 
+# ------------------------------------------------------------------------------
+# Cohort 2: Think Tanks, Policy Reviews, Watchdogs & Intellectual Media
+# ------------------------------------------------------------------------------
+
+def extract_brookings(url: str, soup: BeautifulSoup, raw_html: str, fetch_network: bool = True) -> Dict[str, Any]:
+    """Brookings Institution policy analysis and research extractor."""
+    return extract_with_selectors(
+        url=url,
+        soup=soup,
+        site_name="Brookings Institution",
+        body_selectors=["div.post-body", "div.article-content", "div.core-block", "div.entry-content", "article"],
+        title_selectors=["h1.post-title", "h1.entry-title", "h1"],
+        author_selectors=["div.authors-list", "a.author-link", "div.post-author"],
+    )
+
+
+def extract_csis(url: str, soup: BeautifulSoup, raw_html: str, fetch_network: bool = True) -> Dict[str, Any]:
+    """CSIS (Center for Strategic and International Studies) extractor."""
+    return extract_with_selectors(
+        url=url,
+        soup=soup,
+        site_name="CSIS",
+        body_selectors=["div.post-content", "div.wysiwyg", "div.article-body", "article"],
+        title_selectors=["h1.page-title", "h1.title", "h1"],
+        author_selectors=["div.field--name-field-authors", "span.author"],
+    )
+
+
+def extract_carnegie(url: str, soup: BeautifulSoup, raw_html: str, fetch_network: bool = True) -> Dict[str, Any]:
+    """Carnegie Endowment for International Peace extractor."""
+    return extract_with_selectors(
+        url=url,
+        soup=soup,
+        site_name="Carnegie Endowment",
+        body_selectors=["div.article-body", "div.publication-body", "div.body-text", "article"],
+        title_selectors=["h1.publication-title", "h1.entry-title", "h1"],
+        author_selectors=["div.authors-container", "a.author-name"],
+    )
+
+
+def extract_rand(url: str, soup: BeautifulSoup, raw_html: str, fetch_network: bool = True) -> Dict[str, Any]:
+    """RAND Corporation research and commentary extractor."""
+    return extract_with_selectors(
+        url=url,
+        soup=soup,
+        site_name="RAND Corporation",
+        body_selectors=["div.product-content", "div.page-body", "div.body", "article"],
+        title_selectors=["h1.product-title", "h1.title", "h1"],
+        author_selectors=["div.product-authors", "p.authors"],
+    )
+
+
+def extract_chathamhouse(url: str, soup: BeautifulSoup, raw_html: str, fetch_network: bool = True) -> Dict[str, Any]:
+    """Chatham House international affairs extractor."""
+    return extract_with_selectors(
+        url=url,
+        soup=soup,
+        site_name="Chatham House",
+        body_selectors=["div.content-body", "div.rich-text", "div.article__body", "article"],
+        title_selectors=["h1.article-header__title", "h1.hero-title", "h1"],
+        author_selectors=["div.author-card", "a.author"],
+    )
+
+
+def extract_projectsyndicate(url: str, soup: BeautifulSoup, raw_html: str, fetch_network: bool = True) -> Dict[str, Any]:
+    """Project Syndicate global opinion & commentary extractor."""
+    return extract_with_selectors(
+        url=url,
+        soup=soup,
+        site_name="Project Syndicate",
+        body_selectors=["div.article__body", "div.article-body", "section.article-content", "article"],
+        title_selectors=["h1.article__title", "h1.headline", "h1"],
+        author_selectors=["a.article__author-name", "span.author"],
+    )
+
+
+def extract_bostonreview(url: str, soup: BeautifulSoup, raw_html: str, fetch_network: bool = True) -> Dict[str, Any]:
+    """Boston Review political and literary forum extractor."""
+    return extract_with_selectors(
+        url=url,
+        soup=soup,
+        site_name="Boston Review",
+        body_selectors=["div.entry-content", "div.article-content", "div.post-content", "article"],
+        title_selectors=["h1.entry-title", "h1.post-title", "h1"],
+        author_selectors=["div.article-authors", "span.author"],
+    )
+
+
+def extract_lrb(url: str, soup: BeautifulSoup, raw_html: str, fetch_network: bool = True) -> Dict[str, Any]:
+    """London Review of Books literary and cultural essays extractor."""
+    return extract_with_selectors(
+        url=url,
+        soup=soup,
+        site_name="London Review of Books",
+        body_selectors=["div.article-body", "div.text-block", "div.article-copy", "article"],
+        title_selectors=["h1.article-title", "h1.title", "h1"],
+        author_selectors=["div.article-author", "span.byline"],
+    )
+
+
+def extract_nybooks(url: str, soup: BeautifulSoup, raw_html: str, fetch_network: bool = True) -> Dict[str, Any]:
+    """The New York Review of Books intellectual essay extractor."""
+    return extract_with_selectors(
+        url=url,
+        soup=soup,
+        site_name="New York Review of Books",
+        body_selectors=["div.article-body", "div.article-content", "div.entry-content", "article"],
+        title_selectors=["h1.article-title", "h1.entry-title", "h1"],
+        author_selectors=["div.article-byline", "a.author-link"],
+    )
+
+
+def extract_aeon(url: str, soup: BeautifulSoup, raw_html: str, fetch_network: bool = True) -> Dict[str, Any]:
+    """Aeon Magazine philosophical and cultural essays extractor."""
+    return extract_with_selectors(
+        url=url,
+        soup=soup,
+        site_name="Aeon",
+        body_selectors=["div.article__body", "div.essay-content", "div.article-content", "article"],
+        title_selectors=["h1.article__title", "h1.essay-title", "h1"],
+        author_selectors=["div.author__name", "span.author"],
+    )
+
+
+def extract_icij(url: str, soup: BeautifulSoup, raw_html: str, fetch_network: bool = True) -> Dict[str, Any]:
+    """ICIJ investigative journalism and leaks extractor."""
+    return extract_with_selectors(
+        url=url,
+        soup=soup,
+        site_name="ICIJ",
+        body_selectors=["div.entry-content", "div.story-body", "div.article-content", "article"],
+        title_selectors=["h1.entry-title", "h1.story-title", "h1"],
+        author_selectors=["div.byline-authors", "span.author"],
+    )
+
+
+def extract_occrp(url: str, soup: BeautifulSoup, raw_html: str, fetch_network: bool = True) -> Dict[str, Any]:
+    """OCCRP cross-border crime & corruption reporting extractor."""
+    return extract_with_selectors(
+        url=url,
+        soup=soup,
+        site_name="OCCRP",
+        body_selectors=["div.story-content", "div.item-page", "div.article-content", "article"],
+        title_selectors=["h1.contentheading", "h1.story-title", "h1"],
+        author_selectors=["div.story-byline", "span.author"],
+    )
+
+
+def extract_gijn(url: str, soup: BeautifulSoup, raw_html: str, fetch_network: bool = True) -> Dict[str, Any]:
+    """Global Investigative Journalism Network extractor."""
+    return extract_with_selectors(
+        url=url,
+        soup=soup,
+        site_name="GIJN",
+        body_selectors=["div.entry-content", "div.post-content", "article"],
+        title_selectors=["h1.entry-title", "h1"],
+        author_selectors=["span.author", "div.byline"],
+    )
+
+
+def extract_publicintegrity(url: str, soup: BeautifulSoup, raw_html: str, fetch_network: bool = True) -> Dict[str, Any]:
+    """Center for Public Integrity investigative reporting extractor."""
+    return extract_with_selectors(
+        url=url,
+        soup=soup,
+        site_name="Center for Public Integrity",
+        body_selectors=["div.entry-content", "div.article-body", "div.post-content", "article"],
+        title_selectors=["h1.entry-title", "h1.article-title", "h1"],
+        author_selectors=["div.authors-list", "span.byline"],
+    )
+
+
+def extract_themarshallproject(url: str, soup: BeautifulSoup, raw_html: str, fetch_network: bool = True) -> Dict[str, Any]:
+    """The Marshall Project criminal justice journalism extractor."""
+    return extract_with_selectors(
+        url=url,
+        soup=soup,
+        site_name="The Marshall Project",
+        body_selectors=["div.post-content", "div.article-body", "div.stream-item-content", "article"],
+        title_selectors=["h1.headline", "h1.entry-title", "h1"],
+        author_selectors=["span.byline", "a.author"],
+    )
+
+
+def extract_chalkbeat(url: str, soup: BeautifulSoup, raw_html: str, fetch_network: bool = True) -> Dict[str, Any]:
+    """Chalkbeat education reporting extractor."""
+    return extract_with_selectors(
+        url=url,
+        soup=soup,
+        site_name="Chalkbeat",
+        body_selectors=["div.entry-content", "div.article-body", "div.StoryBody", "article"],
+        title_selectors=["h1.entry-title", "h1.headline", "h1"],
+        author_selectors=["div.byline", "span.author"],
+    )
+
+
+def extract_texastribune(url: str, soup: BeautifulSoup, raw_html: str, fetch_network: bool = True) -> Dict[str, Any]:
+    """The Texas Tribune nonprofit statehouse reporting extractor."""
+    return extract_with_selectors(
+        url=url,
+        soup=soup,
+        site_name="The Texas Tribune",
+        body_selectors=["div.story-body", "div.c-story-content", "div.article-content", "article"],
+        title_selectors=["h1.headline", "h1.c-headline", "h1"],
+        author_selectors=["div.c-byline", "span.byline"],
+    )
+
+
+def extract_calmatters(url: str, soup: BeautifulSoup, raw_html: str, fetch_network: bool = True) -> Dict[str, Any]:
+    """CalMatters California policy & politics extractor."""
+    return extract_with_selectors(
+        url=url,
+        soup=soup,
+        site_name="CalMatters",
+        body_selectors=["div.entry-content", "div.article-content", "div.post-content", "article"],
+        title_selectors=["h1.entry-title", "h1.headline", "h1"],
+        author_selectors=["div.author-info", "span.byline"],
+    )
+
+
+def extract_opensecrets(url: str, soup: BeautifulSoup, raw_html: str, fetch_network: bool = True) -> Dict[str, Any]:
+    """OpenSecrets money in politics research & reporting extractor."""
+    return extract_with_selectors(
+        url=url,
+        soup=soup,
+        site_name="OpenSecrets",
+        body_selectors=["div.entry-content", "div.post-content", "div.news-body", "article"],
+        title_selectors=["h1.entry-title", "h1.page-title", "h1"],
+        author_selectors=["div.post-author", "span.author"],
+    )
+
+
+def extract_revealnews(url: str, soup: BeautifulSoup, raw_html: str, fetch_network: bool = True) -> Dict[str, Any]:
+    """Reveal News (Center for Investigative Reporting) extractor."""
+    return extract_with_selectors(
+        url=url,
+        soup=soup,
+        site_name="Reveal News",
+        body_selectors=["div.entry-content", "div.article-body", "div.story-body", "article"],
+        title_selectors=["h1.entry-title", "h1.story-headline", "h1"],
+        author_selectors=["div.byline", "span.author"],
+    )
+
+
+def extract_spectator(url: str, soup: BeautifulSoup, raw_html: str, fetch_network: bool = True) -> Dict[str, Any]:
+    """The Spectator British magazine & commentary extractor."""
+    return extract_with_selectors(
+        url=url,
+        soup=soup,
+        site_name="The Spectator",
+        body_selectors=["div.article-body", "div.article__body", "div.article-content", "article"],
+        title_selectors=["h1.article__title", "h1.title", "h1"],
+        author_selectors=["a.article__author-link", "div.byline"],
+    )
+
+
+def extract_newstatesman(url: str, soup: BeautifulSoup, raw_html: str, fetch_network: bool = True) -> Dict[str, Any]:
+    """New Statesman British progressive politics & culture extractor."""
+    return extract_with_selectors(
+        url=url,
+        soup=soup,
+        site_name="New Statesman",
+        body_selectors=["div.c-article-content", "div.article__body", "div.entry-content", "article"],
+        title_selectors=["h1.c-article-header__headline", "h1.headline", "h1"],
+        author_selectors=["div.c-article-header__author", "span.author"],
+    )
+
+
+def extract_prospect(url: str, soup: BeautifulSoup, raw_html: str, fetch_network: bool = True) -> Dict[str, Any]:
+    """Prospect Magazine British current affairs & ideas extractor."""
+    return extract_with_selectors(
+        url=url,
+        soup=soup,
+        site_name="Prospect Magazine",
+        body_selectors=["div.article-body", "div.post-content", "div.rich-text", "article"],
+        title_selectors=["h1.article-headline", "h1.title", "h1"],
+        author_selectors=["div.author-name", "span.byline"],
+    )
+
+
+def extract_unherd(url: str, soup: BeautifulSoup, raw_html: str, fetch_network: bool = True) -> Dict[str, Any]:
+    """UnHerd independent opinions and cultural commentary extractor."""
+    return extract_with_selectors(
+        url=url,
+        soup=soup,
+        site_name="UnHerd",
+        body_selectors=["div.article-body", "div.single-post__content", "div.entry-content", "article"],
+        title_selectors=["h1.single-post__title", "h1.entry-title", "h1"],
+        author_selectors=["div.single-post__author-name", "span.author"],
+    )
+
+
+def extract_jacobin(url: str, soup: BeautifulSoup, raw_html: str, fetch_network: bool = True) -> Dict[str, Any]:
+    """Jacobin socialist perspective & analysis extractor."""
+    return extract_with_selectors(
+        url=url,
+        soup=soup,
+        site_name="Jacobin",
+        body_selectors=["div.po-hr-content", "div.post-content", "div.article-content", "article"],
+        title_selectors=["h1.po-hr-headline", "h1.headline", "h1"],
+        author_selectors=["div.po-hr-authors", "span.author"],
+    )
+
+
+def extract_reason(url: str, soup: BeautifulSoup, raw_html: str, fetch_network: bool = True) -> Dict[str, Any]:
+    """Reason Magazine libertarian commentary & investigative journalism extractor."""
+    return extract_with_selectors(
+        url=url,
+        soup=soup,
+        site_name="Reason",
+        body_selectors=["div.entry-content", "div.article-content", "div.post-content", "article"],
+        title_selectors=["h1.entry-title", "h1.article-title", "h1"],
+        author_selectors=["div.author-info", "span.author"],
+    )
+
+
+def extract_pitchfork(url: str, soup: BeautifulSoup, raw_html: str, fetch_network: bool = True) -> Dict[str, Any]:
+    """Pitchfork music reviews and culture journalism extractor."""
+    return extract_with_selectors(
+        url=url,
+        soup=soup,
+        site_name="Pitchfork",
+        body_selectors=["div.body__inner-container", "div.article__body", "div.contents", "article"],
+        title_selectors=["h1.split-screen-content-header__hed", "h1.article-header__hed", "h1"],
+        author_selectors=["div.byline", "span.byline__name"],
+    )
+
+
+def extract_nme(url: str, soup: BeautifulSoup, raw_html: str, fetch_network: bool = True) -> Dict[str, Any]:
+    """NME music, film & gaming news extractor."""
+    return extract_with_selectors(
+        url=url,
+        soup=soup,
+        site_name="NME",
+        body_selectors=["div.td-post-content", "div.entry-content", "div.article-content", "article"],
+        title_selectors=["h1.entry-title", "h1.article-title", "h1"],
+        author_selectors=["div.td-post-author-name", "span.author"],
+    )
+
+
 # 6. Central Registries (SITE_ADAPTERS & BROWSER_HINTS)
 # ==============================================================================
 
@@ -4453,6 +4793,36 @@ SITE_ADAPTERS: Dict[str, Callable[[str, BeautifulSoup, str, bool], Dict[str, Any
     "simpleflying.com": extract_simpleflying,
     "lawfaremedia.org": extract_lawfare,
     "theconversation.com": extract_theconversation,
+
+    # Think Tanks, Policy Reviews, Watchdogs & Intellectual Media (Cohort 2)
+    "brookings.edu": extract_brookings,
+    "csis.org": extract_csis,
+    "carnegieendowment.org": extract_carnegie,
+    "rand.org": extract_rand,
+    "chathamhouse.org": extract_chathamhouse,
+    "project-syndicate.org": extract_projectsyndicate,
+    "bostonreview.net": extract_bostonreview,
+    "lrb.co.uk": extract_lrb,
+    "nybooks.com": extract_nybooks,
+    "aeon.co": extract_aeon,
+    "icij.org": extract_icij,
+    "occrp.org": extract_occrp,
+    "gijn.org": extract_gijn,
+    "publicintegrity.org": extract_publicintegrity,
+    "themarshallproject.org": extract_themarshallproject,
+    "chalkbeat.org": extract_chalkbeat,
+    "texastribune.org": extract_texastribune,
+    "calmatters.org": extract_calmatters,
+    "opensecrets.org": extract_opensecrets,
+    "revealnews.org": extract_revealnews,
+    "spectator.co.uk": extract_spectator,
+    "newstatesman.com": extract_newstatesman,
+    "prospectmagazine.co.uk": extract_prospect,
+    "unherd.com": extract_unherd,
+    "jacobin.com": extract_jacobin,
+    "reason.com": extract_reason,
+    "pitchfork.com": extract_pitchfork,
+    "nme.com": extract_nme,
 }
 
 
@@ -5534,6 +5904,120 @@ BROWSER_HINTS: Dict[str, Dict[str, Any]] = {
     "theconversation.com": {
         "wait_for_selector": "div[itemprop='articleBody'], article",
         "dismiss_selectors": [],
+    },
+
+    # Think Tanks, Policy Reviews, Watchdogs & Intellectual Media (Cohort 2)
+    "brookings.edu": {
+        "wait_for_selector": "div.post-body, article",
+        "dismiss_selectors": ["#onetrust-accept-btn-handler"],
+    },
+    "csis.org": {
+        "wait_for_selector": "div.post-content, article",
+        "dismiss_selectors": ["#onetrust-accept-btn-handler"],
+    },
+    "carnegieendowment.org": {
+        "wait_for_selector": "div.article-body, article",
+        "dismiss_selectors": ["#onetrust-accept-btn-handler"],
+    },
+    "rand.org": {
+        "wait_for_selector": "div.product-content, article",
+        "dismiss_selectors": ["#onetrust-accept-btn-handler"],
+    },
+    "chathamhouse.org": {
+        "wait_for_selector": "div.content-body, article",
+        "dismiss_selectors": ["#onetrust-accept-btn-handler", ".cookie-banner__accept"],
+    },
+    "project-syndicate.org": {
+        "wait_for_selector": "div.article__body, article",
+        "dismiss_selectors": ["#onetrust-accept-btn-handler", "button.agree-button"],
+    },
+    "bostonreview.net": {
+        "wait_for_selector": "div.entry-content, article",
+        "dismiss_selectors": [],
+    },
+    "lrb.co.uk": {
+        "wait_for_selector": "div.article-body, article",
+        "dismiss_selectors": ["#onetrust-accept-btn-handler", ".banner__accept-button"],
+    },
+    "nybooks.com": {
+        "wait_for_selector": "div.article-body, article",
+        "dismiss_selectors": ["#onetrust-accept-btn-handler", ".cookie-accept"],
+    },
+    "aeon.co": {
+        "wait_for_selector": "div.article__body, article",
+        "dismiss_selectors": ["button[data-testid='cookie-accept']"],
+    },
+    "icij.org": {
+        "wait_for_selector": "div.entry-content, article",
+        "dismiss_selectors": ["#onetrust-accept-btn-handler"],
+    },
+    "occrp.org": {
+        "wait_for_selector": "div.story-content, article",
+        "dismiss_selectors": [],
+    },
+    "gijn.org": {
+        "wait_for_selector": "div.entry-content, article",
+        "dismiss_selectors": [],
+    },
+    "publicintegrity.org": {
+        "wait_for_selector": "div.entry-content, article",
+        "dismiss_selectors": [],
+    },
+    "themarshallproject.org": {
+        "wait_for_selector": "div.post-content, article",
+        "dismiss_selectors": [],
+    },
+    "chalkbeat.org": {
+        "wait_for_selector": "div.entry-content, article",
+        "dismiss_selectors": [],
+    },
+    "texastribune.org": {
+        "wait_for_selector": "div.story-body, article",
+        "dismiss_selectors": ["#onetrust-accept-btn-handler"],
+    },
+    "calmatters.org": {
+        "wait_for_selector": "div.entry-content, article",
+        "dismiss_selectors": [],
+    },
+    "opensecrets.org": {
+        "wait_for_selector": "div.entry-content, article",
+        "dismiss_selectors": [],
+    },
+    "revealnews.org": {
+        "wait_for_selector": "div.entry-content, article",
+        "dismiss_selectors": [],
+    },
+    "spectator.co.uk": {
+        "wait_for_selector": "div.article-body, article",
+        "dismiss_selectors": ["#onetrust-accept-btn-handler", "button[title='Accept all']"],
+    },
+    "newstatesman.com": {
+        "wait_for_selector": "div.c-article-content, article",
+        "dismiss_selectors": ["#onetrust-accept-btn-handler", ".sp_choice_type_11"],
+    },
+    "prospectmagazine.co.uk": {
+        "wait_for_selector": "div.article-body, article",
+        "dismiss_selectors": ["#onetrust-accept-btn-handler"],
+    },
+    "unherd.com": {
+        "wait_for_selector": "div.article-body, article",
+        "dismiss_selectors": ["#onetrust-accept-btn-handler", ".privacy-prompt__accept"],
+    },
+    "jacobin.com": {
+        "wait_for_selector": "div.po-hr-content, article",
+        "dismiss_selectors": [],
+    },
+    "reason.com": {
+        "wait_for_selector": "div.entry-content, article",
+        "dismiss_selectors": ["#onetrust-accept-btn-handler"],
+    },
+    "pitchfork.com": {
+        "wait_for_selector": "div.body__inner-container, article",
+        "dismiss_selectors": ["#onetrust-accept-btn-handler"],
+    },
+    "nme.com": {
+        "wait_for_selector": "div.td-post-content, article",
+        "dismiss_selectors": ["#onetrust-accept-btn-handler", ".qc-cmp2-summary-buttons button:first-child"],
     },
 }
 
