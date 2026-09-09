@@ -483,6 +483,51 @@ async def capture_page(target_url: str, created_by: str = "admin") -> dict:
 
     logger.info(f"Starting capture for: {target_url} -> ID: {snapshot_id}")
 
+    # 1. Try Direct Fast-Path Adapters (MSN, Substack, Reddit, RSS)
+    try:
+        adapter_data = await asyncio.to_thread(extract_article, target_url, None, True)
+        if adapter_data and adapter_data.get("body_html") and len(adapter_data["body_html"].strip()) > 100:
+            logger.info(f"Direct high-fidelity adapter succeeded for {target_url}")
+            hero_img = adapter_data.get("hero_image_url", "")
+            title = adapter_data.get("title", "")
+            authors = ", ".join(adapter_data.get("authors", []))
+            pub_date = adapter_data.get("published_date", "")
+            canon_url = adapter_data.get("canonical_url", target_url)
+            body_html = adapter_data["body_html"]
+            hero_tag = f'<img src="{hero_img}" class="hero-img" style="max-width:100%; border-radius:12px; margin-bottom:20px;" />' if hero_img and "<img" not in body_html[:300] else ""
+
+            synth_html = f"""<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>{html.escape(title)}</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta property="og:title" content="{html.escape(title)}">
+  <meta property="og:image" content="{hero_img}">
+  <link rel="canonical" href="{canon_url}">
+  <style>
+    body {{ font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.8; max-width: 860px; margin: 0 auto; padding: 24px 20px; color: #1e293b; background: #ffffff; }}
+    h1 {{ font-size: 2rem; line-height: 1.3; margin-bottom: 12px; }}
+    .meta-bar {{ color: #64748b; font-size: 0.95rem; margin-bottom: 24px; border-bottom: 1px solid #e2e8f0; padding-bottom: 12px; }}
+    article p {{ font-size: 1.12rem; margin-bottom: 1.25rem; color: #334155; }}
+    article img {{ max-width: 100%; height: auto; border-radius: 8px; margin: 16px 0; }}
+  </style>
+</head>
+<body>
+  <h1>{html.escape(title)}</h1>
+  <div class="meta-bar">
+    <span>{html.escape(authors)}</span> • <span>{pub_date[:10]}</span> • <a href="{canon_url}" target="_blank" rel="noopener">Source ↗</a>
+  </div>
+  {hero_tag}
+  <article>
+    {body_html}
+  </article>
+</body>
+</html>"""
+            return sanitize_and_save_snapshot(synth_html, canon_url, target_url, now, created_by=created_by, title=title)
+    except Exception as e:
+        logger.debug(f"Direct adapter pre-check skipped: {e}")
+
     raw_html = ""
     resolved_url = target_url
     last_html_candidate = ""
